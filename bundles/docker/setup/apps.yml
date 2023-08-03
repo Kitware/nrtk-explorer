@@ -1,0 +1,6 @@
+trame: # Default app under /index.html
+  www_modules:
+    - cdao.module
+  app: cdao
+cdao: # /cdao.html
+  app: cdao

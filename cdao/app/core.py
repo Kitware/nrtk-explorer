@@ -88,6 +88,8 @@ class Engine:
             "downsample": [4],
         }
 
+        state.annotation_categories = {}
+
         state.source_image_ids = []
         state.transformed_image_ids = []
         state.transforms = [k for k in self._transforms.keys()]
@@ -137,6 +139,7 @@ class Engine:
 
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
+        self.state.annotation_categories = {}
 
         for image_id in source_image_ids:
             result_id = image_id_to_result(image_id)
@@ -185,7 +188,14 @@ class Engine:
 
         with open(current_dataset) as f:
             dataset = json.load(f)
-        
+
+        categories = {}
+
+        for category in dataset["categories"]:
+            categories[category["id"]] = category
+
+        self.state.annotation_categories = categories
+
         for image_metadata in dataset["images"]:
             if i > MAX_IMAGES:
                 break

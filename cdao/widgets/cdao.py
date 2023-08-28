@@ -19,5 +19,6 @@ class ImageDetection(HtmlElement):
             "src",
             "meta",
             "annotations",
+            "categories",
         ]
         self._event_names += []

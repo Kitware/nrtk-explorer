@@ -15,3 +15,8 @@ export type Annotation = {
   category_id: number;
   bbox: Vector4<number>;
 };
+
+export type Category = {
+  id: number;
+  name: string;
+}

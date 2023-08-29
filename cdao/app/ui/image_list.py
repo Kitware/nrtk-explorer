@@ -1,13 +1,13 @@
 from trame.widgets  import (
     client,
-    vuetify3 as vuetify
+    html
 )
 
 from cdao.widgets.cdao import ImageDetection
 
 def image_list_component(image_ids_key):
-    with vuetify.VRow():
-        with vuetify.VCol(v_for=(f"image_id in {image_ids_key}",), key="image_id", cols=3):
+    with html.Div(classes="row"):
+        with html.Div(v_for=(f"image_id in {image_ids_key}",), key="image_id", classes="col-3 q-pa-sm"):
             ImageDetection(
                 src=("get(image_id)",),
                 meta=("get(`${image_id}_meta`)",),

@@ -173,7 +173,9 @@ function mouseMove(e: MouseEvent) {
 
     const hits = annotationsTree.retrieve(pixelRectangle).filter((rect: any) => doRectanglesOverlap(rect, pixelRectangle));
 
-    const list = document.createElement('ul');
+    let list = document.createElement('ul');
+    list.style.padding = "0";
+    list.style.margin = "0";
 
     hits.forEach((hit) => {
       const item = document.createElement('li');
@@ -207,8 +209,7 @@ const { src } = toRefs(props);
     <div v-show="showLabelContainer" ref="labelContainer"
       style="position: absolute; background-color: #efefef; z-index: 10;
               list-style-position: inside;
-              padding-left: 0.2rem;
-              padding-right: 0.2rem;
+              padding: 0.4rem;
               border-radius: 0.2rem;
               border-color: rgba(127,127,127,0.75);
               border-style: solid;

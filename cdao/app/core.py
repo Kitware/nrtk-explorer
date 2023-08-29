@@ -3,10 +3,9 @@ Define your classes and create the instances that you need to expose
 """
 import logging
 from trame.app import get_server
-from trame.ui.vuetify3 import SinglePageLayout
+from trame.ui.quasar import QLayout
+from trame.widgets import quasar
 from trame.widgets  import html
-from trame.widgets import vuetify3 as vuetify
-from cdao.widgets import cdao as my_widgets
 from cdao.app.utils import image_to_base64_str
 from cdao.library import transforms
 
@@ -294,48 +293,49 @@ class Engine:
 
 
     def ui(self, *args, **kwargs):
-        with SinglePageLayout(self._server) as layout:
-            # Toolbar
-            layout.title.set_text("CDAO")
-            with layout.toolbar:
-                pass
+        with QLayout(self._server, view="lhh LpR lff", classes="shadow-2 rounded-borders bg-grey-2"):
+            # # Toolbar
+            with quasar.QHeader():
+                with quasar.QToolbar(classes="shadow-4"):
+                    quasar.QBtn(
+                        flat=True,
+                        click="drawerLeft = !drawerLeft",
+                        round=True,
+                        dense=False,
+                        icon="menu",
+                    )
+                    quasar.QToolbarTitle("CDAO")
 
-            # Main content
-            with layout.content:
-                with vuetify.VRow():
-                    with vuetify.VCol(cols=2):
-                        with html.Div(classes="pa-2"):
-                            vuetify.VSelect(
+            # # Main content
+            with quasar.QPageContainer():
+                with quasar.QPage():
+                    with html.Div(classes="row"):
+                        with html.Div(classes="col-2 q-pa-md"):
+                            quasar.QSelect(
                                 label="Dataset",
                                 v_model=("current_dataset",),
-                                items=(DATASET_DIRS,)
+                                options=(DATASET_DIRS,)
                             )
 
-                            vuetify.VSelect(
+                            quasar.QSelect(
                                 label="Transform",
                                 v_model=("current_transform",),
-                                items=("transforms",)
+                                options=("transforms",)
                             )
 
-                            vuetify.VSelect(
+                            quasar.QSelect(
                                 label="Model",
                                 v_model=("current_model",),
-                                items=("models",)
+                                options=("models",)
                             )
 
-                    with vuetify.VCol(cols= 5):
-                        html.H5("Original Dataset", classes="text-h5 pa-2")
+                        with html.Div(classes="col-5 q-pa-md"):
+                            html.H5("Original Dataset", classes="text-h5")
+                            image_list_component("source_image_ids")
 
-                        with vuetify.VRow():
-                            with vuetify.VCol(cols=12):
-                                image_list_component("source_image_ids")
-
-                    with vuetify.VCol(cols= 5, style="background-color: #ffcdcd;", v_if=("show_blue", True)):
-                        html.H5("Transformed Dataset", classes="text-h5 pa-2")
-                        
-                        with vuetify.VRow():
-                            with vuetify.VCol(cols=12):
-                                image_list_component("transformed_image_ids")
+                        with html.Div(classes="col-5 q-pa-md", style="background-color: #ffcdcd;", v_if=("show_blue", True)):
+                            html.H5("Transformed Dataset", classes="text-h5")
+                            image_list_component("transformed_image_ids")
 
             # Footer
             # layout.footer.hide()

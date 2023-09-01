@@ -41,8 +41,8 @@ def image_id_to_thumb(image_id):
 # ---------------------------------------------------------
 
 DATASET_DIRS = [
-    "/home/alessandro/Documents/OIRDS_v1_0/oirds_test.json",
-    "/home/alessandro/Documents/OIRDS_v1_0/oirds_train.json",
+    "/tmp/OIRDS_v1_0/oirds_test.json",
+    "/tmp/OIRDS_v1_0/oirds_train.json",
 ]
 
 MAX_IMAGES = 35

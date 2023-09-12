@@ -4,7 +4,7 @@ os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
 from trame.app import get_server
 from trame.decorators import TrameApp, change
 from trame.ui.quasar import QLayout
-from trame.widgets import quasar, matplotlib, html
+from trame.widgets import quasar, html
 
 import numpy as np
 import timm
@@ -15,11 +15,20 @@ from PIL import Image as ImageModule
 from PIL.Image import Image
 from sklearn.decomposition import PCA
 
+from cdao.widgets.cdao import ScatterPlot
+
+ROOT_DATASET_DIR = "/home/alessandro/Documents"
 
 DATASET_DIRS = [
-    "/tmp/OIRDS_v1_0/oirds_test.json",
-    "/tmp/OIRDS_v1_0/oirds_train.json",
+    f"{ROOT_DATASET_DIR}/OIRDS_v1_0/oirds_test.json",
+    f"{ROOT_DATASET_DIR}/OIRDS_v1_0/oirds_train.json",
 ]
+
+def on_click(*args, **kwargs):
+    print("ON CLICK", args, kwargs)
+
+def on_select(*args, **kwargs):
+    print("ON SELECT", args, kwargs)
 
 class Embeddings:
     def __init__(self, dims=3, model='resnet50d'):
@@ -74,13 +83,13 @@ class EmbbedingsApp:
         self.server.client_type = "vue3"
         self._ui = None
         self.server.state.tab = "PCA"
-        self.server.state.num_elements = "5"
+        self.server.state.num_elements = "40"
         self.server.state.pca_dimensionality = "3"
         self.server.state.umap_dimensionality = "3"
         self.server.state.pca_mean_variance = 3
         self.server.state.current_model = "resnet50d"
-        self.server.state.current_visualization_txt = "Wait for settings"
         self.server.state.current_dataset = DATASET_DIRS[0]
+        self.server.state.current_points = []
 
         self.ui
 
@@ -91,6 +100,14 @@ class EmbbedingsApp:
     @property
     def ctrl(self):
         return self.server.controller
+
+    @change("pca_mean_variance")
+    def on_pca_mean_variance(self, *args, **kwargs):
+        print("on_pca_mean_variance()", args, kwargs)
+    
+    @change("num_elements")
+    def on_num_elements(self, *args, **kwargs):
+        print("on_num_elements()", kwargs["num_elements"], type(kwargs["num_elements"]))
 
 
     def on_current_run_model_change(self):
@@ -111,14 +128,15 @@ class EmbbedingsApp:
         
         X = [ ]
         for image_metadata in images:
-            X.append(self.embedding_type.execute_from_path("/tmp/OIRDS_v1_0/" + image_metadata["file_name"]))
-
-        output = [str(x) for x in X]
+            X.append(self.embedding_type.execute_from_path(os.path.join(os.path.dirname(self.server.state.current_dataset), image_metadata["file_name"])))
         
-        self.server.state.current_visualization_txt = f"{output}"
+        self.server.state.current_points = [list(x) for x in X]
 
     def visualization_widget(self):
-        html.H5(v_text="current_visualization_txt", classes="text-h5")
+        ScatterPlot(
+            points=("get('current_points')",),
+            click=(on_click, "[$event]"),
+            select=(on_select, "[$event]"))
 
     def settings_widget(self):
         with html.Div(classes="column"):
@@ -138,7 +156,7 @@ class EmbbedingsApp:
                     filled=True,
                 )
                 html.P("Number of elements:", classes="text-h6")
-                quasar.QSlider(v_model="num_elements", min=0, max=25, step=1,
+                quasar.QSlider(v_model=("num_elements",), min=0, max=25, step=1,
                                label=True, label_always=True)
                 quasar.QSeparator()
                 quasar.QSeparator()
@@ -163,7 +181,7 @@ class EmbbedingsApp:
                                  quasar.QRadio(v_model="pca_dimensionality", val="2", label="2D")
                                  quasar.QRadio(v_model="pca_dimensionality", val="3", label="3D")
                          html.P("Mean Variance:", classes="tex-h6")
-                         quasar.QSlider(v_model="pca_mean_variance", min=0.0,
+                         quasar.QSlider(v_model=("pca_mean_variance",), min=0.0,
                                         max=3.0, step=0.1, label=True, label_always=True)
 
                      with quasar.QTabPanel(name="UMAP"):
@@ -181,7 +199,7 @@ class EmbbedingsApp:
     @property
     def ui(self):
         if self._ui is None:
-            with QLayout(self.server) as layout:
+            with QLayout(self.server, view="lhh LpR lff") as layout:
                 with quasar.QHeader():
                     with quasar.QToolbar(classes="shadow-4"):
                         quasar.QToolbarTitle("Embeddings")
@@ -189,12 +207,13 @@ class EmbbedingsApp:
 
                 # Main content
                 with quasar.QPageContainer():
-                    with html.Div(classes="row"):
-                        with html.Div(classes="col-2 q-pa-md"):
-                            self.settings_widget()
+                    with quasar.QPage():
+                        with html.Div(classes="row", style="min-height: inherit;"):
+                            with html.Div(classes="col-2 q-pa-md"):
+                                self.settings_widget()
 
-                        with html.Div(classes="col-5 q-pa-md"):
-                            self.visualization_widget()
+                            with html.Div(classes="col-10 q-pa-md"):
+                                self.visualization_widget()
 
                 self._ui = layout
         return self._ui

@@ -22,3 +22,17 @@ class ImageDetection(HtmlElement):
             "categories",
         ]
         self._event_names += []
+
+class ScatterPlot(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "scatter-plot",
+            **kwargs,
+        )
+        self._attr_names += [
+            "points",
+        ]
+        self._event_names += [
+            "click",
+            "select",
+        ]

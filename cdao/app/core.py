@@ -5,13 +5,17 @@ import logging
 from trame.app import get_server
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
-from trame.widgets  import html
+from trame.widgets import html
 from cdao.app.utils import image_to_base64_str
 from cdao.library import transforms
 
 from cdao.app.ui.image_list import image_list_component
 
-from cdao.library.ml_models import ClassificationResNet50, ClassificationAlexNet, ClassificationVgg16
+from cdao.library.ml_models import (
+    ClassificationResNet50,
+    ClassificationAlexNet,
+    ClassificationVgg16,
+)
 
 from PIL import Image as ImageModule
 from PIL.Image import Image
@@ -23,14 +27,18 @@ import json
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 def image_id_to_data(image_id):
     return f"{image_id}"
+
 
 def image_id_to_meta(image_id):
     return f"{image_id}_meta"
 
+
 def image_id_to_result(image_id):
     return f"{image_id}_result"
+
 
 def image_id_to_thumb(image_id):
     return f"{image_id}_thumb"
@@ -46,6 +54,7 @@ DATASET_DIRS = [
 ]
 
 MAX_IMAGES = 35
+
 
 class Engine:
     def __init__(self, server=None):
@@ -67,7 +76,7 @@ class Engine:
         self.models = {
             "ClassificationResNet50": ClassificationResNet50(server),
             "ClassificationAlexNet": ClassificationAlexNet(server),
-            "ClassificationVgg16": ClassificationVgg16(server)
+            "ClassificationVgg16": ClassificationVgg16(server),
         }
 
         state.models = [k for k in self.models.keys()]
@@ -117,7 +126,7 @@ class Engine:
     @property
     def state(self):
         return self.server.state
-    
+
     @property
     def local_state(self):
         return self._local_state
@@ -156,7 +165,6 @@ class Engine:
             if image_id in self.local_state["image_objects"]:
                 del self.local_state["image_objects"][image_id]
 
-
         for image_id in transformed_image_ids:
             result_id = image_id_to_result(image_id)
             meta_id = image_id_to_meta(image_id)
@@ -172,7 +180,6 @@ class Engine:
 
             if image_id in self.local_state["image_objects"]:
                 del self.local_state["image_objects"][image_id]
-
 
     def on_current_dataset_change(self, current_dataset, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_dataset_change change {self.state}")
@@ -210,7 +217,10 @@ class Engine:
             img = ImageModule.open(image_filename)
 
             self.state[image_id] = image_to_base64_str(img, "png")
-            self.state[meta_id] = {"width": image_metadata["width"], "height": image_metadata["height"]}
+            self.state[meta_id] = {
+                "width": image_metadata["width"],
+                "height": image_metadata["height"],
+            }
             self.local_state["image_objects"][image_id] = img
 
         self.local_state["annotations"] = {}
@@ -221,7 +231,9 @@ class Engine:
             image_annotations.append(annotation)
 
             transformed_image_id = f"transformed_{image_id}"
-            image_annotations = self.local_state["annotations"].setdefault(transformed_image_id, [])
+            image_annotations = self.local_state["annotations"].setdefault(
+                transformed_image_id, []
+            )
             image_annotations.append(annotation)
 
         self.state.source_image_ids = image_ids
@@ -286,14 +298,15 @@ class Engine:
 
             self.state[transformed_image_id] = image_to_base64_str(transformed_img, "png")
             self.state[transformed_meta_id] = self.state[meta_id]
-        
+
         self.state.transformed_image_ids = transformed_image_ids
 
         self.update_model_result(self.state.transformed_image_ids, self.state.current_model)
 
-
     def ui(self, *args, **kwargs):
-        with QLayout(self._server, view="lhh LpR lff", classes="shadow-2 rounded-borders bg-grey-2"):
+        with QLayout(
+            self._server, view="lhh LpR lff", classes="shadow-2 rounded-borders bg-grey-2"
+        ):
             # # Toolbar
             with quasar.QHeader():
                 with quasar.QToolbar(classes="shadow-4"):
@@ -314,26 +327,28 @@ class Engine:
                             quasar.QSelect(
                                 label="Dataset",
                                 v_model=("current_dataset",),
-                                options=(DATASET_DIRS,)
+                                options=(DATASET_DIRS,),
                             )
 
                             quasar.QSelect(
                                 label="Transform",
                                 v_model=("current_transform",),
-                                options=("transforms",)
+                                options=("transforms",),
                             )
 
                             quasar.QSelect(
-                                label="Model",
-                                v_model=("current_model",),
-                                options=("models",)
+                                label="Model", v_model=("current_model",), options=("models",)
                             )
 
                         with html.Div(classes="col-5 q-pa-md"):
                             html.H5("Original Dataset", classes="text-h5")
                             image_list_component("source_image_ids")
 
-                        with html.Div(classes="col-5 q-pa-md", style="background-color: #ffcdcd;", v_if=("show_blue", True)):
+                        with html.Div(
+                            classes="col-5 q-pa-md",
+                            style="background-color: #ffcdcd;",
+                            v_if=("show_blue", True),
+                        ):
                             html.H5("Transformed Dataset", classes="text-h5")
                             image_list_component("transformed_image_ids")
 
@@ -345,7 +360,7 @@ def create_engine(server=None):
     # Get or create server
     if server is None:
         server = get_server()
-    
+
     if isinstance(server, str):
         server = get_server(server)
 

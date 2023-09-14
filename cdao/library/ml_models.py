@@ -185,18 +185,14 @@ class SimilarityAlexNet(AbstractModel, ResNetPredict, SimilarityRun):
     def __init__(self, server):
         super().__init__(server, models.alexnet(pretrained=True))
         # Perform model surgery to get feature descriptors
-        self._model.classifier = nn.Sequential(
-            *list(self._model.classifier.children())[:-1]
-        )
+        self._model.classifier = nn.Sequential(*list(self._model.classifier.children())[:-1])
 
 
 class SimilarityVgg16(AbstractModel, ResNetPredict, SimilarityRun):
     def __init__(self, server):
         super().__init__(server, models.vgg16(pretrained=True))
         # Perform model surgery to get feature descriptors
-        self._model.classifier = nn.Sequential(
-            *list(self._model.classifier.children())[:-1]
-        )
+        self._model.classifier = nn.Sequential(*list(self._model.classifier.children())[:-1])
 
 
 # -----------------------------------------------------------------------------

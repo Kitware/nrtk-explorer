@@ -1,0 +1,58 @@
+{
+  "categories": [
+    {
+      "id": 1,
+      "name": "elephants"
+    },
+    {
+      "id": 2,
+      "name": "butterflies"
+    },
+    {
+      "id": 3,
+      "name": "spiders"
+    }
+  ],
+  "images": [
+    {
+      "file_name":"ea35b80a2df1033ed1584d05fb1d4e9fe777ead218ac104497f5c978a4efb4bb_640.png",
+      "category": "elephants"
+    },
+    {
+      "file_name":"ea37b30620f6073ed1584d05fb1d4e9fe777ead218ac104497f5c97faee9bdba_640.png",
+      "category": "butterflies"
+    },
+    {
+      "file_name":"eb30b40b28f7083ed1584d05fb1d4e9fe777ead218ac104497f5c97faeebb5bb_640.png",
+      "category": "butterflies"
+    },
+    {
+      "file_name":"eb30b60c28fd063ed1584d05fb1d4e9fe777ead218ac104497f5c97faeebb5bb_640.png",
+      "category": "butterflies"
+    },
+    {
+      "file_name":"eb32b6072cfd003ed1584d05fb1d4e9fe777ead218ac104497f5c97faeebb5bb_640.png",
+      "category": "butterflies"
+    },
+    {
+      "file_name":"eb32b70f21f2033ed1584d05fb1d4e9fe777ead218ac104497f5c97faee8b1b8_640.png",
+      "category": "butterflies"
+    },
+    {
+      "file_name":"eb35b30729f1073ed1584d05fb1d4e9fe777ead218ac104497f5c97faeebb5bb_640.png",
+      "category": "butterflies"
+    },
+    {
+      "file_name":"eb35b30a28f0003ed1584d05fb1d4e9fe777ead218ac104497f5c97faeebb5bb_640.png",
+      "category": "butterflies"
+    },
+    {
+      "file_name":"eb3db70e20f6043ed1584d05fb1d4e9fe777ead218ac104497f5c97ca5edb3bd_640.png",
+      "category": "spiders"
+    },
+    {
+      "file_name":"ee36b7082af51c22d2524518b7444f92e37fe5d404b0144390f8c47ba6edbc_640.png",
+      "category": "spiders"
+    }
+  ]
+}

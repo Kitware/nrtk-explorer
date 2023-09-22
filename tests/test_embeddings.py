@@ -1,13 +1,16 @@
-from cdao.library import imageutils
-from cdao.library import embeddings
+from cdao.library import embeddings_extractor
+from cdao.library import dimension_reducers
 
 import json
 import os
+import pytest
 
-DATASET = "tests/assets/dataset.json"
+CURRENT_DIR_NAME = os.path.dirname(__file__)
+DATASET = f"{CURRENT_DIR_NAME}/../assets/OIRDS_v1_0/oirds_test.json"
 
 
-def get_features():
+@pytest.fixture
+def image_paths():
     with open(DATASET) as f:
         dataset = json.load(f)
     images = dataset["images"]
@@ -15,25 +18,72 @@ def get_features():
     paths = list()
     for image_metadata in images:
         paths.append(os.path.join(os.path.dirname(DATASET), image_metadata["file_name"]))
-    loader = imageutils.DataSetLoader()
-    features = loader.load(paths, 10)
-    return features
+    return paths
 
 
-def test_LoadDataSet():
-    features = get_features()
+def test_features_features_small(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, 10)
+    assert len(features) == 10
     print(features)
 
 
-def test_pca():
-    features = get_features()
-    model = embeddings.PCAEmbeddings(3)
-    points = model.execute(features)
+def test_features_features_zero(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, 0)
+    assert features is None
+    print(features)
+
+
+def test_features_features_all(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths)
+    assert len(features) == len(image_paths)
+    print(features)
+
+
+def test_features_features_rand(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, 10, rand=True)
+    assert len(features) == 10
+    print(features)
+
+
+def test_pca_2d(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, 10)
+    model = dimension_reducers.PCAReducer(2)
+    points = model.reduce(features)
+    assert len(points) > 0
+    assert len(points[0]) == 2
     print(points)
 
 
-def test_umap():
-    features = get_features()
-    model = embeddings.UMAPEmbeddings(3)
-    points = model.execute(features)
+def test_pca_3d(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, 10)
+    model = dimension_reducers.PCAReducer(3)
+    points = model.reduce(features)
+    assert len(points) > 0
+    assert len(points[0]) == 3
+    print(points)
+
+
+def test_umap_2d(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, 10, rand=True)
+    model = dimension_reducers.UMAPReducer(2)
+    points = model.reduce(features)
+    assert len(points) > 0
+    assert len(points[0]) == 2
+    print(points)
+
+
+def test_umap_3d(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, 10, rand=True)
+    model = dimension_reducers.UMAPReducer(3)
+    points = model.reduce(features)
+    assert len(points) > 0
+    assert len(points[0]) == 3
     print(points)

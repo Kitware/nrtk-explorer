@@ -1,6 +1,6 @@
 from cdao.widgets.cdao import ScatterPlot
-from cdao.library import embeddings
-from cdao.library import imageutils
+from cdao.library import embeddings_extractor
+from cdao.library import dimension_reducers
 
 import json
 
@@ -13,14 +13,10 @@ import os
 
 os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
 
-
-ROOT_DATASET_DIR = "/home/alessandro/Documents"
-if os.environ.get("ROOT_DATASET_DIR") is not None:
-    ROOT_DATASET_DIR = os.environ.get("ROOT_DATASET_DIR")
-
+DIR_NAME = os.path.dirname(__file__)
 DATASET_DIRS = [
-    f"{ROOT_DATASET_DIR}/OIRDS_v1_0/oirds_test.json",
-    f"{ROOT_DATASET_DIR}/OIRDS_v1_0/oirds_train.json",
+    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_test.json",
+    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_train.json",
 ]
 
 
@@ -52,36 +48,44 @@ class EmbbedingsApp:
 
     @change("current_model")
     def on_current_model_change(self, current_model, **kwargs):
-        self.dataset_loader = imageutils.DataSetLoader(current_model["value"])
+        self.extractor = embeddings_extractor.EmbeddingsExtractor(current_model["value"])
+
+    @change("current_dataset")
+    def on_current_dataset_change(self, current_dataset, **kwargs):
+        self.server.state.num_elements_disabled = True
+        with open(self.server.state.current_dataset["value"]) as f:
+            dataset = json.load(f)
+            self.images = dataset["images"]
+            self.server.state.num_elements_max = len(self.images)
+        self.server.state.num_elements_disabled = False
 
     def on_run_clicked(self):
         if self.server.state.tab == "PCA":
-            self.embedding_type = embeddings.PCAEmbeddings(
+            self.reducer = dimension_reducers.PCAReducer(
                 self.server.state.dimensionality,
                 self.server.state.pca_whiten,
                 self.server.state.pca_solver,
             )
 
         elif self.server.state.tab == "UMAP":
-            self.embedding_type = embeddings.UMAPEmbeddings(self.server.state.dimensionality)
-
-        with open(self.server.state.current_dataset) as f:
-            dataset = json.load(f)
-
-        images = dataset["images"]
+            self.reducer = dimension_reducers.UMAPReducer(self.server.state.dimensionality)
 
         paths = list()
 
-        for image_metadata in images:
+        for image_metadata in self.images:
             paths.append(
                 os.path.join(
-                    os.path.dirname(self.server.state.current_dataset), image_metadata["file_name"]
+                    os.path.dirname(self.server.state.current_dataset["value"]),
+                    image_metadata["file_name"],
                 )
             )
 
-        features = self.dataset_loader.load(paths, self.server.state.num_elements)
-        self.server.state.current_points = self.embedding_type.execute(features)
-        print(self.server.state.current_points)
+        self.server.state.run_button_loading = True
+        features = self.extractor.extract(
+            paths=paths, n=self.server.state.num_elements, rand=self.server.state.random_sampling
+        )
+        self.server.state.current_points = self.reducer.reduce(features)
+        self.server.state.run_button_loading = False
 
     def visualization_widget(self):
         ScatterPlot(
@@ -96,8 +100,14 @@ class EmbbedingsApp:
                 quasar.QSeparator()
                 quasar.QSelect(
                     label="Dataset",
-                    v_model=("current_dataset", DATASET_DIRS[0]),
-                    options=(DATASET_DIRS,),
+                    v_model=("current_dataset", {"label": "oirds_test", "value": DATASET_DIRS[0]}),
+                    options=(
+                        "Path",
+                        [
+                            {"label": "oirds_test", "value": DATASET_DIRS[0]},
+                            {"label": "oirds_train", "value": DATASET_DIRS[1]},
+                        ],
+                    ),
                     filled=True,
                 )
             with html.Div(classes="col"):
@@ -121,10 +131,14 @@ class EmbbedingsApp:
                 quasar.QSlider(
                     v_model=("num_elements", 15),
                     min=(0,),
-                    max=(25,),
+                    max=("num_elements_max", 25),
+                    disable=("num_elements_disabled", True),
                     step=(1,),
                     label=True,
                     label_always=True,
+                )
+                quasar.QToggle(
+                    v_model=("random_sampling", True), label="Random selection", left_label=True
                 )
 
                 html.P("Dimensionality:", classes="text-body2")
@@ -177,7 +191,12 @@ class EmbbedingsApp:
                         with html.Div(classes="row"):
                             html.Div(classes="col-md-auto")
 
-                quasar.QBtn(label="Run", flat=True, color="Primary", click=self.on_run_clicked)
+                quasar.QBtn(
+                    label="Run",
+                    color="red",
+                    loading=("run_button_loading", False),
+                    click=self.on_run_clicked,
+                )
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property
@@ -189,9 +208,7 @@ class EmbbedingsApp:
                         quasar.QToolbarTitle("Embeddings")
                         quasar.QBtn("Reset")
 
-                with quasar.QDrawer(
-                    v_model=("leftDrawerOpen", True), side="left", overlay=True, elevated=True
-                ):
+                with quasar.QDrawer(v_model=("leftDrawerOpen", True), side="left", elevated=True):
                     self.settings_widget()
 
                 # Main content

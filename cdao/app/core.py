@@ -48,9 +48,11 @@ def image_id_to_thumb(image_id):
 # Engine class
 # ---------------------------------------------------------
 
+
+DIR_NAME = os.path.dirname(__file__)
 DATASET_DIRS = [
-    "/tmp/OIRDS_v1_0/oirds_test.json",
-    "/tmp/OIRDS_v1_0/oirds_train.json",
+    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_test.json",
+    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_train.json",
 ]
 
 MAX_IMAGES = 35

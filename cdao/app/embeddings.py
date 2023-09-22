@@ -3,11 +3,6 @@ from cdao.library import embeddings
 from cdao.library import imageutils
 
 import json
-import torch
-import timm
-import numpy as np
-import umap
-import cdao
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
@@ -201,7 +196,10 @@ class EmbbedingsApp:
 
                 # Main content
                 with quasar.QPageContainer():
-                    self.visualization_widget()
+                    with quasar.QPage():
+                        with html.Div(classes="row", style="min-height: inherit;"):
+                            with html.Div(classes="col q-pa-md"):
+                                self.visualization_widget()
 
                 self._ui = layout
         return self._ui

@@ -87,3 +87,27 @@ def test_umap_3d(image_paths):
     assert len(points) > 0
     assert len(points[0]) == 3
     print(points)
+
+
+@pytest.mark.slow
+def test_pca_3d_large(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths)
+    model = dimension_reducers.PCAReducer(3)
+    points = model.reduce(features)
+    assert len(points) > 0
+    assert len(points[0]) == 3
+    print(f"Number of images: {len(points)}")
+    print(points)
+
+
+@pytest.mark.slow
+def test_umap_3d_large(image_paths):
+    extractor = embeddings_extractor.EmbeddingsExtractor()
+    features = extractor.extract(image_paths, rand=True)
+    model = dimension_reducers.UMAPReducer(3)
+    points = model.reduce(features)
+    assert len(points) > 0
+    assert len(points[0]) == 3
+    print(f"Number of images: {len(points)}")
+    print(points)

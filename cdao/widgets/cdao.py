@@ -23,6 +23,7 @@ class ImageDetection(HtmlElement):
         ]
         self._event_names += []
 
+
 class ScatterPlot(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(

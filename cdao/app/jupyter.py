@@ -1,5 +1,6 @@
 from .core import create_engine
 
+
 def jupyter_proxy_info():
     """Get the config to run the trame application via jupyter's server proxy
 

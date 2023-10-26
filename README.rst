@@ -30,6 +30,15 @@ Run the application
 
     cdao
 
+Develop
+-------
+
+Run tests with:
+
+.. code-block:: console
+
+    pytest
+
 Features
 --------
 

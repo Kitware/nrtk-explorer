@@ -1,0 +1,82 @@
+[project]
+name="cdao"
+version="0.0.1"
+description="Model Visualizer"
+authors = [
+  {name = "Alessandro Genova", email = "alessandro.genova@kitware.com"},
+  {name = "Vicente Adolfo Bolea Sanchez", email = "vicente.bolea@kitware.com"},
+]
+
+keywords = [
+    "Python",
+    "Interactive",
+    "Web",
+    "Application",
+    "Framework",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "License :: Other/Proprietary License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: JavaScript",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "Pillow",
+    "plotly",
+    "scikit-image==0.21.0",
+    "scikit-learn==1.3.0",
+    "sklearn",
+    "smqtk-classifier==0.19.0",
+    "smqtk-core==0.19.0",
+    "smqtk-dataprovider==0.18.0",
+    "smqtk-descriptors==0.19.0",
+    "smqtk-detection[torch,centernet]==0.20.0",
+    "smqtk-image-io==0.17.1",
+    "timm",
+    "torch==1.11",
+    "torchvision==0.12",
+    "trame",
+    "trame-client>=2.11.2",
+    "trame-plotly",
+    "trame-quasar",
+    "ubelt==1.3.2",
+    "umap-learn",
+    "xaitk-saliency==0.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pip>=21.3",
+  "pytest",
+  "setuptools",
+  'black',
+]
+
+[tool.setuptools]
+packages= [ "cdao"]
+
+[project.scripts]
+cdao = "cdao.app:main"
+
+[tool.black]
+line-length = 99
+target-version = ['py38', 'py39', 'py310']
+include = '''
+    \.pyi?$
+'''
+extend-exclude = '''
+/(
+    \.git
+  | bundles/
+  | examples/
+  | exploration/
+)/
+'''

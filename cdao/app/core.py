@@ -10,6 +10,8 @@ from cdao.app.utils import image_to_base64_str
 from cdao.library import transforms
 
 from cdao.app.ui.image_list import image_list_component
+from cdao.app.embeddings import EmbeddingsApp
+from cdao.app.applet import Translator
 
 from cdao.library.ml_models import (
     ClassificationResNet50,
@@ -68,6 +70,14 @@ class Engine:
         }
 
         self._server = server
+
+        self._ui = None
+
+        embeddings_state_translator = Translator()
+        embeddings_state_translator.add_translation("current_model", "current_embeddings_model")
+
+        self._embeddings_app = EmbeddingsApp(server, embeddings_state_translator)
+        self._embeddings_app.set_on_select(self.on_selected_images_change)
 
         # initialize state + controller
         state, ctrl = server.state, server.controller
@@ -142,6 +152,50 @@ class Engine:
 
         logger.setLevel(logging.WARNING)
         jupyter.show(self.server, **kwargs)
+    
+    def on_selected_images_change(self, selected_ids):
+        print("on_selected_images_change", selected_ids)
+        source_image_ids = []
+
+        current_dir = os.path.dirname(self.state.current_dataset)
+
+        with open(self.state.current_dataset) as f:
+            dataset = json.load(f)
+        
+        for selected_id in selected_ids:
+            if (selected_id >= len(dataset["images"])):
+                continue
+
+            image_metadata = dataset["images"][selected_id]
+
+            image_id = f"img_{image_metadata['id']}"
+            meta_id = image_id_to_meta(image_id)
+
+            source_image_ids.append(image_id)
+
+            print(image_id, meta_id)
+
+            # Don't re-read an image that has already been opened
+            if self.state[image_id] is not None:
+                continue
+
+            image_filename = os.path.join(current_dir, image_metadata["file_name"])
+
+            print(image_filename)
+
+            img = ImageModule.open(image_filename)
+
+            self.state[image_id] = image_to_base64_str(img, "png")
+            self.state[meta_id] = {
+                "width": image_metadata["width"],
+                "height": image_metadata["height"],
+            }
+            self.local_state["image_objects"][image_id] = img
+
+        self.state.source_image_ids = source_image_ids
+
+        self.update_model_result(self.state.source_image_ids, self.state.current_model)
+        self.on_current_transform_change(self.state.current_transform)
 
     def reset_data(self):
         source_image_ids = self.state.source_image_ids
@@ -204,27 +258,6 @@ class Engine:
 
         self.state.annotation_categories = categories
 
-        for image_metadata in dataset["images"]:
-            if i > MAX_IMAGES:
-                break
-
-            image_id = f"img_{image_metadata['id']}"
-            meta_id = image_id_to_meta(image_id)
-            image_filename = os.path.join(current_dir, image_metadata["file_name"])
-
-            i += 1
-
-            image_ids.append(image_id)
-
-            img = ImageModule.open(image_filename)
-
-            self.state[image_id] = image_to_base64_str(img, "png")
-            self.state[meta_id] = {
-                "width": image_metadata["width"],
-                "height": image_metadata["height"],
-            }
-            self.local_state["image_objects"][image_id] = img
-
         self.local_state["annotations"] = {}
 
         for annotation in dataset["annotations"]:
@@ -237,11 +270,6 @@ class Engine:
                 transformed_image_id, []
             )
             image_annotations.append(annotation)
-
-        self.state.source_image_ids = image_ids
-
-        self.update_model_result(self.state.source_image_ids, self.state.current_model)
-        self.on_current_transform_change(self.state.current_transform)
 
     def on_current_model_change(self, current_model, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_model_change change {self.state}")
@@ -306,56 +334,73 @@ class Engine:
         self.update_model_result(self.state.transformed_image_ids, self.state.current_model)
 
     def ui(self, *args, **kwargs):
-        with QLayout(
-            self._server, view="lhh LpR lff", classes="shadow-2 rounded-borders bg-grey-2"
-        ):
-            # # Toolbar
-            with quasar.QHeader():
-                with quasar.QToolbar(classes="shadow-4"):
-                    quasar.QBtn(
-                        flat=True,
-                        click="drawerLeft = !drawerLeft",
-                        round=True,
-                        dense=False,
-                        icon="menu",
-                    )
-                    quasar.QToolbarTitle("CDAO")
+        if self._ui is None:
+            with QLayout(
+                self._server, view="lhh LpR lff", classes="shadow-2 rounded-borders bg-grey-2"
+            ) as layout:
+                # # Toolbar
+                with quasar.QHeader():
+                    with quasar.QToolbar(classes="shadow-4"):
+                        quasar.QBtn(
+                            flat=True,
+                            click="drawerLeft = !drawerLeft",
+                            round=True,
+                            dense=False,
+                            icon="menu",
+                        )
+                        quasar.QToolbarTitle("CDAO")
 
-            # # Main content
-            with quasar.QPageContainer():
-                with quasar.QPage():
-                    with html.Div(classes="row"):
-                        with html.Div(classes="col-2 q-pa-md"):
-                            quasar.QSelect(
-                                label="Dataset",
-                                v_model=("current_dataset",),
-                                options=(DATASET_DIRS,),
-                            )
+                # # Main content
+                with quasar.QPageContainer():
+                    with quasar.QPage():
+                        with html.Div(classes="row"):
+                            with html.Div(classes="col-2 q-pa-md"):
+                                self._embeddings_app.settings_widget()
 
-                            quasar.QSelect(
-                                label="Transform",
-                                v_model=("current_transform",),
-                                options=("transforms",),
-                            )
+                                quasar.QSelect(
+                                    label="Dataset",
+                                    v_model=("current_dataset",),
+                                    options=(DATASET_DIRS,),
+                                )
 
-                            quasar.QSelect(
-                                label="Model", v_model=("current_model",), options=("models",)
-                            )
+                                quasar.QSelect(
+                                    label="Transform",
+                                    v_model=("current_transform",),
+                                    options=("transforms",),
+                                )
 
-                        with html.Div(classes="col-5 q-pa-md"):
-                            html.H5("Original Dataset", classes="text-h5")
-                            image_list_component("source_image_ids")
+                                quasar.QSelect(
+                                    label="Model", v_model=("current_model",), options=("models",)
+                                )
 
-                        with html.Div(
-                            classes="col-5 q-pa-md",
-                            style="background-color: #ffcdcd;",
-                            v_if=("show_blue", True),
-                        ):
-                            html.H5("Transformed Dataset", classes="text-h5")
-                            image_list_component("transformed_image_ids")
+                            with html.Div(classes="col-5 q-pa-md"):
+                                html.H5("Original Dataset", classes="text-h5")
 
-            # Footer
-            # layout.footer.hide()
+                                with html.Div(classes="row", style="min-height: inherit; height: 30rem"):
+                                    with html.Div(classes="col q-pa-md"):
+                                        self._embeddings_app.visualization_widget()
+
+                                with html.Div(classes="row"):
+                                    with html.Div(classes="col q-pa-md"):
+                                        image_list_component("source_image_ids")
+
+                            with html.Div(
+                                classes="col-5 q-pa-md",
+                                style="background-color: #ffcdcd;",
+                            ):
+                                html.H5("Transformed Dataset", classes="text-h5")
+
+                                with html.Div(classes="row", style="min-height: inherit; height: 30rem"):
+                                    with html.Div(classes="col q-pa-md"):
+                                        self._embeddings_app.visualization_widget()
+
+                                with html.Div(classes="row"):
+                                    with html.Div(classes="col q-pa-md"):
+                                        image_list_component("transformed_image_ids")
+
+            self._ui = layout
+
+        return self._ui
 
 
 def create_engine(server=None):

@@ -66,6 +66,7 @@ class Engine:
         )
 
         embeddings_state_translator = Translator()
+        embeddings_state_translator.add_translation("current_model", "current_embeddings_model")
 
         self._embeddings_app = EmbeddingsApp(
             server=server,

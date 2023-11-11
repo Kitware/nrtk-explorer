@@ -16,7 +16,6 @@ class EmbeddingsExtractor:
         self.images = dict()
         self.features = dict()
         self.model = model_name
-        # breakpoint()
         if manager is not None:
             self.manager = manager
         else:

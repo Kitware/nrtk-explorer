@@ -13,6 +13,9 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--runslow"):
+        # list test durations
+        config.option.verbose = 1
+        config.option.durations = 0
         # --runslow given in cli: do not skip slow tests
         return
     skip_slow = pytest.mark.skip(reason="need --runslow option to run")

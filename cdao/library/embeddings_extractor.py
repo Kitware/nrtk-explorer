@@ -1,5 +1,6 @@
 from PIL.Image import Image
 from PIL import Image as ImageModule
+from cdao.library import images_manager
 
 import warnings
 import random
@@ -10,18 +11,16 @@ with warnings.catch_warnings():
 import numpy as np
 
 
-def LoadImage(path):
-    img = ImageModule.open(path)
-    img = img.resize((224, 224))
-    img = img.convert("RGB")
-    return img
-
-
 class EmbeddingsExtractor:
-    def __init__(self, model_name="resnet50d"):
+    def __init__(self, model_name="resnet50d", manager=None):
         self.images = dict()
         self.features = dict()
         self.model = model_name
+        # breakpoint()
+        if manager is not None:
+            self.manager = manager
+        else:
+            self.manager = images_manager.ImagesManager()
 
     @property
     def model(self):
@@ -38,7 +37,7 @@ class EmbeddingsExtractor:
         data_config = timm.data.resolve_model_data_config(model)
         self.transforms = timm.data.create_transform(**data_config, is_training=False)
 
-    def extract(self, paths, n=None, rand=False):
+    def extract(self, paths, n=None, rand=False, cache=True):
         if n == 0 or len(paths) == 0:
             return None
 
@@ -52,11 +51,8 @@ class EmbeddingsExtractor:
             selected_paths = paths
 
         for path in selected_paths:
-            if path not in self.images:
-                self.images[path] = LoadImage(path)
-
-            if path not in self.features:
-                img = self.images[path]
+            if cache == False or path not in self.features:
+                img = self.manager.LoadImage(path)
                 features = self.model(self.transforms(img).unsqueeze(0))
                 self.features[path] = features[0]
 

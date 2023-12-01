@@ -80,6 +80,7 @@ class TransformsApp(Applet):
             "ClassificationVgg16": ClassificationVgg16(server),
         }
 
+        self._on_transform_fn = None
         self.state.models = [k for k in self.models.keys()]
         self.state.current_model = self.state.models[0]
 
@@ -118,6 +119,13 @@ class TransformsApp(Applet):
 
         self.local_state["images_manager"] = images_manager.ImagesManager()
 
+    def set_on_transform(self, fn):
+        self._on_transform_fn = fn
+
+    def on_transform(self, *args, **kwargs):
+        if self._on_transform_fn:
+            self._on_transform_fn(*args, **kwargs)
+
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
         with open(self.state.current_dataset) as f:
             dataset = json.load(f)
@@ -125,7 +133,6 @@ class TransformsApp(Applet):
         return self.on_selected_images_change(ids[:current_num_elements])
 
     def on_selected_images_change(self, selected_ids):
-        print("on_selected_images_change", selected_ids)
         source_image_ids = []
 
         current_dir = os.path.dirname(self.state.current_dataset)
@@ -144,11 +151,7 @@ class TransformsApp(Applet):
 
             source_image_ids.append(image_id)
 
-            print(image_id, meta_id)
-
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
-
-            print(image_filename)
 
             img = self.local_state["images_manager"].LoadImage(image_filename)
 
@@ -254,10 +257,9 @@ class TransformsApp(Applet):
     def on_current_transform_change(self, current_transform, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_transform_change change {self.state}")
 
+        transformed_image_ids = []
         transform = self._transforms[current_transform]
         params = self._transform_params[current_transform]
-
-        transformed_image_ids = []
 
         for image_id in self.state.source_image_ids:
             image = self.local_state["image_objects"][image_id]
@@ -280,6 +282,10 @@ class TransformsApp(Applet):
         self.state.transformed_image_ids = transformed_image_ids
 
         self.update_model_result(self.state.transformed_image_ids, self.state.current_model)
+
+        # Only invoke callbacks when we transform images
+        if len(transformed_image_ids) > 0:
+            self.on_transform(transformed_image_ids)
 
     def settings_widget(self):
         with html.Div(classes="column justify-center", style="padding:1rem"):

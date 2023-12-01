@@ -74,6 +74,7 @@ class Engine:
         )
 
         self._embeddings_app.set_on_select(self._transforms_app.on_selected_images_change)
+        self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
 
         # initialize state + controller
         state, ctrl = server.state, server.controller
@@ -245,7 +246,7 @@ class Engine:
                                     classes="row", style="min-height: inherit; height: 30rem"
                                 ):
                                     with html.Div(classes="col q-pa-md"):
-                                        self._embeddings_app.visualization_widget()
+                                        self._embeddings_app.visualization_widget_transformation()
 
                                 with html.Div(classes="row"):
                                     with html.Div(classes="col q-pa-md"):

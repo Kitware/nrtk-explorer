@@ -36,7 +36,7 @@ class EmbeddingsExtractor:
         data_config = timm.data.resolve_model_data_config(model)
         self.transforms = timm.data.create_transform(**data_config, is_training=False)
 
-    def extract(self, paths, n=None, rand=False, cache=True):
+    def extract(self, paths, n=None, rand=False, cache=True, content=None):
         if n == 0 or len(paths) == 0:
             return None
 
@@ -51,7 +51,11 @@ class EmbeddingsExtractor:
 
         for path in selected_paths:
             if cache == False or path not in self.features:
-                img = self.manager.LoadImage(path)
+                img = None
+                if content:
+                    img = content[path]
+                else:
+                    img = self.manager.LoadImage(path)
                 features = self.model(self.transforms(img).unsqueeze(0))
                 self.features[path] = features[0]
 

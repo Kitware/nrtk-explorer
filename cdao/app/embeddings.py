@@ -24,11 +24,11 @@ DATASET_DIRS = [
 
 
 def on_click(*args, **kwargs):
-    print("ON CLICK", args, kwargs)
+    pass
 
 
 def on_select(*args, **kwargs):
-    print("ON SELECT", args, kwargs)
+    pass
 
 
 class EmbeddingsApp(Applet):
@@ -44,7 +44,6 @@ class EmbeddingsApp(Applet):
         self._ui = None
 
         self.state.tab = "PCA"
-        self.state.current_points = []
         self._on_select_fn = None
         self.reducer = dimension_reducers.DimReducerManager()
         self.is_standalone_app = state_translator == None
@@ -57,16 +56,17 @@ class EmbeddingsApp(Applet):
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_model")(self.on_current_model_change)
 
+        self.state.current_source_points = []
+        self.state.current_transform_points = []
+
     def on_current_model_change(self, **kwargs):
         current_model = self.state.current_model
-        print("CURRENT EMBEDDINGS CHANGE", current_model)
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
             current_model, self.local_state["images_manager"]
         )
 
     def on_current_dataset_change(self, **kwargs):
         current_dataset = self.state.current_dataset
-        print("CURRENT DATASET CHANGE", current_dataset)
         self.state.num_elements_disabled = True
         with open(self.state.current_dataset) as f:
             dataset = json.load(f)
@@ -92,7 +92,7 @@ class EmbeddingsApp(Applet):
             paths=paths, n=self.state.num_elements, rand=self.state.random_sampling
         )
         if self.state.tab == "PCA":
-            self.state.current_points = self.reducer.reduce(
+            self.state.current_source_points = self.reducer.reduce(
                 features,
                 name="PCA",
                 dims=self.state.dimensionality,
@@ -101,11 +101,36 @@ class EmbeddingsApp(Applet):
             )
 
         elif self.state.tab == "UMAP":
-            self.state.current_points = self.reducer.reduce(
+            self.state.current_source_points = self.reducer.reduce(
                 features, name="UMAP", dims=self.state.dimensionality
             )
-
         self.state.run_button_loading = False
+
+    def on_run_transformations(self, transformed_image_ids):
+        extractor_transform = embeddings_extractor.EmbeddingsExtractor(
+            self.state.current_model, self.local_state["images_manager"]
+        )
+
+        features = extractor_transform.extract(
+            paths=transformed_image_ids,
+            n=self.state.num_elements,
+            rand=self.state.random_sampling,
+            content=self.local_state["image_objects"],
+        )
+
+        if self.state.tab == "PCA":
+            self.state.current_transform_points = self.reducer.reduce(
+                features,
+                name="PCA",
+                dims=self.state.dimensionality,
+                whiten=self.state.pca_whiten,
+                solver=self.state.pca_solver,
+            )
+
+        elif self.state.tab == "UMAP":
+            self.state.current_transform_points = self.reducer.reduce(
+                features, name="UMAP", dims=self.state.dimensionality
+            )
 
     def set_on_select(self, fn):
         self._on_select_fn = fn
@@ -116,7 +141,14 @@ class EmbeddingsApp(Applet):
 
     def visualization_widget(self):
         ScatterPlot(
-            points=("get('current_points')",),
+            points=("get('current_source_points')",),
+            click=(on_click, "[$event]"),
+            select=(self.on_select, "[$event]"),
+        )
+
+    def visualization_widget_transformation(self):
+        ScatterPlot(
+            points=("get('current_transform_points')",),
             click=(on_click, "[$event]"),
             select=(self.on_select, "[$event]"),
         )
@@ -261,7 +293,7 @@ class EmbeddingsApp(Applet):
         return self._ui
 
 
-def main(server=None, *args, **kwargs):
+def embeddings(server=None, *args, **kwargs):
     server = get_server()
     server.client_type = "vue3"
 
@@ -272,4 +304,4 @@ def main(server=None, *args, **kwargs):
 
 
 if __name__ == "__main__":
-    main()
+    embeddings()

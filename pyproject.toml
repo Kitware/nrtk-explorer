@@ -65,6 +65,8 @@ packages= [ "cdao"]
 
 [project.scripts]
 cdao = "cdao.app:main"
+cdao_embeddings = "cdao.app.embeddings:embeddings"
+cdao_tranforms = "cdao.app.transforms:transforms"
 
 [tool.black]
 line-length = 99

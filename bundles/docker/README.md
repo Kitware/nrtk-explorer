@@ -16,4 +16,4 @@ To generate that image, just run the **scripts/build_image.sh** script.
 
 ## Running your bundle
 
-Just run either `scripts/run_server.sh` or `scripts/run_image.sh` and open your browser to `http://localhost:8080/cdao.html`
+Just run either `scripts/run_server.sh` or `scripts/run_image.sh` and open your browser to `http://localhost:8080/nrtk_explorer.html`

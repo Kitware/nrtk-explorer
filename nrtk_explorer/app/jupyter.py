@@ -9,7 +9,7 @@ def jupyter_proxy_info():
     process.
     """
     return {
-        "command": ["cdao", "-p", "0", "--server"],
+        "command": ["nrtk_explorer", "-p", "0", "--server"],
     }
 
 

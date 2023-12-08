@@ -1,6 +1,6 @@
 from PIL.Image import Image
 from PIL import Image as ImageModule
-from cdao.library import images_manager
+from nrtk_explorer.library import images_manager
 
 import warnings
 import random

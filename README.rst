@@ -1,5 +1,5 @@
 ====
-cdao
+nrtk_explorer
 ====
 
 Model Visualizer
@@ -28,7 +28,7 @@ Run the application
 
 .. code-block:: console
 
-    cdao
+    nrtk_explorer
 
 Develop
 -------

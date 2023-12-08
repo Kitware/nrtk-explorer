@@ -7,4 +7,4 @@ DEPLOY_DIR="$PWD"
 . scripts/build_server.sh
 
 cd "$DEPLOY_DIR"
-docker build -t cdao .
+docker build -t nrtk_explorer .

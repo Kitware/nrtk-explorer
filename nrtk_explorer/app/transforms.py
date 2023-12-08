@@ -8,11 +8,11 @@ from trame.widgets import quasar
 from trame.widgets import html
 from trame.app import get_server
 
-import cdao.library.transforms as trans
-from cdao.library import images_manager
-from cdao.app.ui.image_list import image_list_component
-from cdao.app.applet import Applet
-from cdao.library.ml_models import (
+import nrtk_explorer.library.transforms as trans
+from nrtk_explorer.library import images_manager
+from nrtk_explorer.app.ui.image_list import image_list_component
+from nrtk_explorer.app.applet import Applet
+from nrtk_explorer.library.ml_models import (
     ClassificationResNet50,
     ClassificationAlexNet,
     ClassificationVgg16,

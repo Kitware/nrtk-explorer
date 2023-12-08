@@ -1,6 +1,6 @@
 trame: # Default app under /index.html
   www_modules:
-    - cdao.module
-  app: cdao
-cdao: # /cdao.html
-  app: cdao
+    - nrtk_explorer.module
+  app: nrtk_explorer
+nrtk_explorer: # /nrtk_explorer.html
+  app: nrtk_explorer

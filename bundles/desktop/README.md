@@ -24,7 +24,7 @@ Note: if you are debugging your `pyinstaller` application, consider removing thi
 
 4. `--windowed`: on Mac and Windows, this prevents the terminal/command prompt from being opened when the application is started.
 
-5. `--icon cdao.ico`: the icon file to use for the application.
+5. `--icon nrtk_explorer.ico`: the icon file to use for the application.
 
 After running `pyinstaller`, the standalone application may be found inside the `dist` directory that is created.
 

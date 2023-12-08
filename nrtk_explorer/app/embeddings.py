@@ -1,8 +1,8 @@
-from cdao.widgets.cdao import ScatterPlot
-from cdao.library import embeddings_extractor
-from cdao.library import dimension_reducers
-from cdao.library import images_manager
-from cdao.app.applet import Applet
+from nrtk_explorer.widgets.nrtk_explorer import ScatterPlot
+from nrtk_explorer.library import embeddings_extractor
+from nrtk_explorer.library import dimension_reducers
+from nrtk_explorer.library import images_manager
+from nrtk_explorer.app.applet import Applet
 
 import json
 

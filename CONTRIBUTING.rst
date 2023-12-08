@@ -1,5 +1,5 @@
 ====================
-Contributing to cdao
+Contributing to nrtk_explorer
 ====================
 
 #. Clone the repository using ``git clone``

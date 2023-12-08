@@ -7,5 +7,5 @@ python -m PyInstaller \
     --collect-data trame_vuetify \
     --collect-data trame_vtk \
     --collect-data trame_client \
-    --collect-data cdao \
+    --collect-data nrtk_explorer \
     ./run.py

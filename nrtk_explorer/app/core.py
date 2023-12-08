@@ -6,12 +6,12 @@ from trame.app import get_server
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
-from cdao.library import images_manager
+from nrtk_explorer.library import images_manager
 
-from cdao.app.ui.image_list import image_list_component
-from cdao.app.embeddings import EmbeddingsApp
-from cdao.app.transforms import TransformsApp
-from cdao.app.applet import Translator
+from nrtk_explorer.app.ui.image_list import image_list_component
+from nrtk_explorer.app.embeddings import EmbeddingsApp
+from nrtk_explorer.app.transforms import TransformsApp
+from nrtk_explorer.app.applet import Translator
 
 from PIL import Image as ImageModule
 from PIL.Image import Image
@@ -80,7 +80,7 @@ class Engine:
         state, ctrl = server.state, server.controller
 
         # Set state variable
-        state.trame__title = "cdao"
+        state.trame__title = "nrtk_explorer"
 
         state.source_image_ids = []
         state.current_dataset = DATASET_DIRS[0]
@@ -203,7 +203,7 @@ class Engine:
                             dense=False,
                             icon="menu",
                         )
-                        quasar.QToolbarTitle("CDAO")
+                        quasar.QToolbarTitle("NRTK_EXPLORER")
 
                 # # Main content
                 with quasar.QPageContainer():

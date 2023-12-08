@@ -1,5 +1,5 @@
-from cdao.library import embeddings_extractor
-from cdao.library import dimension_reducers
+from nrtk_explorer.library import embeddings_extractor
+from nrtk_explorer.library import dimension_reducers
 
 import json
 import os

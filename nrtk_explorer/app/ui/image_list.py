@@ -1,6 +1,6 @@
 from trame.widgets import client, html
 
-from cdao.widgets.cdao import ImageDetection
+from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 
 
 def image_list_component(image_ids_key):

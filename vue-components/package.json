@@ -1,14 +1,14 @@
 {
-  "name": "vue-cdao",
+  "name": "vue-nrtk_explorer",
   "private": true,
   "version": "0.0.0",
-  "main": "./dist/cdao.umd.js",
-  "unpkg": "./dist/cdao.umd.js",
-  "module": "./dist/cdao.mjs",
+  "main": "./dist/nrtk_explorer.umd.js",
+  "unpkg": "./dist/nrtk_explorer.umd.js",
+  "module": "./dist/nrtk_explorer.mjs",
   "exports": {
     ".": {
-      "import": "./dist/cdao.mjs",
-      "require": "./dist/cdao.umd.js"
+      "import": "./dist/nrtk_explorer.mjs",
+      "require": "./dist/nrtk_explorer.umd.js"
     }
   },
   "scripts": {

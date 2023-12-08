@@ -4,13 +4,13 @@ from pathlib import Path
 serve_path = str(Path(__file__).with_name("serve").resolve())
 
 # Serve directory for JS/CSS files
-serve = {"__cdao": serve_path}
+serve = {"__nrtk_explorer": serve_path}
 
 # List of JS files to load (usually from the serve path above)
-scripts = ["__cdao/cdao.umd.js"]
+scripts = ["__nrtk_explorer/nrtk_explorer.umd.js"]
 
 # List of CSS files to load (usually from the serve path above)
-# styles = ["__cdao/style.css"]
+# styles = ["__nrtk_explorer/style.css"]
 
 # List of Vue plugins to install/load
-vue_use = ["cdao"]
+vue_use = ["nrtk_explorer"]

@@ -8,9 +8,9 @@ export default defineConfig({
   build: {
     lib: {
       entry: "./src/main.js",
-      name: "cdao",
+      name: "nrtk_explorer",
       formats: ["umd"],
-      fileName: "cdao",
+      fileName: "nrtk_explorer",
     },
     rollupOptions: {
       external: ["vue"],
@@ -20,7 +20,7 @@ export default defineConfig({
         },
       },
     },
-    outDir: "../cdao/module/serve",
+    outDir: "../nrtk_explorer/module/serve",
     assetsDir: ".",
   },
   plugins: [

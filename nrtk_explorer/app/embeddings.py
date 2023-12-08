@@ -8,7 +8,6 @@ import json
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
-from trame.decorators import TrameApp, change
 from trame.app import get_server
 
 import os
@@ -46,7 +45,7 @@ class EmbeddingsApp(Applet):
         self.state.tab = "PCA"
         self._on_select_fn = None
         self.reducer = dimension_reducers.DimReducerManager()
-        self.is_standalone_app = state_translator == None
+        self.is_standalone_app = state_translator is None
         if self.is_standalone_app:
             self.local_state["images_manager"] = images_manager.ImagesManager()
 
@@ -66,7 +65,6 @@ class EmbeddingsApp(Applet):
         )
 
     def on_current_dataset_change(self, **kwargs):
-        current_dataset = self.state.current_dataset
         self.state.num_elements_disabled = True
         with open(self.state.current_dataset) as f:
             dataset = json.load(f)

@@ -1,9 +1,7 @@
 from sklearn.decomposition import PCA
 
-import numpy as np
 import umap
 import hashlib
-import time
 
 
 class DimReducerManager:
@@ -16,7 +14,7 @@ class DimReducerManager:
             features_id + ":" + name + ":" + ":".join("%s=%r" % x for x in kwargs.items())
         )
 
-        if cache == False or reduction_id not in self.cached_reductions:
+        if cache is False or reduction_id not in self.cached_reductions:
             reducer = None
             if name.upper() == "PCA":
                 reducer = PCAReducer(**kwargs)

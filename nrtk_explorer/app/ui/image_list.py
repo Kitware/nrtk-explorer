@@ -1,4 +1,4 @@
-from trame.widgets import client, html
+from trame.widgets import html
 
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 
@@ -14,7 +14,3 @@ def image_list_component(image_ids_key):
                 annotations=("get(`${image_id}_result`)",),
                 categories=("get('annotation_categories')",),
             )
-            # with client.Getter(name=("image_id",), value_name="src"):
-            #     with client.Getter(name=("image_id + '_meta'",), value_name="meta"):
-            #         with client.Getter(name=("image_id + '_result'",), value_name="annotations"):
-            #             ImageDetection(src=("src",), meta=("meta",), annotations=("annotations",))

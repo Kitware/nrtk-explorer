@@ -40,7 +40,7 @@ dependencies = [
     "smqtk-detection[torch,centernet]==0.20.0",
     "smqtk-image-io==0.17.1",
     "timm",
-    "torch==1.11",
+    "torch==2.1.1",
     "torchvision==0.12",
     "trame",
     "trame-client>=2.11.2",

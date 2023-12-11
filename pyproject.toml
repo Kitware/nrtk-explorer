@@ -40,8 +40,8 @@ dependencies = [
     "smqtk-detection[torch,centernet]==0.20.0",
     "smqtk-image-io==0.17.1",
     "timm",
-    "torch==1.11",
-    "torchvision==0.12",
+    "torch",
+    "torchvision",
     "trame",
     "trame-client>=2.11.2",
     "trame-plotly",
@@ -60,7 +60,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages= [ "nrtk_explorer"]
+packages= ["nrtk_explorer"]
 
 [project.scripts]
 nrtk_explorer = "nrtk_explorer.app:main"
@@ -69,7 +69,7 @@ nrtk_explorer_tranforms = "nrtk_explorer.app.transforms:transforms"
 
 [tool.black]
 line-length = 99
-target-version = ['py38', 'py39', 'py310']
+target-version = ['py39', 'py310', 'py311']
 include = '''
     \.pyi?$
 '''

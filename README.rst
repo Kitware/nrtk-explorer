@@ -2,7 +2,7 @@
 nrtk_explorer
 ====
 
-Model Visualizer
+DataSet Visualizer
 
 
 

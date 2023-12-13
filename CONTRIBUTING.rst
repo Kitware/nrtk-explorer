@@ -1,5 +1,5 @@
 ====================
-Contributing to nrtk_explorer
+Contributing to nrtk-explorer
 ====================
 
 #. Clone the repository using ``git clone``

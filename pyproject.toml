@@ -1,5 +1,5 @@
 [project]
-name="nrtk_explorer"
+name="nrtk-explorer"
 version="0.0.1"
 description="Model Visualizer"
 authors = [

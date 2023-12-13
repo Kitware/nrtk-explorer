@@ -1,6 +1,6 @@
 trame: # Default app under /index.html
   www_modules:
-    - nrtk_explorer.module
-  app: nrtk_explorer
-nrtk_explorer: # /nrtk_explorer.html
-  app: nrtk_explorer
+    - nrtk-explorer.module
+  app: nrtk-explorer
+nrtk-explorer: # /nrtk_explorer.html
+  app: nrtk-explorer

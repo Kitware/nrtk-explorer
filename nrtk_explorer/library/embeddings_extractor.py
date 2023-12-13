@@ -1,5 +1,3 @@
-from PIL.Image import Image
-from PIL import Image as ImageModule
 from nrtk_explorer.library import images_manager
 
 import warnings
@@ -50,7 +48,7 @@ class EmbeddingsExtractor:
             selected_paths = paths
 
         for path in selected_paths:
-            if cache == False or path not in self.features:
+            if cache is False or path not in self.features:
                 img = None
                 if content:
                     img = content[path]

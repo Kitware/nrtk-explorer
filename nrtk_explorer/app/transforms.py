@@ -66,7 +66,7 @@ class TransformsApp(Applet):
         super().__init__(server, state_translator, controller_translator, local_state_translator)
         self._ui = None
 
-        self.is_standalone_app = state_translator == None
+        self.is_standalone_app = state_translator is None
         if self.is_standalone_app:
             self.local_state["images_manager"] = images_manager.ImagesManager()
 
@@ -211,12 +211,6 @@ class TransformsApp(Applet):
         logger.info(f">>> ENGINE(a): on_current_dataset_change change {self.state}")
 
         self.reset_data()
-
-        i = 0
-
-        image_ids = []
-
-        current_dir = os.path.dirname(current_dataset)
 
         with open(current_dataset) as f:
             dataset = json.load(f)

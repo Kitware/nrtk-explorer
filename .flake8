@@ -1,5 +1,12 @@
 [flake8]
 
+exclude=
+  assets,
+  .git,
+  nrtk_explorer.egg-info,
+  .venv,
+  vue-components
+
 ignore =
     # Black and flake8 conflict here
     E203

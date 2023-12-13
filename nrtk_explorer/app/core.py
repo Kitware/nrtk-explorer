@@ -8,13 +8,10 @@ from trame.widgets import quasar
 from trame.widgets import html
 from nrtk_explorer.library import images_manager
 
-from nrtk_explorer.app.ui.image_list import image_list_component
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
 from nrtk_explorer.app.applet import Translator
 
-from PIL import Image as ImageModule
-from PIL.Image import Image
 import os
 
 import json
@@ -156,12 +153,6 @@ class Engine:
         logger.info(f">>> ENGINE(a): on_current_dataset_change change {self.state}")
 
         self.reset_data()
-
-        i = 0
-
-        image_ids = []
-
-        current_dir = os.path.dirname(current_dataset)
 
         with open(current_dataset) as f:
             dataset = json.load(f)

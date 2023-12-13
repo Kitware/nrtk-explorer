@@ -53,10 +53,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pip>=21.3",
+  "black",
+  "flake8",
   "pytest",
-  "setuptools",
-  'black',
 ]
 
 [tool.setuptools]

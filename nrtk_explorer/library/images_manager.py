@@ -3,8 +3,6 @@ from PIL import Image as ImageModule
 
 import base64
 import io
-import random
-import warnings
 
 
 def image_to_base64_str(img: Image, format: str) -> str:

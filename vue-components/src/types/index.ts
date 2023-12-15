@@ -20,3 +20,12 @@ export type Category = {
   id: number;
   name: string;
 }
+
+export type ParameterValue = string | number;
+
+export type ParameterDescription = {
+  type: "string" | "integer" | "float" | "boolean";
+  label: string;
+  default?: ParameterValue;
+  options?: ParameterValue[];
+};

@@ -37,3 +37,16 @@ class ScatterPlot(HtmlElement):
             "click",
             "select",
         ]
+
+
+class ParamsWidget(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "params-widget",
+            **kwargs,
+        )
+        self._attr_names += [
+            "values",
+            "descriptions",
+        ]
+        self._event_names += ["valuesChanged"]

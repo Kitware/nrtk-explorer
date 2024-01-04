@@ -21,42 +21,46 @@ def on_change(*args, **kwargs):
     print(args, kwargs)
 
 
-transforms: Dict[str, ImageTransform] = {
-    "TestTransform": TestTransform(),
-    "GaussianBlurTransform": GaussianBlurTransform(),
-    "IdentityTransform": IdentityTransform(),
-}
-
-
-class TransformsApp(Applet):
+class ParametersApp(Applet):
     def __init__(self, server, state_translator=None, controller_translator=None):
         super().__init__(server, state_translator, controller_translator)
 
         self.state.current_transform = "TestTransform"
 
+        self._transforms: Dict[str, ImageTransform] = {
+            "TestTransform": TestTransform(),
+            "GaussianBlurTransform": GaussianBlurTransform(),
+            "IdentityTransform": IdentityTransform(),
+        }
+
+        self.state.transforms = [k for k in self._transforms.keys()]
+        self.state.current_transform = self.state.transforms[0]
+
         self.on_current_transform_change()
 
         self.state.change("current_transform")(self.on_current_transform_change)
+
+        self.on_apply_transform = lambda: None
 
         self._ui = None
 
     def on_current_transform_change(self, **kwargs):
         print("current transform changed", self.state.current_transform)
-        transform = transforms[self.state.current_transform]
+        transform = self._transforms[self.state.current_transform]
         self.state.params_values = transform.get_parameters()
         self.state.params_descriptions = transform.get_parameters_description()
 
     def on_transform_parameters_changed(self, parameters, **kwargs):
         print("on_transform_parameters_changed", parameters, kwargs)
-        transform = transforms[self.state.current_transform]
+        transform = self._transforms[self.state.current_transform]
         transform.set_parameters(parameters)
         self.state.params_values = transform.get_parameters()
 
     def transform_select_ui(self):
         quasar.QSelect(
-            label="Dataset",
+            label="Transform",
             v_model=(self.state_translator("current_transform"),),
-            options=(list(transforms.keys()),),
+            options=(self.state.transforms,),
             filled=True,
             emit_value=True,
             map_options=True,
@@ -69,8 +73,14 @@ class TransformsApp(Applet):
             valuesChanged=(self.on_transform_parameters_changed, "[$event]"),
         )
 
+    def transform_apply_ui(self):
+        quasar.QBtn(
+            "Apply Transform", size="sm", click=(self.on_apply_transform,), classes="full-width"
+        )
+
     @property
     def ui(self):
+        print("UI = ", self.server.controller.on_apply_transform)
         if self._ui is None:
             with QLayout(self.server) as layout:
                 self._ui = layout
@@ -88,6 +98,8 @@ class TransformsApp(Applet):
                     ):
                         self.transform_params_ui()
 
+                    self.transform_apply_ui()
+
                 with quasar.QPageContainer():
                     with quasar.QPage():
                         with html.Div(classes="row", style="min-height: inherit;"):
@@ -101,7 +113,7 @@ def main(server=None, *args, **kwargs):
     server = get_server()
     server.client_type = "vue3"
 
-    app = TransformsApp(server)
+    app = ParametersApp(server)
     app.ui
 
     server.start(**kwargs)

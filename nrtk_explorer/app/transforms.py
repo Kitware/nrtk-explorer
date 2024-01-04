@@ -2,6 +2,7 @@ r"""
 Define your classes and create the instances that you need to expose
 """
 import logging
+from typing import Dict
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
@@ -12,6 +13,7 @@ import nrtk_explorer.library.transforms as trans
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.app.ui.image_list import image_list_component
 from nrtk_explorer.app.applet import Applet
+from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.library.ml_models import (
     ClassificationResNet50,
     ClassificationAlexNet,
@@ -64,6 +66,13 @@ class TransformsApp(Applet):
         local_state_translator=None,
     ):
         super().__init__(server, state_translator, controller_translator, local_state_translator)
+
+        self._parameters_app = ParametersApp(
+            server=server,
+        )
+
+        self._parameters_app.on_apply_transform = self.on_apply_transform
+
         self._ui = None
 
         self.is_standalone_app = state_translator is None
@@ -84,19 +93,14 @@ class TransformsApp(Applet):
         self.state.models = [k for k in self.models.keys()]
         self.state.current_model = self.state.models[0]
 
-        self._transforms = {
+        self._transforms: Dict[str, trans.ImageTransform] = {
             "identity": trans.IdentityTransform(),
             "blur": trans.GaussianBlurTransform(),
             "invert": trans.InvertTransform(),
             "downsample": trans.DownSampleTransform(),
         }
 
-        self._transform_params = {
-            "identity": [],
-            "blur": [4],
-            "invert": [],
-            "downsample": [4],
-        }
+        self._parameters_app._transforms = self._transforms
 
         self.state.annotation_categories = {}
 
@@ -113,7 +117,6 @@ class TransformsApp(Applet):
             self.state.change("current_num_elements")(self.on_current_num_elements_change)
 
         # Bind instance methods to state change
-        self.state.change("current_transform")(self.on_current_transform_change)
         self.state.change("current_model")(self.on_current_model_change)
         self.state.change("current_dataset")(self.on_current_dataset_change)
 
@@ -125,6 +128,39 @@ class TransformsApp(Applet):
     def on_transform(self, *args, **kwargs):
         if self._on_transform_fn:
             self._on_transform_fn(*args, **kwargs)
+
+    def on_apply_transform(self, *args, **kwargs):
+        logger.info(">>> ENGINE(a): on_apply_transform")
+
+        current_transform = self.state.current_transform
+        transformed_image_ids = []
+        transform = self._transforms[current_transform]
+
+        for image_id in self.state.source_image_ids:
+            image = self.local_state["image_objects"][image_id]
+
+            transformed_image_id = f"transformed_{image_id}"
+            meta_id = image_id_to_meta(image_id)
+            transformed_meta_id = image_id_to_meta(transformed_image_id)
+
+            transformed_img = transform.execute(image)
+
+            self.local_state["image_objects"][transformed_image_id] = transformed_img
+
+            transformed_image_ids.append(transformed_image_id)
+
+            self.state[transformed_image_id] = self.local_state["images_manager"].ComputeBase64(
+                transformed_image_id, transformed_img
+            )
+            self.state[transformed_meta_id] = self.state[meta_id]
+
+        self.state.transformed_image_ids = transformed_image_ids
+
+        self.update_model_result(self.state.transformed_image_ids, self.state.current_model)
+
+        # Only invoke callbacks when we transform images
+        if len(transformed_image_ids) > 0:
+            self.on_transform(transformed_image_ids)
 
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
         with open(self.state.current_dataset) as f:
@@ -165,7 +201,7 @@ class TransformsApp(Applet):
         self.state.source_image_ids = source_image_ids
 
         self.update_model_result(self.state.source_image_ids, self.state.current_model)
-        self.on_current_transform_change(self.state.current_transform)
+        self.on_apply_transform()
 
     def reset_data(self):
         source_image_ids = self.state.source_image_ids
@@ -248,55 +284,24 @@ class TransformsApp(Applet):
             result_id = image_id_to_result(image_id)
             self.state[result_id] = self.local_state["annotations"].get(image_id, [])
 
-    def on_current_transform_change(self, current_transform, **kwargs):
-        logger.info(f">>> ENGINE(a): on_current_transform_change change {self.state}")
-
-        transformed_image_ids = []
-        transform = self._transforms[current_transform]
-        params = self._transform_params[current_transform]
-
-        for image_id in self.state.source_image_ids:
-            image = self.local_state["image_objects"][image_id]
-
-            transformed_image_id = f"transformed_{image_id}"
-            meta_id = image_id_to_meta(image_id)
-            transformed_meta_id = image_id_to_meta(transformed_image_id)
-
-            transformed_img = transform.execute(image, *params)
-
-            self.local_state["image_objects"][transformed_image_id] = transformed_img
-
-            transformed_image_ids.append(transformed_image_id)
-
-            self.state[transformed_image_id] = self.local_state["images_manager"].ComputeBase64(
-                transformed_image_id, transformed_img
-            )
-            self.state[transformed_meta_id] = self.state[meta_id]
-
-        self.state.transformed_image_ids = transformed_image_ids
-
-        self.update_model_result(self.state.transformed_image_ids, self.state.current_model)
-
-        # Only invoke callbacks when we transform images
-        if len(transformed_image_ids) > 0:
-            self.on_transform(transformed_image_ids)
-
     def settings_widget(self):
         with html.Div(classes="column justify-center", style="padding:1rem"):
             with html.Div(classes="col"):
-                quasar.QSelect(
-                    label="Transform",
-                    v_model=("current_transform",),
-                    options=("transforms",),
-                    filled=True,
-                    emit_value=True,
-                    map_options=True,
-                )
+                self._parameters_app.transform_select_ui()
+
+                with html.Div(
+                    classes="q-pa-md q-ma-md",
+                    style="border-style: solid; border-width: thin; border-radius: 0.5rem; border-color: lightgray;",
+                ):
+                    self._parameters_app.transform_params_ui()
+
+                self._parameters_app.transform_apply_ui()
 
                 quasar.QSelect(
                     label="Model",
                     v_model=("current_model",),
                     options=("models",),
+                    classes="q-mt-md",
                     filled=True,
                     emit_value=True,
                     map_options=True,

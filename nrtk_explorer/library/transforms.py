@@ -12,6 +12,7 @@ ParameterType = Literal["string", "integer", "float", "boolean"]
 ParameterValue = Union[str, int, float]
 ParameterOptions = Sequence[ParameterValue]
 
+
 # If we target python>=3.11 we should use NotRequired instead of Optional
 class ParameterDescription(TypedDict):
     type: ParameterType

@@ -1,33 +1,52 @@
 <script setup  lang="ts">
+
 import { ref, unref, watch, onMounted, toRefs } from "vue";
-
-import  type { Ref } from "vue";
-
-import type { Vector3, Vector2 } from "../types";
-
 import { ScatterGL } from "scatter-gl";
 
-type Props = {
+import type { Ref } from "vue";
+import type { Vector3, Vector2 } from "../types";
+
+interface Props {
   points: Ref<Vector3<number>[] | Vector2<number>[]>;
+  userSelectedPoints: Ref<number[]>;
+  cameraPosition: Ref<number[]>;
 }
 
 type Events = {
   click: [point: number | null];
   select: [points: number[]];
+  cameraMove: [cameraPosition: Vector3<number>];
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Events>();
 
 const plotContainer = ref<HTMLDivElement>();
-let scatterPlot: ScatterGL | undefined;
-
 const selectMode = ref<boolean>(false);
 
+let scatterPlot: ScatterGL | undefined;
+let userSelectedPoints: number[] = [];
+
 function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
-if (!scatterPlot) {
+  if (!scatterPlot) {
     return;
   }
+
+  scatterPlot.setPointColorer((i, arg1, arg2) => {
+    if (userSelectedPoints.indexOf(i) > -1)
+    {
+      return 'grey';
+    }
+
+    const numValues = userSelectedPoints.length;
+    const originalLength = points.length - numValues;
+    if (numValues > 0 && i >= originalLength)
+    {
+      return 'red';
+    }
+
+    return 'blue';
+  });
 
   const dataset = new ScatterGL.Dataset(points);
   scatterPlot.render(dataset);
@@ -38,6 +57,19 @@ if (!scatterPlot) {
 watch(props.points, function(newValue, oldValue){
   drawPoints(unref(props.points));
 });
+
+watch(props.userSelectedPoints, function(newValue, oldValue){
+  userSelectedPoints = unref(props.userSelectedPoints);
+  drawPoints(unref(props.points));
+});
+
+watch(props.cameraPosition, function(newValue, oldValue){
+  let cameraPosition = unref(props.cameraPosition);
+  if (scatterPlot) {
+    (scatterPlot as any).scatterPlot.setCameraPositionAndTarget(cameraPosition, [0,0,0]);
+  }
+});
+
 
 onMounted(() => {
   if (!plotContainer.value) {
@@ -52,8 +84,19 @@ onMounted(() => {
     onSelect(points) {
       emit('select', points);
     },
+    onCameraMove(position, target) {
+      // This callback is bogus since it triggers after clicking.
+    },
   });
 
+  let plotImpl = ((scatterPlot as any).scatterPlot as any);
+  plotImpl.orbitCameraControls.addEventListener('end', () => {
+      plotImpl.stopOrbitAnimation();
+      const cameraPosition = plotImpl.camera.position.toArray();
+      emit('cameraMove', cameraPosition);
+  });
+
+  userSelectedPoints = unref(props.userSelectedPoints);
   drawPoints(unref(props.points));
 });
 

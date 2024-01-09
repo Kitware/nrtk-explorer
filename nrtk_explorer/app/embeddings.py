@@ -26,10 +26,6 @@ def on_click(*args, **kwargs):
     pass
 
 
-def on_select(*args, **kwargs):
-    pass
-
-
 class EmbeddingsApp(Applet):
     def __init__(
         self,
@@ -41,22 +37,25 @@ class EmbeddingsApp(Applet):
         super().__init__(server, state_translator, controller_translator, local_state_translator)
 
         self._ui = None
-
-        self.state.tab = "PCA"
         self._on_select_fn = None
         self.reducer = dimension_reducers.DimReducerManager()
         self.is_standalone_app = state_translator is None
+
         if self.is_standalone_app:
             self.local_state["images_manager"] = images_manager.ImagesManager()
 
         if self.state.current_dataset is None:
             self.state.current_dataset = DATASET_DIRS[0]
 
+        self.state.tab = "PCA"
+        self.state.camera_position = []
+        self.state.points_sources = []
+        self.state.points_total = []
+        self.state.points_transformations = []
+        self.state.user_selected_points_indices = []
+
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_model")(self.on_current_model_change)
-
-        self.state.current_source_points = []
-        self.state.current_transform_points = []
 
     def on_current_model_change(self, **kwargs):
         current_model = self.state.current_model
@@ -90,7 +89,7 @@ class EmbeddingsApp(Applet):
             paths=paths, n=self.state.num_elements, rand=self.state.random_sampling
         )
         if self.state.tab == "PCA":
-            self.state.current_source_points = self.reducer.reduce(
+            self.state.points_sources = self.reducer.reduce(
                 features,
                 name="PCA",
                 dims=self.state.dimensionality,
@@ -99,7 +98,7 @@ class EmbeddingsApp(Applet):
             )
 
         elif self.state.tab == "UMAP":
-            self.state.current_source_points = self.reducer.reduce(
+            self.state.points_sources = self.reducer.reduce(
                 features, name="UMAP", dims=self.state.dimensionality
             )
         self.state.run_button_loading = False
@@ -117,7 +116,7 @@ class EmbeddingsApp(Applet):
         )
 
         if self.state.tab == "PCA":
-            self.state.current_transform_points = self.reducer.reduce(
+            self.state.points_transformations = self.reducer.reduce(
                 features,
                 name="PCA",
                 dims=self.state.dimensionality,
@@ -126,28 +125,38 @@ class EmbeddingsApp(Applet):
             )
 
         elif self.state.tab == "UMAP":
-            self.state.current_transform_points = self.reducer.reduce(
+            self.state.points_transformations = self.reducer.reduce(
                 features, name="UMAP", dims=self.state.dimensionality
             )
+
+        self.state.points_total = self.state.points_sources[:] + self.state.points_transformations
 
     def set_on_select(self, fn):
         self._on_select_fn = fn
 
     def on_select(self, ids):
+        self.state.user_selected_points_indices = ids
         if self._on_select_fn:
             self._on_select_fn(ids)
 
+    def on_move(self, camera_position):
+        self.state.camera_position = camera_position
+
     def visualization_widget(self):
         ScatterPlot(
-            points=("get('current_source_points')",),
             click=(on_click, "[$event]"),
+            cameraMove=(self.on_move, "[$event]"),
+            points=("get('points_sources')",),
+            userSelectedPoints=("[]",),
             select=(self.on_select, "[$event]"),
         )
 
     def visualization_widget_transformation(self):
         ScatterPlot(
-            points=("get('current_transform_points')",),
+            cameraPosition=("get('camera_position')",),
             click=(on_click, "[$event]"),
+            points=("get('points_total')",),
+            userSelectedPoints=("get('user_selected_points_indices')",),
             select=(self.on_select, "[$event]"),
         )
 

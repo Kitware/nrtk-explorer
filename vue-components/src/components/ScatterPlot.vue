@@ -10,6 +10,7 @@ interface Props {
   points: Ref<Vector3<number>[] | Vector2<number>[]>;
   userSelectedPoints: Ref<number[]>;
   cameraPosition: Ref<number[]>;
+  plotTransformations: Ref<boolean>;
 }
 
 type Events = {
@@ -23,7 +24,9 @@ const emit = defineEmits<Events>();
 
 const plotContainer = ref<HTMLDivElement>();
 const selectMode = ref<boolean>(false);
+const plotTransformations = ref<boolean>(false);
 
+let cameraPosition: number[] = [];
 let scatterPlot: ScatterGL | undefined;
 let userSelectedPoints: number[] = [];
 
@@ -33,16 +36,16 @@ function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
   }
 
   scatterPlot.setPointColorer((i, arg1, arg2) => {
-    if (userSelectedPoints.indexOf(i) > -1)
-    {
+    if (userSelectedPoints.indexOf(i) > -1) {
       return 'grey';
     }
 
-    const numValues = userSelectedPoints.length;
-    const originalLength = points.length - numValues;
-    if (numValues > 0 && i >= originalLength)
-    {
-      return 'red';
+    if (plotTransformations.value) {
+      const numValues = userSelectedPoints.length;
+      const originalLength = points.length - numValues;
+      if (numValues > 0 && i >= originalLength) {
+        return 'red';
+      }
     }
 
     return 'blue';
@@ -50,7 +53,6 @@ function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
 
   const dataset = new ScatterGL.Dataset(points);
   scatterPlot.render(dataset);
-
   (scatterPlot as any).scatterPlot.render();
 }
 
@@ -59,14 +61,23 @@ watch(props.points, function(newValue, oldValue){
 });
 
 watch(props.userSelectedPoints, function(newValue, oldValue){
-  userSelectedPoints = unref(props.userSelectedPoints);
-  drawPoints(unref(props.points));
+  let selectedPoints = unref(props.userSelectedPoints);
+  if (selectedPoints.length > 0) {
+    userSelectedPoints = selectedPoints;
+  }
+  (scatterPlot as any).scatterPlot.render();
 });
 
 watch(props.cameraPosition, function(newValue, oldValue){
-  let cameraPosition = unref(props.cameraPosition);
-  if (scatterPlot) {
-    (scatterPlot as any).scatterPlot.setCameraPositionAndTarget(cameraPosition, [0,0,0]);
+  let pos = unref(props.cameraPosition);
+
+  // Only update position if it is different, otherwise this can trigger an infinite loop
+  if (pos.length != cameraPosition.length || !pos.every(function(v, i) { return v === cameraPosition[i]}))
+  {
+    cameraPosition = pos;
+    if (scatterPlot) {
+      (scatterPlot as any).scatterPlot.setCameraPositionAndTarget(cameraPosition, [0,0,0]);
+    }
   }
 });
 
@@ -76,12 +87,18 @@ onMounted(() => {
     return;
   }
 
+  userSelectedPoints = unref(props.userSelectedPoints);
+  plotTransformations.value = unref(props.plotTransformations);
+
   scatterPlot = new ScatterGL(plotContainer.value, {
     rotateOnStart: false,
+    selectEnabled: !plotTransformations.value,
     onClick(point) {
       emit('click', point);
     },
     onSelect(points) {
+      selectMode.value = true;
+      scatterPlot?.setSelectMode();
       emit('select', points);
     },
     onCameraMove(position, target) {
@@ -96,7 +113,6 @@ onMounted(() => {
       emit('cameraMove', cameraPosition);
   });
 
-  userSelectedPoints = unref(props.userSelectedPoints);
   drawPoints(unref(props.points));
 });
 
@@ -133,7 +149,7 @@ function onSpinClick(ev: MouseEvent) {
 <template>
   <div style="width: 100%; height: 100%; position: relative;">
     <div style="position:absolute; top: 0; left: 0; width: 100%; height: 100%;" ref="plotContainer"></div>
-    <div style="position:absolute; top: 0; left: 0;" class="q-pa-md q-gutter-sm">
+    <div v-if="!plotTransformations" style="position:absolute; top: 0; left: 0;" class="q-pa-md q-gutter-sm">
       <q-toolbar classes="bg-purple q-pa-md q-gutter-y-sm shadow-2">
         <q-btn round :color="selectMode ? 'white' : 'grey'" text-color="black" icon="videocam" @click="onPanModeClick"/>
         <q-btn round :color="selectMode ? 'grey' : 'white'" text-color="black" icon="highlight_alt" @click="onSelectModeClick" />

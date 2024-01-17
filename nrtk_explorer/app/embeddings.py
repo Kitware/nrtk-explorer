@@ -46,11 +46,11 @@ class EmbeddingsApp(Applet):
 
         if self.state.current_dataset is None:
             self.state.current_dataset = DATASET_DIRS[0]
+        self.local_state["features"] = []
 
         self.state.tab = "PCA"
         self.state.camera_position = []
         self.state.points_sources = []
-        self.state.points_total = []
         self.state.points_transformations = []
         self.state.user_selected_points_indices = []
 
@@ -75,6 +75,7 @@ class EmbeddingsApp(Applet):
             self.local_state["images_manager"] = images_manager.ImagesManager()
 
     def on_run_clicked(self):
+        self.state.run_button_loading = True
         paths = list()
         for image_metadata in self.images:
             paths.append(
@@ -84,14 +85,13 @@ class EmbeddingsApp(Applet):
                 )
             )
 
-        self.state.run_button_loading = True
-        features = self.extractor.extract(
+        features, self.selected_paths = self.extractor.extract(
             paths=paths, n=self.state.num_elements, rand=self.state.random_sampling
         )
         if self.state.tab == "PCA":
             self.state.points_sources = self.reducer.reduce(
-                features,
                 name="PCA",
+                fit_features=features,
                 dims=self.state.dimensionality,
                 whiten=self.state.pca_whiten,
                 solver=self.state.pca_solver,
@@ -99,26 +99,26 @@ class EmbeddingsApp(Applet):
 
         elif self.state.tab == "UMAP":
             self.state.points_sources = self.reducer.reduce(
-                features, name="UMAP", dims=self.state.dimensionality
+                name="UMAP",
+                fit_features=features,
+                dims=self.state.dimensionality,
             )
+
+        self.local_state["features"] = features
         self.state.run_button_loading = False
 
     def on_run_transformations(self, transformed_image_ids):
-        extractor_transform = embeddings_extractor.EmbeddingsExtractor(
-            self.state.current_model, self.local_state["images_manager"]
-        )
-
-        features = extractor_transform.extract(
+        transformation_features, _ = self.extractor.extract(
             paths=transformed_image_ids,
-            n=self.state.num_elements,
-            rand=self.state.random_sampling,
+            cache=False,
             content=self.local_state["image_objects"],
         )
 
         if self.state.tab == "PCA":
             self.state.points_transformations = self.reducer.reduce(
-                features,
                 name="PCA",
+                fit_features=self.local_state["features"],
+                features=transformation_features,
                 dims=self.state.dimensionality,
                 whiten=self.state.pca_whiten,
                 solver=self.state.pca_solver,
@@ -126,10 +126,11 @@ class EmbeddingsApp(Applet):
 
         elif self.state.tab == "UMAP":
             self.state.points_transformations = self.reducer.reduce(
-                features, name="UMAP", dims=self.state.dimensionality
+                name="UMAP",
+                fit_features=self.local_state["features"],
+                features=transformation_features,
+                dims=self.state.dimensionality,
             )
-
-        self.state.points_total = self.state.points_sources[:] + self.state.points_transformations
 
     def set_on_select(self, fn):
         self._on_select_fn = fn
@@ -144,20 +145,23 @@ class EmbeddingsApp(Applet):
 
     def visualization_widget(self):
         ScatterPlot(
-            click=(on_click, "[$event]"),
             cameraMove=(self.on_move, "[$event]"),
+            cameraPosition=("get('camera_position')",),
+            click=(on_click, "[$event]"),
             points=("get('points_sources')",),
-            userSelectedPoints=("[]",),
             select=(self.on_select, "[$event]"),
+            userSelectedPoints=("get('user_selected_points_indices')",),
         )
 
     def visualization_widget_transformation(self):
         ScatterPlot(
+            cameraMove=(self.on_move, "[$event]"),
             cameraPosition=("get('camera_position')",),
             click=(on_click, "[$event]"),
-            points=("get('points_total')",),
-            userSelectedPoints=("get('user_selected_points_indices')",),
+            plotTransformations=("true",),
+            points=("get('points_transformations')",),
             select=(self.on_select, "[$event]"),
+            userSelectedPoints=("get('user_selected_points_indices')",),
         )
 
     def settings_widget(self):

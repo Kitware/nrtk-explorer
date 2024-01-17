@@ -34,6 +34,7 @@ class ScatterPlot(HtmlElement):
             "points",
             "userSelectedPoints",
             "cameraPosition",
+            "plotTransformations",
         ]
         self._event_names += [
             "click",

@@ -1,37 +1,58 @@
 <script setup  lang="ts">
+
 import { ref, unref, watch, onMounted, toRefs } from "vue";
-
-import  type { Ref } from "vue";
-
-import type { Vector3, Vector2 } from "../types";
-
 import { ScatterGL } from "scatter-gl";
 
-type Props = {
+import type { Ref } from "vue";
+import type { Vector3, Vector2 } from "../types";
+
+interface Props {
   points: Ref<Vector3<number>[] | Vector2<number>[]>;
+  userSelectedPoints: Ref<number[]>;
+  cameraPosition: Ref<number[]>;
+  plotTransformations: Ref<boolean>;
 }
 
 type Events = {
   click: [point: number | null];
   select: [points: number[]];
+  cameraMove: [cameraPosition: Vector3<number>];
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Events>();
 
 const plotContainer = ref<HTMLDivElement>();
-let scatterPlot: ScatterGL | undefined;
-
 const selectMode = ref<boolean>(false);
+const plotTransformations = ref<boolean>(false);
+
+let cameraPosition: number[] = [];
+let scatterPlot: ScatterGL | undefined;
+let userSelectedPoints: number[] = [];
 
 function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
-if (!scatterPlot) {
+  if (!scatterPlot) {
     return;
   }
 
+  scatterPlot.setPointColorer((i, arg1, arg2) => {
+    if (userSelectedPoints.indexOf(i) > -1) {
+      return 'grey';
+    }
+
+    if (plotTransformations.value) {
+      const numValues = userSelectedPoints.length;
+      const originalLength = points.length - numValues;
+      if (numValues > 0 && i >= originalLength) {
+        return 'red';
+      }
+    }
+
+    return 'blue';
+  });
+
   const dataset = new ScatterGL.Dataset(points);
   scatterPlot.render(dataset);
-
   (scatterPlot as any).scatterPlot.render();
 }
 
@@ -39,19 +60,57 @@ watch(props.points, function(newValue, oldValue){
   drawPoints(unref(props.points));
 });
 
+watch(props.userSelectedPoints, function(newValue, oldValue){
+  let selectedPoints = unref(props.userSelectedPoints);
+  if (selectedPoints.length > 0) {
+    userSelectedPoints = selectedPoints;
+  }
+  (scatterPlot as any).scatterPlot.render();
+});
+
+watch(props.cameraPosition, function(newValue, oldValue){
+  let pos = unref(props.cameraPosition);
+
+  // Only update position if it is different, otherwise this can trigger an infinite loop
+  if (pos.length != cameraPosition.length || !pos.every(function(v, i) { return v === cameraPosition[i]}))
+  {
+    cameraPosition = pos;
+    if (scatterPlot) {
+      (scatterPlot as any).scatterPlot.setCameraPositionAndTarget(cameraPosition, [0,0,0]);
+    }
+  }
+});
+
+
 onMounted(() => {
   if (!plotContainer.value) {
     return;
   }
 
+  userSelectedPoints = unref(props.userSelectedPoints);
+  plotTransformations.value = unref(props.plotTransformations);
+
   scatterPlot = new ScatterGL(plotContainer.value, {
     rotateOnStart: false,
+    selectEnabled: !plotTransformations.value,
     onClick(point) {
       emit('click', point);
     },
     onSelect(points) {
+      selectMode.value = true;
+      scatterPlot?.setSelectMode();
       emit('select', points);
     },
+    onCameraMove(position, target) {
+      // This callback is bogus since it triggers after clicking.
+    },
+  });
+
+  let plotImpl = ((scatterPlot as any).scatterPlot as any);
+  plotImpl.orbitCameraControls.addEventListener('end', () => {
+      plotImpl.stopOrbitAnimation();
+      const cameraPosition = plotImpl.camera.position.toArray();
+      emit('cameraMove', cameraPosition);
   });
 
   drawPoints(unref(props.points));
@@ -90,7 +149,7 @@ function onSpinClick(ev: MouseEvent) {
 <template>
   <div style="width: 100%; height: 100%; position: relative;">
     <div style="position:absolute; top: 0; left: 0; width: 100%; height: 100%;" ref="plotContainer"></div>
-    <div style="position:absolute; top: 0; left: 0;" class="q-pa-md q-gutter-sm">
+    <div v-if="!plotTransformations" style="position:absolute; top: 0; left: 0;" class="q-pa-md q-gutter-sm">
       <q-toolbar classes="bg-purple q-pa-md q-gutter-y-sm shadow-2">
         <q-btn round :color="selectMode ? 'white' : 'grey'" text-color="black" icon="videocam" @click="onPanModeClick"/>
         <q-btn round :color="selectMode ? 'grey' : 'white'" text-color="black" icon="highlight_alt" @click="onSelectModeClick" />

@@ -36,7 +36,7 @@ class EmbeddingsExtractor:
 
     def extract(self, paths, n=None, rand=False, cache=True, content=None):
         if n == 0 or len(paths) == 0:
-            return None
+            return None, []
 
         selected_paths = []
         if n:
@@ -47,14 +47,16 @@ class EmbeddingsExtractor:
         else:
             selected_paths = paths
 
+        requested_features = list()
         for path in selected_paths:
             if cache is False or path not in self.features:
                 img = None
-                if content:
+                if content and path in content:
                     img = content[path]
                 else:
                     img = self.manager.LoadImage(path)
                 features = self.model(self.transforms(img).unsqueeze(0))
                 self.features[path] = features[0]
+            requested_features.append(self.features[path])
 
-        return np.stack(list(self.features.values()))
+        return np.stack(requested_features), selected_paths

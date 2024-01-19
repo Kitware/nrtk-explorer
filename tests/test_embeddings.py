@@ -28,14 +28,14 @@ def image_paths():
 
 def test_features_small(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 10)
+    features, _ = extractor.extract(image_paths, 10)
     assert len(features) == 10
     print(features)
 
 
 def test_features_zero(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 0)
+    features, _ = extractor.extract(image_paths, 0)
     assert features is None
     print(features)
 
@@ -43,22 +43,23 @@ def test_features_zero(image_paths):
 @pytest.mark.slow
 def test_features_all(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths)
+    features, _ = extractor.extract(image_paths)
     assert len(features) == len(image_paths)
     print(f"Number of features: {len(features)}")
 
 
 def test_features_rand(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 10, rand=True)
+    features, _ = extractor.extract(image_paths, 10, rand=True)
     assert len(features) == 10
     print(features)
 
 
 def test_pca_2d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 10)
+    features, _ = extractor.extract(image_paths, 10)
     model = dimension_reducers.PCAReducer(2)
+    points = model.fit(features)
     points = model.reduce(features)
     assert len(points) > 0
     assert len(points[0]) == 2
@@ -67,8 +68,9 @@ def test_pca_2d(image_paths):
 
 def test_pca_3d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 10)
+    features, _ = extractor.extract(image_paths, 10)
     model = dimension_reducers.PCAReducer(3)
+    points = model.fit(features)
     points = model.reduce(features)
     assert len(points) > 0
     assert len(points[0]) == 3
@@ -77,8 +79,9 @@ def test_pca_3d(image_paths):
 
 def test_umap_2d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 10, rand=True)
+    features, _ = extractor.extract(image_paths, 10, rand=True)
     model = dimension_reducers.UMAPReducer(2)
+    points = model.fit(features)
     points = model.reduce(features)
     assert len(points) > 0
     assert len(points[0]) == 2
@@ -87,8 +90,9 @@ def test_umap_2d(image_paths):
 
 def test_umap_3d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 10, rand=True)
+    features, _ = extractor.extract(image_paths, 10, rand=True)
     model = dimension_reducers.UMAPReducer(3)
+    points = model.fit(features)
     points = model.reduce(features)
     assert len(points) > 0
     assert len(points[0]) == 3
@@ -97,16 +101,17 @@ def test_umap_3d(image_paths):
 
 def test_reducer_manager(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, 10)
+    features, _ = extractor.extract(image_paths, 10)
     mgr = dimension_reducers.DimReducerManager()
-    old_points = mgr.reduce(features, name="PCA", dims=3)
+    old_points = mgr.reduce(fit_features=features, name="PCA", dims=3)
     assert len(old_points) > 0
     assert len(old_points[0]) == 3
 
-    new_points = mgr.reduce(features, name="PCA", dims=3)
+    # breakpoint()
+    new_points = mgr.reduce(fit_features=features, name="PCA", dims=3)
     assert id(old_points) == id(new_points)
 
-    new_points_2d = mgr.reduce(features, name="PCA", dims=2)
+    new_points_2d = mgr.reduce(fit_features=features, name="PCA", dims=2)
     assert id(old_points) != id(new_points_2d)
 
 
@@ -144,7 +149,7 @@ def test_reducer_manager_benchmark(image_paths):
 
     mgr = dimension_reducers.DimReducerManager()
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths)
+    features, _ = extractor.extract(image_paths)
 
     # Short benchmarks cached
     for name, n, cache, iterations in setups:
@@ -160,7 +165,7 @@ def test_reducer_manager_benchmark(image_paths):
 @pytest.mark.slow
 def test_pca_3d_large(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, rand=True)
+    features, _ = extractor.extract(image_paths, rand=True)
     model = dimension_reducers.PCAReducer(3)
     points = model.reduce(features)
     assert len(points) > 0
@@ -172,7 +177,7 @@ def test_pca_3d_large(image_paths):
 @pytest.mark.slow
 def test_umap_3d_large(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths, rand=True)
+    features, _ = extractor.extract(image_paths, rand=True)
     model = dimension_reducers.UMAPReducer(3)
     points = model.reduce(features)
     assert len(points) > 0

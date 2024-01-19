@@ -50,22 +50,8 @@ DATASET_DIRS = [
 
 
 class TransformsApp(Applet):
-    @property
-    def state(self):
-        return self.server.state
-
-    @property
-    def local_state(self):
-        return self.server._local_state
-
-    def __init__(
-        self,
-        server,
-        state_translator=None,
-        controller_translator=None,
-        local_state_translator=None,
-    ):
-        super().__init__(server, state_translator, controller_translator, local_state_translator)
+    def __init__(self, server):
+        super().__init__(server)
 
         self._parameters_app = ParametersApp(
             server=server,
@@ -75,13 +61,11 @@ class TransformsApp(Applet):
 
         self._ui = None
 
-        self.is_standalone_app = state_translator is None
-        if self.is_standalone_app:
-            self.local_state["images_manager"] = images_manager.ImagesManager()
+        if self.context["images_manager"] is None:
+            self.context["images_manager"] = images_manager.ImagesManager()
 
-            self.server._local_state = {
-                "image_objects": {},
-            }
+        if self.context["image_objects"] is None:
+            self.context["image_objects"] = {}
 
         self.models = {
             "ClassificationResNet50": ClassificationResNet50(server),
@@ -112,15 +96,15 @@ class TransformsApp(Applet):
         if self.state.current_dataset is None:
             self.state.current_dataset = DATASET_DIRS[0]
 
-        if self.state.current_num_elements is None and self.is_standalone_app:
-            self.state.current_num_elements = 15
-            self.state.change("current_num_elements")(self.on_current_num_elements_change)
+        self.state.current_num_elements = 15
 
+        self.server.controller.add("on_server_ready")(self.on_server_ready)
+
+    def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.state.change("current_model")(self.on_current_model_change)
         self.state.change("current_dataset")(self.on_current_dataset_change)
-
-        self.local_state["images_manager"] = images_manager.ImagesManager()
+        self.state.change("current_num_elements")(self.on_current_num_elements_change)
 
     def set_on_transform(self, fn):
         self._on_transform_fn = fn
@@ -137,7 +121,7 @@ class TransformsApp(Applet):
         transform = self._transforms[current_transform]
 
         for image_id in self.state.source_image_ids:
-            image = self.local_state["image_objects"][image_id]
+            image = self.context["image_objects"][image_id]
 
             transformed_image_id = f"transformed_{image_id}"
             meta_id = image_id_to_meta(image_id)
@@ -145,11 +129,11 @@ class TransformsApp(Applet):
 
             transformed_img = transform.execute(image)
 
-            self.local_state["image_objects"][transformed_image_id] = transformed_img
+            self.context["image_objects"][transformed_image_id] = transformed_img
 
             transformed_image_ids.append(transformed_image_id)
 
-            self.state[transformed_image_id] = self.local_state["images_manager"].ComputeBase64(
+            self.state[transformed_image_id] = self.context["images_manager"].ComputeBase64(
                 transformed_image_id, transformed_img
             )
             self.state[transformed_meta_id] = self.state[meta_id]
@@ -189,14 +173,14 @@ class TransformsApp(Applet):
 
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
 
-            img = self.local_state["images_manager"].LoadImage(image_filename)
+            img = self.context["images_manager"].LoadImage(image_filename)
 
-            self.state[image_id] = self.local_state["images_manager"].ComputeBase64(image_id, img)
+            self.state[image_id] = self.context["images_manager"].ComputeBase64(image_id, img)
             self.state[meta_id] = {
                 "width": image_metadata["width"],
                 "height": image_metadata["height"],
             }
-            self.local_state["image_objects"][image_id] = img
+            self.context["image_objects"][image_id] = img
 
         self.state.source_image_ids = source_image_ids
 
@@ -224,8 +208,8 @@ class TransformsApp(Applet):
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
 
-            if image_id in self.local_state["image_objects"]:
-                del self.local_state["image_objects"][image_id]
+            if image_id in self.context["image_objects"]:
+                del self.context["image_objects"][image_id]
 
         for image_id in transformed_image_ids:
             result_id = image_id_to_result(image_id)
@@ -240,8 +224,8 @@ class TransformsApp(Applet):
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
 
-            if image_id in self.local_state["image_objects"]:
-                del self.local_state["image_objects"][image_id]
+            if image_id in self.context["image_objects"]:
+                del self.context["image_objects"][image_id]
 
     def on_current_dataset_change(self, current_dataset, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_dataset_change change {self.state}")
@@ -258,23 +242,23 @@ class TransformsApp(Applet):
 
         self.state.annotation_categories = categories
 
-        self.local_state["annotations"] = {}
+        self.context["annotations"] = {}
 
         for annotation in dataset["annotations"]:
             image_id = f"img_{annotation['image_id']}"
-            image_annotations = self.local_state["annotations"].setdefault(image_id, [])
+            image_annotations = self.context["annotations"].setdefault(image_id, [])
             image_annotations.append(annotation)
 
             transformed_image_id = f"transformed_{image_id}"
-            image_annotations = self.local_state["annotations"].setdefault(
-                transformed_image_id, []
-            )
+            image_annotations = self.context["annotations"].setdefault(transformed_image_id, [])
             image_annotations.append(annotation)
 
-        self.local_state["images_manager"] = images_manager.ImagesManager()
+        self.context["images_manager"] = images_manager.ImagesManager()
 
-    def on_current_model_change(self, current_model, **kwargs):
+    def on_current_model_change(self, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_model_change change {self.state}")
+
+        current_model = self.state.current_model
 
         self.update_model_result(self.state.source_image_ids, current_model)
         self.update_model_result(self.state.transformed_image_ids, current_model)
@@ -282,10 +266,12 @@ class TransformsApp(Applet):
     def update_model_result(self, image_ids, current_model):
         for image_id in image_ids:
             result_id = image_id_to_result(image_id)
-            self.state[result_id] = self.local_state["annotations"].get(image_id, [])
+            self.state[result_id] = self.context["annotations"].get(image_id, [])
 
     def settings_widget(self):
-        with html.Div(classes="column justify-center", style="padding:1rem"):
+        with html.Div(
+            trame_server=self.server, classes="column justify-center", style="padding:1rem"
+        ):
             with html.Div(classes="col"):
                 self._parameters_app.transform_select_ui()
 
@@ -308,10 +294,12 @@ class TransformsApp(Applet):
                 )
 
     def original_dataset_widget(self):
-        image_list_component("source_image_ids")
+        with html.Div(trame_server=self.server):
+            image_list_component("source_image_ids")
 
     def transformed_dataset_widget(self):
-        image_list_component("transformed_image_ids")
+        with html.Div(trame_server=self.server):
+            image_list_component("transformed_image_ids")
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property
@@ -352,7 +340,7 @@ class TransformsApp(Applet):
 
                                         html.P("Number of elements:", classes="text-body2")
                                         quasar.QSlider(
-                                            v_model=("current_num_elements", 15),
+                                            v_model=("current_num_elements",),
                                             min=(0,),
                                             max=(25,),
                                             step=(1,),

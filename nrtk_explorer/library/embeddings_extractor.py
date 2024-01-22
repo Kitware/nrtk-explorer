@@ -1,7 +1,6 @@
 from nrtk_explorer.library import images_manager
 
 import warnings
-import random
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -34,21 +33,12 @@ class EmbeddingsExtractor:
         data_config = timm.data.resolve_model_data_config(model)
         self.transforms = timm.data.create_transform(**data_config, is_training=False)
 
-    def extract(self, paths, n=None, rand=False, cache=True, content=None):
-        if n == 0 or len(paths) == 0:
-            return None, []
-
-        selected_paths = []
-        if n:
-            if rand:
-                selected_paths = random.sample(paths, n)
-            else:
-                selected_paths = paths[:n]
-        else:
-            selected_paths = paths
+    def extract(self, paths, cache=True, content=None):
+        if len(paths) == 0:
+            return None
 
         requested_features = list()
-        for path in selected_paths:
+        for path in paths:
             if cache is False or path not in self.features:
                 img = None
                 if content and path in content:
@@ -59,4 +49,4 @@ class EmbeddingsExtractor:
                 self.features[path] = features[0]
             requested_features.append(self.features[path])
 
-        return np.stack(requested_features), selected_paths
+        return np.stack(requested_features)

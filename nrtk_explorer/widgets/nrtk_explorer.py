@@ -16,12 +16,16 @@ class ImageDetection(HtmlElement):
             **kwargs,
         )
         self._attr_names += [
+            "identifier",
             "src",
             "meta",
             "annotations",
             "categories",
+            "selected",
         ]
-        self._event_names += []
+        self._event_names += [
+            "hover",
+        ]
 
 
 class ScatterPlot(HtmlElement):
@@ -31,15 +35,16 @@ class ScatterPlot(HtmlElement):
             **kwargs,
         )
         self._attr_names += [
+            "cameraPosition",
+            "highlightedPoint",
+            "plotTransformations",
             "points",
             "userSelectedPoints",
-            "cameraPosition",
-            "plotTransformations",
         ]
         self._event_names += [
-            "click",
-            "select",
             "cameraMove",
+            "hover",
+            "select",
         ]
 
 

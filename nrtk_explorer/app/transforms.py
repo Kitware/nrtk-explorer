@@ -22,6 +22,7 @@ from nrtk_explorer.library.ml_models import (
 
 import json
 import os
+import re
 
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,10 @@ def image_id_to_meta(image_id):
 
 def image_id_to_result(image_id):
     return f"{image_id}_result"
+
+
+def image_id_to_selected(image_id):
+    return f"{image_id}_selected"
 
 
 # ---------------------------------------------------------
@@ -61,8 +66,8 @@ class TransformsApp(Applet):
 
         self._ui = None
 
-        if self.context["images_manager"] is None:
-            self.context["images_manager"] = images_manager.ImagesManager()
+        if self.context.images_manager is None:
+            self.context.images_manager = images_manager.ImagesManager()
 
         if self.context["image_objects"] is None:
             self.context["image_objects"] = {}
@@ -99,6 +104,7 @@ class TransformsApp(Applet):
         self.state.current_num_elements = 15
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
+        self._on_hover_fn = None
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
@@ -133,7 +139,7 @@ class TransformsApp(Applet):
 
             transformed_image_ids.append(transformed_image_id)
 
-            self.state[transformed_image_id] = self.context["images_manager"].ComputeBase64(
+            self.state[transformed_image_id] = self.context.images_manager.ComputeBase64(
                 transformed_image_id, transformed_img
             )
             self.state[transformed_meta_id] = self.state[meta_id]
@@ -164,25 +170,29 @@ class TransformsApp(Applet):
             if selected_id >= len(dataset["images"]):
                 continue
 
-            image_metadata = dataset["images"][selected_id]
+            image_metadata = dataset["images"][selected_id - 1]
 
             image_id = f"img_{image_metadata['id']}"
             meta_id = image_id_to_meta(image_id)
+            selected_id = image_id_to_selected(image_id)
 
             source_image_ids.append(image_id)
 
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
 
-            img = self.context["images_manager"].LoadImage(image_filename)
+            img = self.context.images_manager.LoadImage(image_filename)
 
-            self.state[image_id] = self.context["images_manager"].ComputeBase64(image_id, img)
+            self.state[image_id] = self.context.images_manager.ComputeBase64(image_id, img)
             self.state[meta_id] = {
                 "width": image_metadata["width"],
                 "height": image_metadata["height"],
             }
-            self.context["image_objects"][image_id] = img
+            self.state[selected_id] = False
+
+            self.context.image_objects[image_id] = img
 
         self.state.source_image_ids = source_image_ids
+        self.state.images_selected = source_image_ids
 
         self.update_model_result(self.state.source_image_ids, self.state.current_model)
         self.on_apply_transform()
@@ -198,6 +208,7 @@ class TransformsApp(Applet):
         for image_id in source_image_ids:
             result_id = image_id_to_result(image_id)
             meta_id = image_id_to_meta(image_id)
+            selected_id = image_id_to_selected(image_id)
 
             if self.state.has(image_id) and self.state[image_id] is not None:
                 self.state[image_id] = None
@@ -207,6 +218,9 @@ class TransformsApp(Applet):
 
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
+
+            if self.state.has(selected_id) and self.state[selected_id] is not None:
+                self.state[selected_id] = None
 
             if image_id in self.context["image_objects"]:
                 del self.context["image_objects"][image_id]
@@ -214,6 +228,7 @@ class TransformsApp(Applet):
         for image_id in transformed_image_ids:
             result_id = image_id_to_result(image_id)
             meta_id = image_id_to_meta(image_id)
+            selected_id = image_id_to_selected(image_id)
 
             if self.state.has(image_id) and self.state[image_id] is not None:
                 self.state[image_id] = None
@@ -223,6 +238,9 @@ class TransformsApp(Applet):
 
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
+
+            if self.state.has(selected_id) and self.state[selected_id] is not None:
+                self.state[selected_id] = None
 
             if image_id in self.context["image_objects"]:
                 del self.context["image_objects"][image_id]
@@ -253,7 +271,7 @@ class TransformsApp(Applet):
             image_annotations = self.context["annotations"].setdefault(transformed_image_id, [])
             image_annotations.append(annotation)
 
-        self.context["images_manager"] = images_manager.ImagesManager()
+        self.context.images_manager = images_manager.ImagesManager()
 
     def on_current_model_change(self, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_model_change change {self.state}")
@@ -267,6 +285,29 @@ class TransformsApp(Applet):
         for image_id in image_ids:
             result_id = image_id_to_result(image_id)
             self.state[result_id] = self.context["annotations"].get(image_id, [])
+
+    def on_image_selected(self, index):
+        for image_id in self.state.source_image_ids:
+            selected_id = image_id_to_selected(image_id)
+            self.state[selected_id] = False
+
+        for image_id in self.state.transformed_image_ids:
+            selected_id = image_id_to_selected(image_id)
+            self.state[selected_id] = False
+
+        if index is not None:
+            selected_id = image_id_to_selected(f"img_{index}")
+            self.state[selected_id] = True
+            transformed_selected_id = image_id_to_selected(f"transformed_img_{index}")
+            self.state[transformed_selected_id] = True
+
+    def set_on_hover(self, fn):
+        self._on_hover_fn = fn
+
+    def on_hover(self, point):
+        identifier = int(re.findall(r"\d+", point)[0])
+        if self._on_hover_fn:
+            self._on_hover_fn(identifier)
 
     def settings_widget(self):
         with html.Div(
@@ -295,11 +336,11 @@ class TransformsApp(Applet):
 
     def original_dataset_widget(self):
         with html.Div(trame_server=self.server):
-            image_list_component("source_image_ids")
+            image_list_component("source_image_ids", self.on_hover)
 
     def transformed_dataset_widget(self):
         with html.Div(trame_server=self.server):
-            image_list_component("transformed_image_ids")
+            image_list_component("transformed_image_ids", self.on_hover)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

@@ -28,14 +28,14 @@ def image_paths():
 
 def test_features_small(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 10)
+    features = extractor.extract(image_paths[:10])
     assert len(features) == 10
     print(features)
 
 
 def test_features_zero(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 0)
+    features = extractor.extract([])
     assert features is None
     print(features)
 
@@ -43,21 +43,14 @@ def test_features_zero(image_paths):
 @pytest.mark.slow
 def test_features_all(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths)
+    features = extractor.extract(image_paths)
     assert len(features) == len(image_paths)
     print(f"Number of features: {len(features)}")
 
 
-def test_features_rand(image_paths):
-    extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 10, rand=True)
-    assert len(features) == 10
-    print(features)
-
-
 def test_pca_2d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 10)
+    features = extractor.extract(image_paths[:10])
     model = dimension_reducers.PCAReducer(2)
     points = model.fit(features)
     points = model.reduce(features)
@@ -68,7 +61,7 @@ def test_pca_2d(image_paths):
 
 def test_pca_3d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 10)
+    features = extractor.extract(image_paths[:10])
     model = dimension_reducers.PCAReducer(3)
     points = model.fit(features)
     points = model.reduce(features)
@@ -79,7 +72,7 @@ def test_pca_3d(image_paths):
 
 def test_umap_2d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 10, rand=True)
+    features = extractor.extract(image_paths[:10])
     model = dimension_reducers.UMAPReducer(2)
     points = model.fit(features)
     points = model.reduce(features)
@@ -90,7 +83,7 @@ def test_umap_2d(image_paths):
 
 def test_umap_3d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 10, rand=True)
+    features = extractor.extract(image_paths[:10])
     model = dimension_reducers.UMAPReducer(3)
     points = model.fit(features)
     points = model.reduce(features)
@@ -101,7 +94,7 @@ def test_umap_3d(image_paths):
 
 def test_reducer_manager(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, 10)
+    features = extractor.extract(image_paths[:10])
     mgr = dimension_reducers.DimReducerManager()
     old_points = mgr.reduce(fit_features=features, name="PCA", dims=3)
     assert len(old_points) > 0
@@ -149,7 +142,7 @@ def test_reducer_manager_benchmark(image_paths):
 
     mgr = dimension_reducers.DimReducerManager()
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths)
+    features = extractor.extract(image_paths)
 
     # Short benchmarks cached
     for name, n, cache, iterations in setups:
@@ -165,7 +158,7 @@ def test_reducer_manager_benchmark(image_paths):
 @pytest.mark.slow
 def test_pca_3d_large(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, rand=True)
+    features = extractor.extract(image_paths)
     model = dimension_reducers.PCAReducer(3)
     points = model.reduce(features)
     assert len(points) > 0
@@ -177,7 +170,7 @@ def test_pca_3d_large(image_paths):
 @pytest.mark.slow
 def test_umap_3d_large(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features, _ = extractor.extract(image_paths, rand=True)
+    features = extractor.extract(image_paths)
     model = dimension_reducers.UMAPReducer(3)
     points = model.reduce(features)
     assert len(points) > 0

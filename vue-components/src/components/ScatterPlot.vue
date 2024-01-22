@@ -7,28 +7,63 @@ import type { Ref } from "vue";
 import type { Vector3, Vector2 } from "../types";
 
 interface Props {
+  cameraPosition: Ref<number[]>;
+  highlightedPoint: Ref<number>;
+  plotTransformations: Ref<boolean>;
   points: Ref<Vector3<number>[] | Vector2<number>[]>;
   userSelectedPoints: Ref<number[]>;
-  cameraPosition: Ref<number[]>;
-  plotTransformations: Ref<boolean>;
 }
 
 type Events = {
-  click: [point: number | null];
-  select: [points: number[]];
   cameraMove: [cameraPosition: Vector3<number>];
+  hover: [point: number | null];
+  select: [points: number[]];
 }
 
-const props = defineProps<Props>();
 const emit = defineEmits<Events>();
+const props = defineProps<Props>();
 
 const plotContainer = ref<HTMLDivElement>();
-const selectMode = ref<boolean>(false);
 const plotTransformations = ref<boolean>(false);
+const selectMode = ref<boolean>(false);
 
 let cameraPosition: number[] = [];
 let scatterPlot: ScatterGL | undefined;
 let userSelectedPoints: number[] = [];
+
+onMounted(() => {
+  if (!plotContainer.value) {
+    return;
+  }
+
+  userSelectedPoints = unref(props.userSelectedPoints);
+  plotTransformations.value = unref(props.plotTransformations);
+
+  scatterPlot = new ScatterGL(plotContainer.value, {
+    rotateOnStart: false,
+    selectEnabled: !plotTransformations.value,
+    onHover(point) {
+      emit('hover', point);
+    },
+    onSelect(points) {
+      selectMode.value = true;
+      scatterPlot?.setSelectMode();
+      emit('select', points);
+    },
+    onCameraMove(position, target) {
+      // This callback is bogus since it triggers after clicking.
+    },
+  });
+
+  let plotImpl = ((scatterPlot as any).scatterPlot as any);
+  plotImpl.orbitCameraControls.addEventListener('end', () => {
+      plotImpl.stopOrbitAnimation();
+      const cameraPosition = plotImpl.camera.position.toArray();
+      emit('cameraMove', cameraPosition);
+  });
+
+  drawPoints(unref(props.points));
+});
 
 function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
   if (!scatterPlot) {
@@ -56,18 +91,6 @@ function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
   (scatterPlot as any).scatterPlot.render();
 }
 
-watch(props.points, function(newValue, oldValue){
-  drawPoints(unref(props.points));
-});
-
-watch(props.userSelectedPoints, function(newValue, oldValue){
-  let selectedPoints = unref(props.userSelectedPoints);
-  if (selectedPoints.length > 0) {
-    userSelectedPoints = selectedPoints;
-  }
-  (scatterPlot as any).scatterPlot.render();
-});
-
 watch(props.cameraPosition, function(newValue, oldValue){
   let pos = unref(props.cameraPosition);
 
@@ -81,38 +104,18 @@ watch(props.cameraPosition, function(newValue, oldValue){
   }
 });
 
-
-onMounted(() => {
-  if (!plotContainer.value) {
-    return;
+watch(props.highlightedPoint, function(newValue, oldValue){
+  if (scatterPlot) {
+    scatterPlot.setHoverPointIndex(newValue);
   }
+});
 
-  userSelectedPoints = unref(props.userSelectedPoints);
-  plotTransformations.value = unref(props.plotTransformations);
+watch(props.points, function(newValue, oldValue){
+  drawPoints(newValue);
+});
 
-  scatterPlot = new ScatterGL(plotContainer.value, {
-    rotateOnStart: false,
-    selectEnabled: !plotTransformations.value,
-    onClick(point) {
-      emit('click', point);
-    },
-    onSelect(points) {
-      selectMode.value = true;
-      scatterPlot?.setSelectMode();
-      emit('select', points);
-    },
-    onCameraMove(position, target) {
-      // This callback is bogus since it triggers after clicking.
-    },
-  });
-
-  let plotImpl = ((scatterPlot as any).scatterPlot as any);
-  plotImpl.orbitCameraControls.addEventListener('end', () => {
-      plotImpl.stopOrbitAnimation();
-      const cameraPosition = plotImpl.camera.position.toArray();
-      emit('cameraMove', cameraPosition);
-  });
-
+watch(props.userSelectedPoints, function(newValue, oldValue){
+  userSelectedPoints = newValue;
   drawPoints(unref(props.points));
 });
 

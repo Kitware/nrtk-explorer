@@ -10,6 +10,8 @@ from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
 from trame.app import get_server
 
+import numpy as np
+
 import os
 
 os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
@@ -27,40 +29,40 @@ def on_click(*args, **kwargs):
 
 
 class EmbeddingsApp(Applet):
-    def __init__(
-        self,
-        server,
-        state_translator=None,
-        controller_translator=None,
-        local_state_translator=None,
-    ):
-        super().__init__(server, state_translator, controller_translator, local_state_translator)
+    def __init__(self, server):
+        super().__init__(server)
 
         self._ui = None
         self._on_select_fn = None
         self.reducer = dimension_reducers.DimReducerManager()
-        self.is_standalone_app = state_translator is None
-
+        self.is_standalone_app = self.server.state.parent is None
         if self.is_standalone_app:
-            self.local_state["images_manager"] = images_manager.ImagesManager()
+            self.context["images_manager"] = images_manager.ImagesManager()
 
         if self.state.current_dataset is None:
             self.state.current_dataset = DATASET_DIRS[0]
-        self.local_state["features"] = []
+        self.context["features"] = np.array([])
 
         self.state.tab = "PCA"
         self.state.camera_position = []
         self.state.points_sources = []
         self.state.points_transformations = []
         self.state.user_selected_points_indices = []
+        self.state.current_model = "resnet50.a1_in1k"
 
+        self.server.controller.add("on_server_ready")(self.on_server_ready)
+
+    def on_server_ready(self, *args, **kwargs):
+        # Bind instance methods to state change
+        self.on_current_dataset_change()
+        self.on_current_model_change()
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_model")(self.on_current_model_change)
 
     def on_current_model_change(self, **kwargs):
         current_model = self.state.current_model
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
-            current_model, self.local_state["images_manager"]
+            current_model, self.context["images_manager"]
         )
 
     def on_current_dataset_change(self, **kwargs):
@@ -72,7 +74,7 @@ class EmbeddingsApp(Applet):
         self.state.num_elements_disabled = False
 
         if self.is_standalone_app:
-            self.local_state["images_manager"] = images_manager.ImagesManager()
+            self.context["images_manager"] = images_manager.ImagesManager()
 
     def on_run_clicked(self):
         self.state.run_button_loading = True
@@ -104,20 +106,20 @@ class EmbeddingsApp(Applet):
                 dims=self.state.dimensionality,
             )
 
-        self.local_state["features"] = features
+        self.context["features"] = features
         self.state.run_button_loading = False
 
     def on_run_transformations(self, transformed_image_ids):
         transformation_features, _ = self.extractor.extract(
             paths=transformed_image_ids,
             cache=False,
-            content=self.local_state["image_objects"],
+            content=self.context["image_objects"],
         )
 
         if self.state.tab == "PCA":
             self.state.points_transformations = self.reducer.reduce(
                 name="PCA",
-                fit_features=self.local_state["features"],
+                fit_features=self.context["features"],
                 features=transformation_features,
                 dims=self.state.dimensionality,
                 whiten=self.state.pca_whiten,
@@ -127,7 +129,7 @@ class EmbeddingsApp(Applet):
         elif self.state.tab == "UMAP":
             self.state.points_transformations = self.reducer.reduce(
                 name="UMAP",
-                fit_features=self.local_state["features"],
+                fit_features=self.context["features"],
                 features=transformation_features,
                 dims=self.state.dimensionality,
             )
@@ -165,11 +167,13 @@ class EmbeddingsApp(Applet):
         )
 
     def settings_widget(self):
-        with html.Div(classes="column justify-center", style="padding:1rem"):
+        with html.Div(
+            trame_server=self.server, classes="column justify-center", style="padding:1rem"
+        ):
             with html.Div(classes="col"):
                 quasar.QSelect(
                     label="Embeddings Model",
-                    v_model=(self.state_translator("current_model"), "resnet50.a1_in1k"),
+                    v_model=("current_model",),
                     options=(
                         [
                             {"label": "ResNet50", "value": "resnet50.a1_in1k"},
@@ -187,16 +191,16 @@ class EmbeddingsApp(Applet):
                 quasar.QSeparator(inset=True)
                 html.P("Number of elements:", classes="text-body2")
                 quasar.QSlider(
-                    v_model=(self.state_translator("num_elements"), 15),
+                    v_model=("num_elements", 15),
                     min=(0,),
-                    max=(self.state_translator("num_elements_max"), 25),
-                    disable=(self.state_translator("num_elements_disabled"), True),
+                    max=("num_elements_max", 25),
+                    disable=("num_elements_disabled", True),
                     step=(1,),
                     label=True,
                     label_always=True,
                 )
                 quasar.QToggle(
-                    v_model=(self.state_translator("random_sampling"), False),
+                    v_model=("random_sampling", False),
                     label="Random selection",
                     left_label=True,
                 )
@@ -204,7 +208,7 @@ class EmbeddingsApp(Applet):
                 html.P("Dimensionality:", classes="text-body2")
                 with html.Div(classes="q-gutter-y-md"):
                     quasar.QBtnToggle(
-                        v_model=(self.state_translator("dimensionality"), "3"),
+                        v_model=("dimensionality", "3"),
                         toggler_color="primary",
                         flat=True,
                         spread=True,
@@ -231,12 +235,12 @@ class EmbeddingsApp(Applet):
                 with quasar.QTabPanels(v_model="tab"):
                     with quasar.QTabPanel(name="PCA"):
                         quasar.QToggle(
-                            v_model=(self.state_translator("pca_whiten"), False),
+                            v_model=("pca_whiten", False),
                             label="Whiten",
                             left_label=True,
                         )
                         quasar.QSelect(
-                            v_model=(self.state_translator("pca_solver"), "auto"),
+                            v_model=("pca_solver", "auto"),
                             label="SVD Solver",
                             toggler_color="primary",
                             options=(
@@ -271,7 +275,7 @@ class EmbeddingsApp(Applet):
                         quasar.QBtn("Reset")
 
                 with quasar.QDrawer(
-                    v_model=(self.state_translator("leftDrawerOpen"), True),
+                    v_model=("leftDrawerOpen", True),
                     side="left",
                     elevated=True,
                 ):
@@ -280,7 +284,7 @@ class EmbeddingsApp(Applet):
                             quasar.QSeparator()
                             quasar.QSelect(
                                 label="Dataset",
-                                v_model=(self.state_translator("current_dataset"),),
+                                v_model=("current_dataset",),
                                 options=(
                                     [
                                         {"label": "oirds_test", "value": DATASET_DIRS[0]},

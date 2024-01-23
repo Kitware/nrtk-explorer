@@ -12,10 +12,10 @@ def image_to_base64_str(img: Image, format: str) -> str:
 
 
 class ImagesManager:
-    def __init__(self, local_state=None):
-        if local_state:
-            local_state["images_cache"] = {}
-            self.images = local_state["images_cache"]
+    def __init__(self, server_context=None):
+        if server_context:
+            server_context["images_cache"] = {}
+            self.images = server_context["images_cache"]
         else:
             self.images = {}
 

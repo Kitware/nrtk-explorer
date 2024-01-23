@@ -6,11 +6,12 @@ from trame.app import get_server
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
+from trame_server.utils.namespace import Translator
 from nrtk_explorer.library import images_manager
 
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
-from nrtk_explorer.app.applet import Translator
+from nrtk_explorer.app.applet import Applet
 
 import os
 
@@ -41,73 +42,53 @@ DATASET_DIRS = [
 # ---------------------------------------------------------
 
 
-class Engine:
+class Engine(Applet):
     def __init__(self, server=None):
         if server is None:
             server = get_server()
 
-        self._server = server
+        super().__init__(server)
 
-        self.server._local_state = {
-            "image_objects": {},
-        }
+        self.context["image_objects"] = {}
+        self.context["images_manager"] = images_manager.ImagesManager()
+        self.context["annotations"] = {}
 
         self._ui = None
 
-        transforms_state_translator = Translator()
-        transforms_state_translator.add_translation("current_model", "current_embeddings_model")
+        transforms_translator = Translator()
+        transforms_translator.add_translation("current_model", "current_transforms_model")
 
         self._transforms_app = TransformsApp(
-            server=server,
-            state_translator=transforms_state_translator,
+            server=self.server.create_child_server(translator=transforms_translator)
         )
 
-        embeddings_state_translator = Translator()
-        embeddings_state_translator.add_translation("current_model", "current_embeddings_model")
+        embeddings_translator = Translator()
+        embeddings_translator.add_translation("current_model", "current_embeddings_model")
 
         self._embeddings_app = EmbeddingsApp(
-            server=server,
-            state_translator=embeddings_state_translator,
+            server=self.server.create_child_server(translator=embeddings_translator),
         )
 
         self._embeddings_app.set_on_select(self._transforms_app.on_selected_images_change)
         self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
 
-        # initialize state + controller
-        state, ctrl = server.state, server.controller
-
         # Set state variable
-        state.trame__title = "nrtk_explorer"
+        self.state.trame__title = "nrtk_explorer"
 
-        state.source_image_ids = []
-        state.current_dataset = DATASET_DIRS[0]
+        self.state.source_image_ids = []
+        self.state.current_dataset = DATASET_DIRS[0]
 
         # Bind instance methods to controller
-        ctrl.on_server_reload = self.ui
-
-        # Bind instance methods to state change
-        state.change("current_dataset")(self.on_current_dataset_change)
+        self.ctrl.on_server_reload = self.ui
+        self.ctrl.add("on_server_ready")(self.on_server_ready)
 
         # Generate UI
         self.ui()
 
-        self.local_state["images_manager"] = images_manager.ImagesManager()
-
-    @property
-    def server(self):
-        return self._server
-
-    @property
-    def state(self):
-        return self.server.state
-
-    @property
-    def local_state(self):
-        return self.server._local_state
-
-    @property
-    def ctrl(self):
-        return self.server.controller
+    def on_server_ready(self, *args, **kwargs):
+        # Bind instance methods to state change
+        self.on_current_dataset_change()
+        self.state.change("current_dataset")(self.on_current_dataset_change)
 
     def reset_data(self):
         source_image_ids = self.state.source_image_ids
@@ -130,8 +111,8 @@ class Engine:
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
 
-            if image_id in self.local_state["image_objects"]:
-                del self.local_state["image_objects"][image_id]
+            if image_id in self.context["image_objects"]:
+                del self.context["image_objects"][image_id]
 
         for image_id in transformed_image_ids:
             result_id = image_id_to_result(image_id)
@@ -146,13 +127,15 @@ class Engine:
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
 
-            if image_id in self.local_state["image_objects"]:
-                del self.local_state["image_objects"][image_id]
+            if image_id in self.context["image_objects"]:
+                del self.context["image_objects"][image_id]
 
-    def on_current_dataset_change(self, current_dataset, **kwargs):
+    def on_current_dataset_change(self, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_dataset_change change {self.state}")
 
         self.reset_data()
+
+        current_dataset = self.state.current_dataset
 
         with open(current_dataset) as f:
             dataset = json.load(f)
@@ -164,25 +147,23 @@ class Engine:
 
         self.state.annotation_categories = categories
 
-        self.local_state["annotations"] = {}
+        self.context["annotations"] = {}
 
         for annotation in dataset["annotations"]:
             image_id = f"img_{annotation['image_id']}"
-            image_annotations = self.local_state["annotations"].setdefault(image_id, [])
+            image_annotations = self.context["annotations"].setdefault(image_id, [])
             image_annotations.append(annotation)
 
             transformed_image_id = f"transformed_{image_id}"
-            image_annotations = self.local_state["annotations"].setdefault(
-                transformed_image_id, []
-            )
+            image_annotations = self.context["annotations"].setdefault(transformed_image_id, [])
             image_annotations.append(annotation)
 
-        self.local_state["images_manager"] = images_manager.ImagesManager()
+        self.context["images_manager"] = images_manager.ImagesManager()
 
     def ui(self, *args, **kwargs):
         if self._ui is None:
             with QLayout(
-                self._server, view="lhh LpR lff", classes="shadow-2 rounded-borders bg-grey-2"
+                self.server, view="lhh LpR lff", classes="shadow-2 rounded-borders bg-grey-2"
             ) as layout:
                 # # Toolbar
                 with quasar.QHeader():

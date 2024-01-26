@@ -59,8 +59,8 @@ dev = [
   "pytest",
 ]
 
-[tool.setuptools]
-packages= ["nrtk_explorer"]
+[tool.setuptools.packages.find]
+include = ["nrtk_explorer*"]
 
 [project.scripts]
 nrtk_explorer = "nrtk_explorer.app:main"

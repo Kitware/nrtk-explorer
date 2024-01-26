@@ -10,8 +10,6 @@ from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
 from trame.app import get_server
 
-import numpy as np
-
 import os
 
 os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
@@ -24,10 +22,6 @@ DATASET_DIRS = [
 ]
 
 
-def on_click(*args, **kwargs):
-    pass
-
-
 class EmbeddingsApp(Applet):
     def __init__(self, server):
         super().__init__(server)
@@ -37,11 +31,11 @@ class EmbeddingsApp(Applet):
         self.reducer = dimension_reducers.DimReducerManager()
         self.is_standalone_app = self.server.state.parent is None
         if self.is_standalone_app:
-            self.context["images_manager"] = images_manager.ImagesManager()
+            self.context.images_manager = images_manager.ImagesManager()
 
         if self.state.current_dataset is None:
             self.state.current_dataset = DATASET_DIRS[0]
-        self.context["features"] = np.array([])
+        self.features = None
 
         self.state.tab = "PCA"
         self.state.camera_position = []
@@ -62,7 +56,7 @@ class EmbeddingsApp(Applet):
     def on_current_model_change(self, **kwargs):
         current_model = self.state.current_model
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
-            current_model, self.context["images_manager"]
+            current_model, self.context.images_manager
         )
 
     def on_current_dataset_change(self, **kwargs):
@@ -74,22 +68,12 @@ class EmbeddingsApp(Applet):
         self.state.num_elements_disabled = False
 
         if self.is_standalone_app:
-            self.context["images_manager"] = images_manager.ImagesManager()
+            self.context.images_manager = images_manager.ImagesManager()
 
     def on_run_clicked(self):
         self.state.run_button_loading = True
-        paths = list()
-        for image_metadata in self.images:
-            paths.append(
-                os.path.join(
-                    os.path.dirname(self.state.current_dataset),
-                    image_metadata["file_name"],
-                )
-            )
+        features = self.extractor.extract(paths=self.context.paths)
 
-        features, self.selected_paths = self.extractor.extract(
-            paths=paths, n=self.state.num_elements, rand=self.state.random_sampling
-        )
         if self.state.tab == "PCA":
             self.state.points_sources = self.reducer.reduce(
                 name="PCA",
@@ -106,11 +90,16 @@ class EmbeddingsApp(Applet):
                 dims=self.state.dimensionality,
             )
 
-        self.context["features"] = features
+        self.features = features
         self.state.run_button_loading = False
 
+        # Unselect current selection of images
+        self.state.user_selected_points_indices = []
+        if self._on_select_fn:
+            self._on_select_fn([])
+
     def on_run_transformations(self, transformed_image_ids):
-        transformation_features, _ = self.extractor.extract(
+        transformation_features = self.extractor.extract(
             paths=transformed_image_ids,
             cache=False,
             content=self.context["image_objects"],
@@ -119,7 +108,7 @@ class EmbeddingsApp(Applet):
         if self.state.tab == "PCA":
             self.state.points_transformations = self.reducer.reduce(
                 name="PCA",
-                fit_features=self.context["features"],
+                fit_features=self.features,
                 features=transformation_features,
                 dims=self.state.dimensionality,
                 whiten=self.state.pca_whiten,
@@ -129,7 +118,7 @@ class EmbeddingsApp(Applet):
         elif self.state.tab == "UMAP":
             self.state.points_transformations = self.reducer.reduce(
                 name="UMAP",
-                fit_features=self.context["features"],
+                fit_features=self.features,
                 features=transformation_features,
                 dims=self.state.dimensionality,
             )
@@ -137,19 +126,35 @@ class EmbeddingsApp(Applet):
     def set_on_select(self, fn):
         self._on_select_fn = fn
 
-    def on_select(self, ids):
-        self.state.user_selected_points_indices = ids
+    def on_select(self, indices):
+        self.state.user_selected_points_indices = indices
+        ids = [self.state.images_ids[i] for i in indices]
         if self._on_select_fn:
             self._on_select_fn(ids)
 
     def on_move(self, camera_position):
         self.state.camera_position = camera_position
 
+    def set_on_hover(self, fn):
+        self._on_hover_fn = fn
+
+    def on_hover(self, point):
+        image_id = None
+        if point is not None:
+            image_id = self.state.images_ids[int(point)]
+        if self._on_hover_fn:
+            self._on_hover_fn(image_id)
+
+    def on_image_selected(self, point):
+        if point in self.state.images_ids:
+            self.state.highlighted_point = self.state.images_ids.index(point)
+
     def visualization_widget(self):
         ScatterPlot(
             cameraMove=(self.on_move, "[$event]"),
             cameraPosition=("get('camera_position')",),
-            click=(on_click, "[$event]"),
+            highlightedPoint=("get('highlighted_point')",),
+            hover=(self.on_hover, "[$event]"),
             points=("get('points_sources')",),
             select=(self.on_select, "[$event]"),
             userSelectedPoints=("get('user_selected_points_indices')",),
@@ -159,7 +164,8 @@ class EmbeddingsApp(Applet):
         ScatterPlot(
             cameraMove=(self.on_move, "[$event]"),
             cameraPosition=("get('camera_position')",),
-            click=(on_click, "[$event]"),
+            hover=(self.on_hover, "[$event]"),
+            highlightedPoint=("get('highlighted_point')",),
             plotTransformations=("true",),
             points=("get('points_transformations')",),
             select=(self.on_select, "[$event]"),
@@ -187,22 +193,6 @@ class EmbeddingsApp(Applet):
                     filled=True,
                     emit_value=True,
                     map_options=True,
-                )
-                quasar.QSeparator(inset=True)
-                html.P("Number of elements:", classes="text-body2")
-                quasar.QSlider(
-                    v_model=("num_elements", 15),
-                    min=(0,),
-                    max=("num_elements_max", 25),
-                    disable=("num_elements_disabled", True),
-                    step=(1,),
-                    label=True,
-                    label_always=True,
-                )
-                quasar.QToggle(
-                    v_model=("random_sampling", False),
-                    label="Random selection",
-                    left_label=True,
                 )
 
                 html.P("Dimensionality:", classes="text-body2")
@@ -257,10 +247,12 @@ class EmbeddingsApp(Applet):
                         with html.Div(classes="row"):
                             html.Div(classes="col-md-auto")
 
+                quasar.QSeparator()
                 quasar.QBtn(
-                    label="Run",
-                    color="red",
+                    label="Compute Analysis",
                     loading=("run_button_loading", False),
+                    size="sm",
+                    classes="full-width",
                     click=self.on_run_clicked,
                 )
 

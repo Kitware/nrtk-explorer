@@ -16,6 +16,7 @@ from nrtk_explorer.app.applet import Applet
 import os
 
 import json
+import random
 
 
 logger = logging.getLogger(__name__)
@@ -71,94 +72,86 @@ class Engine(Applet):
 
         self._embeddings_app.set_on_select(self._transforms_app.on_selected_images_change)
         self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
+        self._embeddings_app.set_on_hover(self._transforms_app.on_image_selected)
+        self._transforms_app.set_on_hover(self._embeddings_app.on_image_selected)
 
         # Set state variable
         self.state.trame__title = "nrtk_explorer"
 
-        self.state.source_image_ids = []
         self.state.current_dataset = DATASET_DIRS[0]
 
         # Bind instance methods to controller
         self.ctrl.on_server_reload = self.ui
         self.ctrl.add("on_server_ready")(self.on_server_ready)
 
+        self.state.num_images_max = 0
+        self.state.num_images_disabled = True
+        self.state.random_sampling = False
+        self.state.random_sampling_disabled = True
+        self.state.images_id = []
+
         # Generate UI
         self.ui()
+        self.context.images_manager = images_manager.ImagesManager()
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
-        self.on_current_dataset_change()
-        self.state.change("current_dataset")(self.on_current_dataset_change)
+        self.state.change("current_dataset")(self.on_dataset_change)
+        self.state.change("num_images")(self.on_num_images_change)
+        self.state.change("random_sampling")(self.on_random_sampling_change)
 
-    def reset_data(self):
-        source_image_ids = self.state.source_image_ids
-        transformed_image_ids = self.state.transformed_image_ids
+        self.on_dataset_change()
 
-        self.state.source_image_ids = []
-        self.state.transformed_image_ids = []
-        self.state.annotation_categories = {}
+    def on_dataset_change(self, **kwargs):
+        # Reset cache
+        self.context.images_manager = images_manager.ImagesManager()
 
-        for image_id in source_image_ids:
-            result_id = image_id_to_result(image_id)
-            meta_id = image_id_to_meta(image_id)
+        with open(self.state.current_dataset) as f:
+            dataset = json.load(f)
 
-            if self.state.has(image_id) and self.state[image_id] is not None:
-                self.state[image_id] = None
+        self.state.num_images_max = len(dataset["images"])
+        self.state.random_sampling_disabled = False
+        self.state.num_images_disabled = False
 
-            if self.state.has(result_id) and self.state[result_id] is not None:
-                self.state[result_id] = None
+        self.reload_images()
 
-            if self.state.has(meta_id) and self.state[meta_id] is not None:
-                self.state[meta_id] = None
+    def on_num_images_change(self, **kwargs):
+        self.reload_images()
 
-            if image_id in self.context["image_objects"]:
-                del self.context["image_objects"][image_id]
+    def on_random_sampling_change(self, **kwargs):
+        self.reload_images()
 
-        for image_id in transformed_image_ids:
-            result_id = image_id_to_result(image_id)
-            meta_id = image_id_to_meta(image_id)
-
-            if self.state.has(image_id) and self.state[image_id] is not None:
-                self.state[image_id] = None
-
-            if self.state.has(result_id) and self.state[result_id] is not None:
-                self.state[result_id] = None
-
-            if self.state.has(meta_id) and self.state[meta_id] is not None:
-                self.state[meta_id] = None
-
-            if image_id in self.context["image_objects"]:
-                del self.context["image_objects"][image_id]
-
-    def on_current_dataset_change(self, **kwargs):
-        logger.info(f">>> ENGINE(a): on_current_dataset_change change {self.state}")
-
-        self.reset_data()
-
-        current_dataset = self.state.current_dataset
-
-        with open(current_dataset) as f:
+    def reload_images(self):
+        with open(self.state.current_dataset) as f:
             dataset = json.load(f)
 
         categories = {}
-
         for category in dataset["categories"]:
             categories[category["id"]] = category
 
+        images = dataset["images"]
+
+        selected_images = []
+        if self.state.num_images:
+            if self.state.random_sampling:
+                selected_images = random.sample(images, self.state.num_images)
+            else:
+                selected_images = images[: self.state.num_images]
+        else:
+            selected_images = images
+
+        paths = list()
+        for image in selected_images:
+            paths.append(
+                os.path.join(
+                    os.path.dirname(self.state.current_dataset),
+                    image["file_name"],
+                )
+            )
+
+        self.context.paths = paths
         self.state.annotation_categories = categories
-
-        self.context["annotations"] = {}
-
-        for annotation in dataset["annotations"]:
-            image_id = f"img_{annotation['image_id']}"
-            image_annotations = self.context["annotations"].setdefault(image_id, [])
-            image_annotations.append(annotation)
-
-            transformed_image_id = f"transformed_{image_id}"
-            image_annotations = self.context["annotations"].setdefault(transformed_image_id, [])
-            image_annotations.append(annotation)
-
-        self.context["images_manager"] = images_manager.ImagesManager()
+        self.state.images_ids = [img["id"] for img in selected_images]
 
     def ui(self, *args, **kwargs):
         if self._ui is None:
@@ -193,6 +186,24 @@ class Engine(Applet):
                                             filled=True,
                                             emit_value=True,
                                             map_options=True,
+                                        )
+
+                                        quasar.QSeparator(inset=True)
+                                        quasar.QSeparator(inset=True)
+                                        html.P("Number of images:", classes="text-body2")
+                                        quasar.QSlider(
+                                            v_model=("num_images", 15),
+                                            min=(0,),
+                                            max=("num_images_max", 25),
+                                            disable=("num_images_disabled", True),
+                                            step=(1,),
+                                            label=True,
+                                            label_always=True,
+                                        )
+                                        quasar.QToggle(
+                                            v_model=("random_sampling", False),
+                                            label="Random selection",
+                                            left_label=True,
                                         )
                                 self._embeddings_app.settings_widget()
                                 self._transforms_app.settings_widget()

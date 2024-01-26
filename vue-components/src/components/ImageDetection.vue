@@ -17,11 +17,19 @@ const CATEGORY_COLORS: Vector3<number>[] = [
 ];
 
 interface Props {
+  identifier: Ref<string>;
   src: Ref<string>;
   meta: Ref<ImageMetadata>;
   annotations: Ref<Annotation[]>;
   categories: Ref<{[key: number]: Category}>;
+  selected: Ref<boolean>;
 }
+
+type Events = {
+  hover: [point: string| null];
+}
+
+const emit = defineEmits<Events>();
 
 let annotationsTree: Quadtree<Rectangle<number>> | undefined = undefined;
 
@@ -126,9 +134,19 @@ watch(props.annotations, function(newValue, oldValue){
   drawPickingAnnotations(pickingCanvas.value, unref(props.meta), unref(props.annotations));
 });
 
+watch(props.selected, function(newValue, oldValue){
+  const selected = newValue;
+  if (selected) {
+    borderSize.value = "2";
+  } else {
+    borderSize.value = "0";
+  }
+});
+
 onMounted(() => {
   drawAnnotations(canvas.value, unref(props.meta), unref(props.annotations));
   drawPickingAnnotations(pickingCanvas.value, unref(props.meta), unref(props.annotations));
+  borderSize.value = "0";
 });
 
 function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement) : [number, number] {
@@ -141,6 +159,8 @@ function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement) : [numb
 }
 
 function mouseEnter(e: MouseEvent) {
+  borderSize.value = "2";
+  emit('hover', unref(props.identifier))
 }
 
 function mouseMove(e: MouseEvent) {
@@ -195,15 +215,16 @@ function mouseMove(e: MouseEvent) {
 
 function mouseLeave(e: MouseEvent) {
   showLabelContainer.value = false;
+  borderSize.value = "0";
 }
 
-
+const borderSize = ref('borderSize');
 const { src } = toRefs(props);
 
 </script>
 
 <template>
-  <div style="width: 100%; position:relative; white-space: pre; font-size: small;">
+  <div :style="{borderWidth: borderSize + 'px'}" style="width: 100%; position:relative; white-space: pre; font-size: small;border-style:dotted;border-color:red">
     <img :src="src" style="width: 100%; position: relative; left: 0; top: 0;"/>
     <canvas ref="canvas" width=100 height=100 style="width: 100%; position: absolute; left: 0; top: 0;"></canvas>
     <div v-show="showLabelContainer" ref="labelContainer"

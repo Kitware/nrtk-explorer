@@ -1,161 +1,176 @@
-<script setup  lang="ts">
+<script setup lang="ts">
+import { ref, unref, watch, onMounted } from 'vue'
+import { ScatterGL } from 'scatter-gl'
 
-import { ref, unref, watch, onMounted, toRefs } from "vue";
-import { ScatterGL } from "scatter-gl";
-
-import type { Ref } from "vue";
-import type { Vector3, Vector2 } from "../types";
+import type { Ref } from 'vue'
+import type { Vector3, Vector2 } from '../types'
 
 interface Props {
-  cameraPosition: Ref<number[]>;
-  highlightedPoint: Ref<number>;
-  plotTransformations: Ref<boolean>;
-  points: Ref<Vector3<number>[] | Vector2<number>[]>;
-  userSelectedPoints: Ref<number[]>;
+  cameraPosition: Ref<number[]>
+  highlightedPoint: Ref<number>
+  displayControl: boolean
+  points: Ref<Vector3<number>[] | Vector2<number>[]>
+  selectedPoints: Ref<number[]>
 }
+
+const props = withDefaults(defineProps<Props>(), {
+  displayControl: true
+})
 
 type Events = {
-  cameraMove: [cameraPosition: Vector3<number>];
-  hover: [point: number | null];
-  select: [points: number[]];
+  cameraMove: [cameraPosition: Vector3<number>]
+  hover: [point: number | null]
+  select: [points: number[]]
 }
 
-const emit = defineEmits<Events>();
-const props = defineProps<Props>();
+const emit = defineEmits<Events>()
 
-const plotContainer = ref<HTMLDivElement>();
-const plotTransformations = ref<boolean>(false);
-const selectMode = ref<boolean>(false);
+const plotContainer = ref<HTMLDivElement>()
+const selectMode = ref<boolean>(false)
 
-let cameraPosition: number[] = [];
-let scatterPlot: ScatterGL | undefined;
-let userSelectedPoints: number[] = [];
+let scatterPlot: ScatterGL | undefined
+let userSelectedPoints: number[] = []
 
 onMounted(() => {
   if (!plotContainer.value) {
-    return;
+    return
   }
 
-  userSelectedPoints = unref(props.userSelectedPoints);
-  plotTransformations.value = unref(props.plotTransformations);
+  userSelectedPoints = unref(props.selectedPoints)
 
   scatterPlot = new ScatterGL(plotContainer.value, {
     rotateOnStart: false,
-    selectEnabled: !plotTransformations.value,
+    selectEnabled: props.displayControl,
     onHover(point) {
-      emit('hover', point);
+      emit('hover', point)
     },
     onSelect(points) {
-      selectMode.value = true;
-      scatterPlot?.setSelectMode();
-      emit('select', points);
-    },
-    onCameraMove(position, target) {
-      // This callback is bogus since it triggers after clicking.
-    },
-  });
+      selectMode.value = true
+      scatterPlot?.setSelectMode()
+      emit('select', points)
+    }
+  })
 
-  let plotImpl = ((scatterPlot as any).scatterPlot as any);
+  let plotImpl = (scatterPlot as any).scatterPlot as any
   plotImpl.orbitCameraControls.addEventListener('end', () => {
-      plotImpl.stopOrbitAnimation();
-      const cameraPosition = plotImpl.camera.position.toArray();
-      emit('cameraMove', cameraPosition);
-  });
+    plotImpl.stopOrbitAnimation()
+    const cameraPosition = plotImpl.camera.position.toArray()
+    emit('cameraMove', cameraPosition)
+  })
 
-  drawPoints(unref(props.points));
-});
+  drawPoints(unref(props.points))
+})
 
 function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
   if (!scatterPlot) {
-    return;
+    return
   }
 
-  scatterPlot.setPointColorer((i, arg1, arg2) => {
+  scatterPlot.setPointColorer((i) => {
     if (userSelectedPoints.indexOf(i) > -1) {
-      return 'grey';
+      return 'grey'
     }
 
-    if (plotTransformations.value) {
-      const numValues = userSelectedPoints.length;
-      const originalLength = points.length - numValues;
+    if (!props.displayControl) {
+      const numValues = userSelectedPoints.length
+      const originalLength = points.length - numValues
       if (numValues > 0 && i >= originalLength) {
-        return 'red';
+        return 'red'
       }
     }
 
-    return 'blue';
-  });
+    return 'blue'
+  })
 
-  const dataset = new ScatterGL.Dataset(points);
-  scatterPlot.render(dataset);
-  (scatterPlot as any).scatterPlot.render();
+  const dataset = new ScatterGL.Dataset(points)
+  scatterPlot.render(dataset)
+  ;(scatterPlot as any).scatterPlot.render()
 }
 
-watch(props.cameraPosition, function(newValue, oldValue){
-  let pos = unref(props.cameraPosition);
-
+watch(props.cameraPosition, function (newValue, oldValue) {
   // Only update position if it is different, otherwise this can trigger an infinite loop
-  if (pos.length != cameraPosition.length || !pos.every(function(v, i) { return v === cameraPosition[i]}))
-  {
-    cameraPosition = pos;
+  if (
+    newValue.length != oldValue.length ||
+    !newValue.every(function (v, i) {
+      return v === oldValue[i]
+    })
+  ) {
     if (scatterPlot) {
-      (scatterPlot as any).scatterPlot.setCameraPositionAndTarget(cameraPosition, [0,0,0]);
+      ;(scatterPlot as any).scatterPlot.setCameraPositionAndTarget(newValue, [0, 0, 0])
     }
   }
-});
+})
 
-watch(props.highlightedPoint, function(newValue, oldValue){
+watch(props.highlightedPoint, function (newValue) {
   if (scatterPlot) {
-    scatterPlot.setHoverPointIndex(newValue);
+    scatterPlot.setHoverPointIndex(newValue)
   }
-});
+})
 
-watch(props.points, function(newValue, oldValue){
-  drawPoints(newValue);
-});
+watch(props.points, function (newValue) {
+  drawPoints(newValue)
+})
 
-watch(props.userSelectedPoints, function(newValue, oldValue){
-  userSelectedPoints = newValue;
-  drawPoints(unref(props.points));
-});
+watch(props.selectedPoints, function (newValue) {
+  userSelectedPoints = newValue
+  drawPoints(unref(props.points))
+})
 
-function onSelectModeClick(ev: MouseEvent) {
+function onSelectModeClick() {
   if (selectMode.value) {
-    return;
+    return
   }
 
-  selectMode.value = true;
+  selectMode.value = true
 
-  scatterPlot?.setSelectMode();
+  scatterPlot?.setSelectMode()
 }
 
-function onPanModeClick(ev: MouseEvent) {
+function onPanModeClick() {
   if (!selectMode.value) {
-    return;
+    return
   }
 
-  selectMode.value = false;
+  selectMode.value = false
 
-  scatterPlot?.setPanMode();
+  scatterPlot?.setPanMode()
 }
 
-function onSpinClick(ev: MouseEvent) {
+function onSpinClick() {
   if (scatterPlot?.isOrbiting()) {
-    scatterPlot?.stopOrbitAnimation();
+    scatterPlot?.stopOrbitAnimation()
   } else {
-    scatterPlot?.startOrbitAnimation();
+    scatterPlot?.startOrbitAnimation()
   }
 }
-
 </script>
 
 <template>
-  <div style="width: 100%; height: 100%; position: relative;">
-    <div style="position:absolute; top: 0; left: 0; width: 100%; height: 100%;" ref="plotContainer"></div>
-    <div v-if="!plotTransformations" style="position:absolute; top: 0; left: 0;" class="q-pa-md q-gutter-sm">
+  <div style="width: 100%; height: 100%; position: relative">
+    <div
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"
+      ref="plotContainer"
+    ></div>
+    <div
+      v-if="displayControl"
+      style="position: absolute; top: 0; left: 0"
+      class="q-pa-md q-gutter-sm"
+    >
       <q-toolbar classes="bg-purple q-pa-md q-gutter-y-sm shadow-2">
-        <q-btn round :color="selectMode ? 'white' : 'grey'" text-color="black" icon="videocam" @click="onPanModeClick"/>
-        <q-btn round :color="selectMode ? 'grey' : 'white'" text-color="black" icon="highlight_alt" @click="onSelectModeClick" />
+        <q-btn
+          round
+          :color="selectMode ? 'white' : 'grey'"
+          text-color="black"
+          icon="videocam"
+          @click="onPanModeClick"
+        />
+        <q-btn
+          round
+          :color="selectMode ? 'grey' : 'white'"
+          text-color="black"
+          icon="highlight_alt"
+          @click="onSelectModeClick"
+        />
         <q-btn round color="white" text-color="black" icon="360" @click="onSpinClick" />
         <q-separator></q-separator>
       </q-toolbar>

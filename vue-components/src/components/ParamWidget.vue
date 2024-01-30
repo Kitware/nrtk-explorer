@@ -1,42 +1,39 @@
-<script setup  lang="ts">
-import { toRefs } from "vue";
+<script setup lang="ts">
+import { toRefs } from 'vue'
 
-import type { ParameterValue, ParameterDescription } from '../types';
+import type { ParameterValue, ParameterDescription } from '../types'
 
 interface Props {
-  name: string;
-  modelValue: ParameterValue;
-  description: ParameterDescription;
+  name: string
+  modelValue: ParameterValue
+  description: ParameterDescription
 }
 
 type Events = {
-  'update:modelValue': [value: ParameterValue];
+  'update:modelValue': [value: ParameterValue]
 }
 
-const props = defineProps<Props>();
+const props = defineProps<Props>()
 
-const emit = defineEmits<Events>();
+const emit = defineEmits<Events>()
 
-const { name, modelValue, description } = toRefs(props);
+const { modelValue, description } = toRefs(props)
 
 function onValueChange(newValue: any) {
-  if (description.value.type == "float") {
-    newValue = parseFloat(newValue);
+  if (description.value.type == 'float') {
+    newValue = parseFloat(newValue)
     if (Number.isNaN(newValue)) {
-      return;
+      return
     }
-  } else if (description.value.type == "integer") {
-    newValue = parseInt(newValue);
+  } else if (description.value.type == 'integer') {
+    newValue = parseInt(newValue)
     if (Number.isNaN(newValue)) {
-      return;
+      return
     }
-  } else if (description.value.type == "string") {
-
   }
 
-  emit('update:modelValue', newValue);
+  emit('update:modelValue', newValue)
 }
-
 </script>
 
 <template>

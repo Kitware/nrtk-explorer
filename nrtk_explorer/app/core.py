@@ -1,6 +1,7 @@
 r"""
 Define your classes and create the instances that you need to expose
 """
+
 import logging
 from trame.app import get_server
 from trame.ui.quasar import QLayout
@@ -12,6 +13,7 @@ from nrtk_explorer.library import images_manager
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
 from nrtk_explorer.app.applet import Applet
+from pathlib import Path
 
 import os
 
@@ -37,6 +39,11 @@ DATASET_DIRS = [
     f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_test.json",
     f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_train.json",
 ]
+
+
+def parse_dataset_dirs(datasets):
+    return [{"label": Path(ds).name, "value": ds} for ds in datasets]
+
 
 # ---------------------------------------------------------
 # Engine class
@@ -178,33 +185,34 @@ class Engine(Applet):
                                 with html.Div(
                                     classes="column justify-center", style="padding:1rem"
                                 ):
-                                    with html.Div(classes="col"):
-                                        quasar.QSelect(
-                                            label="Dataset",
-                                            v_model=("current_dataset",),
-                                            options=(DATASET_DIRS,),
-                                            filled=True,
-                                            emit_value=True,
-                                            map_options=True,
-                                        )
+                                    quasar.QSelect(
+                                        label="Dataset",
+                                        v_model=("current_dataset",),
+                                        options=(parse_dataset_dirs(DATASET_DIRS),),
+                                        filled=True,
+                                        emit_value=True,
+                                        map_options=True,
+                                        dense=True,
+                                    )
 
-                                        quasar.QSeparator(inset=True)
-                                        quasar.QSeparator(inset=True)
-                                        html.P("Number of images:", classes="text-body2")
-                                        quasar.QSlider(
-                                            v_model=("num_images", 15),
-                                            min=(0,),
-                                            max=("num_images_max", 25),
-                                            disable=("num_images_disabled", True),
-                                            step=(1,),
-                                            label=True,
-                                            label_always=True,
-                                        )
-                                        quasar.QToggle(
-                                            v_model=("random_sampling", False),
-                                            label="Random selection",
-                                            left_label=True,
-                                        )
+                                    quasar.QSeparator(inset=True, spaced=True)
+                                    quasar.QSlider(
+                                        v_model=("num_images", 15),
+                                        min=(0,),
+                                        max=("num_images_max", 25),
+                                        disable=("num_images_disabled", True),
+                                        step=(1,),
+                                    )
+                                    html.P(
+                                        "{{num_images}}/{{num_images_max}} images",
+                                        classes="text-caption text-center",
+                                    )
+                                    quasar.QSeparator(inset=True, spaced=True)
+                                    quasar.QToggle(
+                                        v_model=("random_sampling", False),
+                                        dense=False,
+                                        label="Random selection",
+                                    )
                                 self._embeddings_app.settings_widget()
                                 self._transforms_app.settings_widget()
 

@@ -1,6 +1,7 @@
 r"""
 Define your classes and create the instances that you need to expose
 """
+
 import logging
 from trame.app import get_server
 from trame.ui.quasar import QLayout

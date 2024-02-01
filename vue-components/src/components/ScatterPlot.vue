@@ -1,26 +1,29 @@
 <script setup lang="ts">
-import { ref, unref, watch, onMounted } from 'vue'
-import { ScatterGL } from 'scatter-gl'
+import { ref, watch, onMounted } from 'vue'
+import { ScatterGL, Dataset } from 'scatter-gl'
 
-import type { Ref } from 'vue'
 import type { Vector3, Vector2 } from '../types'
 
 interface Props {
-  cameraPosition: Ref<number[]>
-  highlightedPoint: Ref<number>
+  cameraPosition: number[]
+  highlightedPoint: number
   displayControl: boolean
-  points: Ref<Vector3<number>[] | Vector2<number>[]>
-  selectedPoints: Ref<number[]>
+  points: Vector3<number>[] | Vector2<number>[]
+  selectedPoints: number[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  displayControl: true
+  cameraPosition: () => [],
+  highlightedPoint: -1,
+  displayControl: true,
+  points: () => [],
+  selectedPoints: () => []
 })
 
 type Events = {
-  cameraMove: [cameraPosition: Vector3<number>]
+  cameraMove: [camera_position: Vector3<number> | Vector2<number>]
   hover: [point: number | null]
-  select: [points: number[]]
+  select: [indices: number[]]
 }
 
 const emit = defineEmits<Events>()
@@ -29,119 +32,139 @@ const plotContainer = ref<HTMLDivElement>()
 const selectMode = ref<boolean>(false)
 
 let scatterPlot: ScatterGL | undefined
-let userSelectedPoints: number[] = []
 
 onMounted(() => {
   if (!plotContainer.value) {
     return
   }
 
-  userSelectedPoints = unref(props.selectedPoints)
-
   scatterPlot = new ScatterGL(plotContainer.value, {
     rotateOnStart: false,
     selectEnabled: props.displayControl,
-    onHover(point) {
-      emit('hover', point)
+    pointColorer(i) {
+      if (props.selectedPoints.indexOf(i) > -1) {
+        return 'grey'
+      }
+      if (!props.displayControl) {
+        const numValues = props.selectedPoints.length
+        const originalLength = props.points.length - numValues
+        if (numValues > 0 && i >= originalLength) {
+          return 'red'
+        }
+      }
+      return 'blue'
     },
-    onSelect(points) {
-      selectMode.value = true
-      scatterPlot?.setSelectMode()
-      emit('select', points)
+    onHover(index) {
+      if (!props.displayControl && index != null) {
+        const realLen = props.points.length - props.selectedPoints.length
+        if (index > realLen - 1) {
+          const selectedPointsIdx = index - realLen
+          index = props.selectedPoints[selectedPointsIdx]
+        }
+      }
+      emit('hover', index)
+    },
+    onSelect(indices) {
+      onPanModeClick()
+      emit('select', indices)
     }
   })
 
-  let plotImpl = (scatterPlot as any).scatterPlot as any
-  plotImpl.orbitCameraControls.addEventListener('end', () => {
-    plotImpl.stopOrbitAnimation()
-    const cameraPosition = plotImpl.camera.position.toArray()
-    emit('cameraMove', cameraPosition)
-  })
+  let cameraControls = ((scatterPlot as any).scatterPlot as any).orbitCameraControls
 
-  drawPoints(unref(props.points))
+  cameraControls.addEventListener('start', emitCameraPosition)
+  cameraControls.addEventListener('change', emitCameraPosition)
+  cameraControls.addEventListener('end', emitCameraPosition)
+
+  updateCameraPosition(props.cameraPosition)
+  drawPoints()
 })
 
-function drawPoints(points: Vector3<number>[] | Vector2<number>[]) {
-  if (!scatterPlot) {
+function emitCameraPosition() {
+  if (scatterPlot) {
+    let plotImpl = (scatterPlot as any).scatterPlot as any
+    emit('cameraMove', plotImpl.camera.position.toArray())
+  }
+}
+
+function drawPoints() {
+  if (scatterPlot) {
+    let ds: Dataset
+    if (props.points.length <= 0) {
+      // If there are no points, we need to create a dataset with at least one point
+      ds = new ScatterGL.Dataset([[0, 0, 0]])
+      // Then we remove the point
+      ds.points = []
+    } else {
+      ds = new ScatterGL.Dataset(props.points)
+    }
+    scatterPlot.render(ds)
+    ;(scatterPlot as any).scatterPlot.render()
+  }
+}
+
+// Update the camera position if the prop changes
+function updateCameraPosition(newValue: number[], oldValue: number[] = []) {
+  // Only update if the parameters fit the precondition
+  if (
+    (newValue.length != 2 && newValue.length != 3) ||
+    !newValue.every(function (v) {
+      return v != null
+    })
+  ) {
     return
   }
 
-  scatterPlot.setPointColorer((i) => {
-    if (userSelectedPoints.indexOf(i) > -1) {
-      return 'grey'
-    }
-
-    if (!props.displayControl) {
-      const numValues = userSelectedPoints.length
-      const originalLength = points.length - numValues
-      if (numValues > 0 && i >= originalLength) {
-        return 'red'
-      }
-    }
-
-    return 'blue'
-  })
-
-  const dataset = new ScatterGL.Dataset(points)
-  scatterPlot.render(dataset)
-  ;(scatterPlot as any).scatterPlot.render()
-}
-
-watch(props.cameraPosition, function (newValue, oldValue) {
   // Only update position if it is different, otherwise this can trigger an infinite loop
   if (
-    newValue.length != oldValue.length ||
+    (oldValue.length != 2 && oldValue.length != 3) ||
     !newValue.every(function (v, i) {
-      return v === oldValue[i]
+      v === oldValue[i]
     })
   ) {
     if (scatterPlot) {
       ;(scatterPlot as any).scatterPlot.setCameraPositionAndTarget(newValue, [0, 0, 0])
     }
   }
-})
+}
 
-watch(props.highlightedPoint, function (newValue) {
-  if (scatterPlot) {
-    scatterPlot.setHoverPointIndex(newValue)
+watch(() => props.cameraPosition, updateCameraPosition)
+watch(() => props.points, drawPoints)
+watch(
+  () => props.highlightedPoint,
+  function (newValue) {
+    if (scatterPlot) {
+      scatterPlot.setHoverPointIndex(newValue)
+
+      if (!props.displayControl) {
+        const transformationIdx = props.selectedPoints.indexOf(newValue)
+        if (transformationIdx > -1) {
+          const revIndex = props.selectedPoints.length - transformationIdx
+          const index = props.points.length - revIndex
+          scatterPlot.setHoverPointIndex(index)
+        }
+      }
+    }
   }
-})
-
-watch(props.points, function (newValue) {
-  drawPoints(newValue)
-})
-
-watch(props.selectedPoints, function (newValue) {
-  userSelectedPoints = newValue
-  drawPoints(unref(props.points))
-})
+)
 
 function onSelectModeClick() {
-  if (selectMode.value) {
-    return
+  if (!selectMode.value) {
+    selectMode.value = true
+    scatterPlot?.setSelectMode()
   }
-
-  selectMode.value = true
-
-  scatterPlot?.setSelectMode()
 }
 
 function onPanModeClick() {
-  if (!selectMode.value) {
-    return
+  if (selectMode.value) {
+    selectMode.value = false
+    scatterPlot?.setPanMode()
   }
-
-  selectMode.value = false
-
-  scatterPlot?.setPanMode()
 }
 
-function onSpinClick() {
-  if (scatterPlot?.isOrbiting()) {
-    scatterPlot?.stopOrbitAnimation()
-  } else {
-    scatterPlot?.startOrbitAnimation()
-  }
+function onResetModeClick() {
+  scatterPlot?.resetZoom()
+  emitCameraPosition()
 }
 </script>
 
@@ -161,7 +184,7 @@ function onSpinClick() {
           round
           :color="selectMode ? 'white' : 'grey'"
           text-color="black"
-          icon="videocam"
+          icon="mouse"
           @click="onPanModeClick"
         />
         <q-btn
@@ -171,7 +194,7 @@ function onSpinClick() {
           icon="highlight_alt"
           @click="onSelectModeClick"
         />
-        <q-btn round color="white" text-color="black" icon="360" @click="onSpinClick" />
+        <q-btn round color="white" text-color="black" icon="refresh" @click="onResetModeClick" />
         <q-separator></q-separator>
       </q-toolbar>
     </div>

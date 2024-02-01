@@ -39,6 +39,7 @@ class EmbeddingsApp(Applet):
 
         self.state.tab = "PCA"
         self.state.camera_position = []
+        self.state.client_only("camera_position")
         self.state.points_sources = []
         self.state.points_transformations = []
         self.state.user_selected_points_indices = []
@@ -71,7 +72,6 @@ class EmbeddingsApp(Applet):
             self.context.images_manager = images_manager.ImagesManager()
 
     def on_run_clicked(self):
-        self.state.run_button_loading = True
         features = self.extractor.extract(paths=self.context.paths)
 
         if self.state.tab == "PCA":
@@ -91,7 +91,9 @@ class EmbeddingsApp(Applet):
             )
 
         self.features = features
-        self.state.run_button_loading = False
+        self.state.points_transformations = []
+        self.state.user_selected_points_indices = []
+        self.state.camera_position = []
 
         # Unselect current selection of images
         self.state.user_selected_points_indices = []
@@ -127,6 +129,7 @@ class EmbeddingsApp(Applet):
         self._on_select_fn = fn
 
     def on_select(self, indices):
+        print("indices:" + str(indices))
         self.state.user_selected_points_indices = indices
         ids = [self.state.images_ids[i] for i in indices]
         if self._on_select_fn:
@@ -139,8 +142,9 @@ class EmbeddingsApp(Applet):
         self._on_hover_fn = fn
 
     def on_hover(self, point):
+        self.state.highlighted_point = point
         image_id = None
-        if point is not None:
+        if point is not None and point in self.state.user_selected_points_indices:
             image_id = self.state.images_ids[int(point)]
         if self._on_hover_fn:
             self._on_hover_fn(image_id)
@@ -148,28 +152,30 @@ class EmbeddingsApp(Applet):
     def on_image_selected(self, point):
         if point in self.state.images_ids:
             self.state.highlighted_point = self.state.images_ids.index(point)
+        else:
+            self.state.highlighted_point = -1
 
     def visualization_widget(self):
         ScatterPlot(
-            cameraMove=(self.on_move, "[$event]"),
-            cameraPosition=("get('camera_position')",),
-            highlightedPoint=("get('highlighted_point')",),
+            cameraMove="camera_position=$event",
+            cameraPosition=("camera_position",),
+            highlightedPoint=("highlighted_point",),
             hover=(self.on_hover, "[$event]"),
-            points=("get('points_sources')",),
+            displayControl=True,
+            points=("points_sources", []),
             select=(self.on_select, "[$event]"),
-            selectedPoints=("get('user_selected_points_indices')",),
+            selectedPoints=("user_selected_points_indices",),
         )
 
     def visualization_widget_transformation(self):
         ScatterPlot(
-            cameraMove=(self.on_move, "[$event]"),
-            cameraPosition=("get('camera_position')",),
+            cameraMove="camera_position=$event",
+            cameraPosition=("camera_position",),
             hover=(self.on_hover, "[$event]"),
-            highlightedPoint=("get('highlighted_point')",),
-            displayControl=("false",),
-            points=("get('points_transformations')",),
-            select=(self.on_select, "[$event]"),
-            selectedPoints=("get('user_selected_points_indices')",),
+            highlightedPoint=("highlighted_point",),
+            displayControl=False,
+            points=("points_transformations", []),
+            selectedPoints=("user_selected_points_indices",),
         )
 
     def settings_widget(self):
@@ -249,7 +255,6 @@ class EmbeddingsApp(Applet):
                 quasar.QSeparator()
                 quasar.QBtn(
                     label="Compute Analysis",
-                    loading=("run_button_loading", False),
                     size="sm",
                     classes="full-width",
                     click=self.on_run_clicked,

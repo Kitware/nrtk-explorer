@@ -306,7 +306,11 @@ class TransformsApp(Applet):
         self._on_hover_fn = fn
 
     def on_hover(self, point):
-        identifier = int(re.findall(r"\d+", point)[0])
+        identifier = ""
+        if point != "":
+            identifier = int(re.findall(r"\d+", point)[0])
+
+        self.on_image_selected(identifier)
         if self._on_hover_fn:
             self._on_hover_fn(identifier)
 

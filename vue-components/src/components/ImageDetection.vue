@@ -229,6 +229,7 @@ function mouseMove(e: MouseEvent) {
 function mouseLeave() {
   showLabelContainer.value = false
   borderSize.value = '0'
+  emit('hover', '')
 }
 
 const borderSize = ref('borderSize')

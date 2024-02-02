@@ -1,22 +1,36 @@
 from nrtk_explorer.library import images_manager
 
+import logging
+import numpy as np
 import warnings
 
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
+    warnings.simplefilter("ignore", category=UserWarning)
     import timm
-import numpy as np
+    import torch
 
 
 class EmbeddingsExtractor:
-    def __init__(self, model_name="resnet50d", manager=None):
+    def __init__(self, model_name="resnet50d", manager=None, force_cpu=False):
         self.images = dict()
         self.features = dict()
-        self.model = model_name
         if manager is not None:
             self.manager = manager
         else:
             self.manager = images_manager.ImagesManager()
+
+        if torch.cuda.is_available() and not force_cpu:
+            self.device = torch.device("cuda")
+            logging.info("Using CUDA devices for feature extraction")
+        else:
+            self.device = torch.device("cpu")
+            logging.info("Using CPU devices for feature extraction")
+
+        self.model = model_name
 
     @property
     def model(self):
@@ -26,6 +40,10 @@ class EmbeddingsExtractor:
     def model(self, model_name):
         # Create model but do not train it
         model = timm.create_model(model_name, pretrained=True, num_classes=0)
+
+        # Copy the model to the requested device
+        model = model.to(self.device)
+
         for param in model.parameters():
             param.requires_grad = False
 
@@ -45,7 +63,19 @@ class EmbeddingsExtractor:
                     img = content[path]
                 else:
                     img = self.manager.LoadImage(path)
-                features = self.model(self.transforms(img).unsqueeze(0))
+
+                img_transformation = self.transforms(img).unsqueeze(0)
+
+                # Copy image to device if using device
+                if self.device.type == "cuda":
+                    img_transformation = img_transformation.cuda()
+
+                features = self.model(img_transformation)
+
+                # Copy output to cpu if using device
+                if self.device.type == "cuda":
+                    features = features.cpu()
+
                 self.features[path] = features[0]
             requested_features.append(self.features[path])
 

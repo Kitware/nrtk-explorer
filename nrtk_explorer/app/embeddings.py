@@ -177,6 +177,20 @@ class EmbeddingsApp(Applet):
             trame_server=self.server, classes="column justify-center", style="padding:1rem"
         ):
             with html.Div(classes="col"):
+                with html.Div(classes="q-gutter-y-md"):
+                    quasar.QBtnToggle(
+                        v_model=("dimensionality", "3"),
+                        toggler_color="primary",
+                        flat=True,
+                        spread=True,
+                        options=(
+                            [
+                                {"label": "2D", "value": "2"},
+                                {"label": "3D", "value": "3"},
+                            ],
+                        ),
+                    )
+
                 quasar.QSelect(
                     label="Embeddings Model",
                     v_model=("current_model",),
@@ -195,22 +209,7 @@ class EmbeddingsApp(Applet):
                     map_options=True,
                 )
 
-                html.P("Dimensionality:", classes="text-body2")
-                with html.Div(classes="q-gutter-y-md"):
-                    quasar.QBtnToggle(
-                        v_model=("dimensionality", "3"),
-                        toggler_color="primary",
-                        flat=True,
-                        spread=True,
-                        options=(
-                            [
-                                {"label": "2D", "value": "2"},
-                                {"label": "3D", "value": "3"},
-                            ],
-                        ),
-                    )
             with html.Div(classes="col"):
-                html.P("Method:", classes="text-body2")
                 with quasar.QTabs(
                     v_model="tab",
                     dense=True,

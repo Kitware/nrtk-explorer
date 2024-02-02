@@ -59,8 +59,9 @@ dev = [
   "pytest",
 ]
 
-[tool.setuptools.packages.find]
-include = ["nrtk_explorer*"]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project.scripts]
 nrtk_explorer = "nrtk_explorer.app:main"

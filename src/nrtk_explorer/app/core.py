@@ -12,6 +12,7 @@ from nrtk_explorer.library import images_manager
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
 from nrtk_explorer.app.applet import Applet
+import nrtk_explorer.test_data
 
 import os
 
@@ -30,11 +31,11 @@ def image_id_to_result(image_id):
     return f"{image_id}_result"
 
 
-DIR_NAME = os.path.dirname(__file__)
+DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DATASET_DIRS = [
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_test.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_train.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
 ]
 
 # ---------------------------------------------------------

@@ -1,13 +1,14 @@
 from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
+import nrtk_explorer.test_data
 
 import json
 import os
 import pytest
 import timeit
 
-CURRENT_DIR_NAME = os.path.dirname(__file__)
-DATASET = f"{CURRENT_DIR_NAME}/../assets/OIRDS_v1_0/oirds.json"
+DATA_DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
+DATASET = f"{DATA_DIR_NAME}/OIRDS_v1_0/oirds.json"
 
 
 def image_paths_impl():

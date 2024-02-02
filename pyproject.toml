@@ -65,10 +65,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 artifacts = [
-  "serve/*.map",
-  "serve/*.html",
-  "serve/*.common.*",
-  "serve/*.umd.js",
+  "*.map",
+  "*.html",
+  "*.common.*",
+  "*.umd.js",
 ]
 
 [project.scripts]

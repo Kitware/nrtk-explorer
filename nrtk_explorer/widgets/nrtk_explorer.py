@@ -37,9 +37,9 @@ class ScatterPlot(HtmlElement):
         self._attr_names += [
             "cameraPosition",
             "highlightedPoint",
-            "plotTransformations",
+            "displayControl",
             "points",
-            "userSelectedPoints",
+            "selectedPoints",
         ]
         self._event_names += [
             "cameraMove",

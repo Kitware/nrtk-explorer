@@ -157,7 +157,7 @@ class EmbeddingsApp(Applet):
             hover=(self.on_hover, "[$event]"),
             points=("get('points_sources')",),
             select=(self.on_select, "[$event]"),
-            userSelectedPoints=("get('user_selected_points_indices')",),
+            selectedPoints=("get('user_selected_points_indices')",),
         )
 
     def visualization_widget_transformation(self):
@@ -166,10 +166,10 @@ class EmbeddingsApp(Applet):
             cameraPosition=("get('camera_position')",),
             hover=(self.on_hover, "[$event]"),
             highlightedPoint=("get('highlighted_point')",),
-            plotTransformations=("true",),
+            displayControl=("false",),
             points=("get('points_transformations')",),
             select=(self.on_select, "[$event]"),
-            userSelectedPoints=("get('user_selected_points_indices')",),
+            selectedPoints=("get('user_selected_points_indices')",),
         )
 
     def settings_widget(self):

@@ -11,6 +11,7 @@ from trame.widgets import html
 from trame.app import get_server
 
 import nrtk_explorer.library.transforms as trans
+import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.app.ui.image_list import image_list_component
 from nrtk_explorer.app.applet import Applet
@@ -88,6 +89,8 @@ class TransformsApp(Applet):
             "blur": trans.GaussianBlurTransform(),
             "invert": trans.InvertTransform(),
             "downsample": trans.DownSampleTransform(),
+            "nrtk_blur": nrtk_trans.NrtkGaussianBlurTransform(),
+            "nrtk_pybsm": nrtk_trans.NrtkPybsmTransform(),
         }
 
         self._parameters_app._transforms = self._transforms

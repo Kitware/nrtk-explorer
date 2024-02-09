@@ -1,6 +1,5 @@
 from sklearn.decomposition import PCA
 
-import umap
 import hashlib
 
 import numpy as np
@@ -88,6 +87,8 @@ class UMAPReducer(DimReducer):
         n_neighbors = 15
         if features.shape[0] - 1 < 15:
             n_neighbors = features.shape[0] - 1
+
+        import umap
 
         self.reducer = umap.UMAP(n_components=int(self._dims), n_neighbors=n_neighbors)
         self.reducer.fit(features)

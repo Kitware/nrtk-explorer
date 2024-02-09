@@ -8,9 +8,10 @@ import json
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
-from trame.app import get_server
+from trame.app import get_server, asynchronous
 
 import os
+import asyncio
 
 os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
 
@@ -37,12 +38,7 @@ class EmbeddingsApp(Applet):
             self.state.current_dataset = DATASET_DIRS[0]
         self.features = None
 
-        self.state.tab = "PCA"
-        self.state.camera_position = []
         self.state.client_only("camera_position")
-        self.state.points_sources = []
-        self.state.points_transformations = []
-        self.state.user_selected_points_indices = []
         self.state.current_model = "resnet50.a1_in1k"
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
@@ -72,6 +68,14 @@ class EmbeddingsApp(Applet):
             self.context.images_manager = images_manager.ImagesManager()
 
     def on_run_clicked(self):
+        with self.state:
+            self.state.is_loading = True
+        self.state.flush()
+        asynchronous.create_task(self.__compute())
+
+    async def __compute(self, **kwargs):
+        await asyncio.sleep(1)
+
         features = self.extractor.extract(paths=self.context.paths)
 
         if self.state.tab == "PCA":
@@ -90,15 +94,16 @@ class EmbeddingsApp(Applet):
                 dims=self.state.dimensionality,
             )
 
+        # Unselect current selection of images
+        if self._on_select_fn:
+            self._on_select_fn([])
+
         self.features = features
         self.state.points_transformations = []
         self.state.user_selected_points_indices = []
         self.state.camera_position = []
-
-        # Unselect current selection of images
-        self.state.user_selected_points_indices = []
-        if self._on_select_fn:
-            self._on_select_fn([])
+        with self.state:
+            self.state.is_loading = False
 
     def on_run_transformations(self, transformed_image_ids):
         transformation_features = self.extractor.extract(
@@ -129,7 +134,6 @@ class EmbeddingsApp(Applet):
         self._on_select_fn = fn
 
     def on_select(self, indices):
-        print("indices:" + str(indices))
         self.state.user_selected_points_indices = indices
         ids = [self.state.images_ids[i] for i in indices]
         if self._on_select_fn:
@@ -164,7 +168,7 @@ class EmbeddingsApp(Applet):
             displayControl=True,
             points=("points_sources", []),
             select=(self.on_select, "[$event]"),
-            selectedPoints=("user_selected_points_indices",),
+            selectedPoints=("user_selected_points_indices", []),
         )
 
     def visualization_widget_transformation(self):
@@ -175,7 +179,7 @@ class EmbeddingsApp(Applet):
             highlightedPoint=("highlighted_point",),
             displayControl=False,
             points=("points_transformations", []),
-            selectedPoints=("user_selected_points_indices",),
+            selectedPoints=("user_selected_points_indices", []),
         )
 
     def settings_widget(self):
@@ -217,7 +221,7 @@ class EmbeddingsApp(Applet):
 
             with html.Div(classes="col"):
                 with quasar.QTabs(
-                    v_model="tab",
+                    v_model=("tab", "PCA"),
                     dense=True,
                     narrow_indicator=True,
                     active_color="primary",
@@ -227,7 +231,7 @@ class EmbeddingsApp(Applet):
                     quasar.QTab(name="PCA", label="pca")
                     quasar.QTab(name="UMAP", label="umap")
                 quasar.QSeparator()
-                with quasar.QTabPanels(v_model="tab"):
+                with quasar.QTabPanels(v_model=("tab", "PCA")):
                     with quasar.QTabPanel(name="PCA"):
                         quasar.QToggle(
                             v_model=("pca_whiten", False),
@@ -257,6 +261,7 @@ class EmbeddingsApp(Applet):
                     label="Compute Analysis",
                     size="sm",
                     classes="full-width",
+                    loading=("is_loading", False),
                     click=self.on_run_clicked,
                 )
 

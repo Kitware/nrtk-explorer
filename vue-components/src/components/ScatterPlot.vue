@@ -1,22 +1,29 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { ScatterGL, Dataset } from 'scatter-gl'
+import { ScatterGL, Dataset, type Sequence } from 'scatter-gl'
+
+import { createColorMap, linearScale } from '@colormap/core'
+import { viridis, cividis, magma, inferno } from '@colormap/presets'
+import type { ColorMap } from '@colormap/core'
 
 import type { Vector3, Vector2 } from '../types'
+import { toHex } from '../utilities/colors'
 
-interface Props {
+interface Props<Vector extends Vector3<number> | Vector2<number>> {
   cameraPosition: number[]
   highlightedPoint: number
   displayControl: boolean
-  points: Vector3<number>[] | Vector2<number>[]
+  points: Vector[]
+  transformedPoints: Vector[]
   selectedPoints: number[]
 }
 
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props<Vector3<number> | Vector2<number>>>(), {
   cameraPosition: () => [],
   highlightedPoint: -1,
   displayControl: true,
   points: () => [],
+  transformedPoints: () => [],
   selectedPoints: () => []
 })
 
@@ -30,6 +37,13 @@ const emit = defineEmits<Events>()
 
 const plotContainer = ref<HTMLDivElement>()
 const selectMode = ref<boolean>(false)
+const colors = ref({ viridis, cividis, magma, inferno })
+const colorMapName = ref<keyof typeof colors.value>('viridis')
+const domain: Vector2<number> = [0, 1]
+const range: Vector2<number> = [0, 1]
+const scale = linearScale(domain, range)
+const colorMapDomain = ref<Vector2<number>>(domain)
+const colorMap = ref<ColorMap>(createColorMap(colors.value[colorMapName.value], scale))
 
 let scatterPlot: ScatterGL | undefined
 
@@ -42,17 +56,30 @@ onMounted(() => {
     rotateOnStart: false,
     selectEnabled: props.displayControl,
     pointColorer(i) {
+      if (i >= props.points.length) {
+        const nPoints = props.points.length
+        const transformedPointIndex = i - nPoints
+        const pointIndex = props.selectedPoints[transformedPointIndex]
+        const p0 = props.points[pointIndex]
+        const p1 = props.transformedPoints[transformedPointIndex]
+        const dd = [
+          Math.abs(p0[0] - p1[0]),
+          Math.abs(p0[1] - p1[1]),
+          Math.abs((p0[2] || 0) - (p1[2] || 0))
+        ]
+        const dist = Math.sqrt(dd[0] * dd[0] + dd[1] * dd[1] + dd[2] * dd[2])
+        const color = colorMap.value(dist)
+
+        const hexColor = `#${toHex(color)}`
+
+        return hexColor
+      }
+
       if (props.selectedPoints.indexOf(i) > -1) {
-        return 'grey'
+        return '#bdbdbd'
       }
-      if (!props.displayControl) {
-        const numValues = props.selectedPoints.length
-        const originalLength = props.points.length - numValues
-        if (numValues > 0 && i >= originalLength) {
-          return 'red'
-        }
-      }
-      return 'blue'
+
+      return '#1976d2'
     },
     onHover(index) {
       if (!props.displayControl && index != null) {
@@ -66,9 +93,14 @@ onMounted(() => {
     },
     onSelect(indices) {
       onPanModeClick()
+      indices = indices.filter((index) => index < props.points.length)
+      if (scatterPlot) {
+        scatterPlot.setSequences([])
+      }
       emit('select', indices)
     }
   })
+  ;(window as any).scatterPlot = scatterPlot
 
   let cameraControls = ((scatterPlot as any).scatterPlot as any).orbitCameraControls
 
@@ -77,7 +109,9 @@ onMounted(() => {
   cameraControls.addEventListener('end', emitCameraPosition)
 
   updateCameraPosition(props.cameraPosition)
+  updateColorMapDomain()
   drawPoints()
+  drawLines()
 })
 
 function emitCameraPosition() {
@@ -96,10 +130,27 @@ function drawPoints() {
       // Then we remove the point
       ds.points = []
     } else {
-      ds = new ScatterGL.Dataset(props.points)
+      ds = new ScatterGL.Dataset([...props.points, ...props.transformedPoints])
     }
+    scatterPlot.setSequences([])
     scatterPlot.render(ds)
     ;(scatterPlot as any).scatterPlot.render()
+  }
+}
+
+function drawLines() {
+  if (!scatterPlot) {
+    return
+  }
+
+  if (props.selectedPoints.length > 0) {
+    const originalLength = props.points.length
+    const sequences: Sequence[] = props.transformedPoints.map((_, i) => ({
+      indices: [props.selectedPoints[i], i + originalLength]
+    }))
+    scatterPlot.setSequences(sequences)
+  } else {
+    scatterPlot.setSequences([])
   }
 }
 
@@ -128,8 +179,57 @@ function updateCameraPosition(newValue: number[], oldValue: number[] = []) {
   }
 }
 
+function updateColorMapDomain() {
+  let bounds: Vector3<Vector2<number>> = [
+    [Infinity, -Infinity],
+    [Infinity, -Infinity],
+    [Infinity, -Infinity]
+  ]
+
+  for (let i = 0; i < props.points.length; ++i) {
+    for (let j = 0; j < 3; ++j) {
+      const v = props.points[i][j] || 0
+      if (v < bounds[j][0]) {
+        bounds[j][0] = v
+      }
+      if (v > bounds[j][1]) {
+        bounds[j][1] = v
+      }
+    }
+  }
+
+  const spans: Vector3<number> = [
+    bounds[0][1] - bounds[0][0],
+    bounds[1][1] - bounds[1][0],
+    bounds[2][1] - bounds[2][0]
+  ]
+
+  colorMapDomain.value = [0, Math.max(...spans) / 3]
+}
+
 watch(() => props.cameraPosition, updateCameraPosition)
-watch(() => props.points, drawPoints)
+watch(
+  () => props.points,
+  () => {
+    updateColorMapDomain()
+    drawPoints()
+    drawLines()
+  }
+)
+watch(
+  () => props.transformedPoints,
+  () => {
+    drawPoints()
+    drawLines()
+  }
+)
+watch(
+  () => props.selectedPoints,
+  () => {
+    drawPoints()
+    drawLines()
+  }
+)
 watch(
   () => props.highlightedPoint,
   function (newValue) {
@@ -166,6 +266,17 @@ function onResetModeClick() {
   scatterPlot?.resetZoom()
   emitCameraPosition()
 }
+
+function onColorMapChange(name: keyof typeof colors.value) {
+  colorMapName.value = name
+  const range: Vector2<number> = [0, 1]
+  const scale = linearScale(colorMapDomain.value, range)
+  colorMap.value = createColorMap(colors.value[name], scale)
+
+  if (scatterPlot) {
+    ;(scatterPlot as any).scatterPlot.render()
+  }
+}
 </script>
 
 <template>
@@ -179,8 +290,9 @@ function onResetModeClick() {
       style="position: absolute; top: 0; left: 0"
       class="q-pa-md q-gutter-sm"
     >
-      <q-toolbar classes="bg-purple q-pa-md q-gutter-y-sm shadow-2">
+      <q-toolbar classes="q-gutter-y-sm shadow-2">
         <q-btn
+          class="q-ma-sm"
           round
           :color="selectMode ? 'white' : 'grey'"
           text-color="black"
@@ -188,13 +300,36 @@ function onResetModeClick() {
           @click="onPanModeClick"
         />
         <q-btn
+          class="q-ma-sm"
           round
           :color="selectMode ? 'grey' : 'white'"
           text-color="black"
           icon="highlight_alt"
           @click="onSelectModeClick"
         />
-        <q-btn round color="white" text-color="black" icon="refresh" @click="onResetModeClick" />
+        <q-btn
+          class="q-ma-sm"
+          round
+          color="white"
+          text-color="black"
+          icon="refresh"
+          @click="onResetModeClick"
+        />
+        <q-btn-dropdown class="q-ma-sm" rounded :label="colorMapName">
+          <q-list>
+            <q-item
+              v-for="(_, key) in colors"
+              clickable
+              v-close-popup
+              @click="() => onColorMapChange(key)"
+              :key="key"
+            >
+              <q-item-section>
+                <q-item-label>{{ key }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
         <q-separator></q-separator>
       </q-toolbar>
     </div>

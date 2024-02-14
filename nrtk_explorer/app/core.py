@@ -216,32 +216,29 @@ class Engine(Applet):
                                 self._embeddings_app.settings_widget()
                                 self._transforms_app.settings_widget()
 
-                            with html.Div(classes="col-5 q-pa-md"):
-                                html.H5("Original Dataset", classes="text-h5")
+                            with html.Div(classes="col-10 q-pa-md"):
                                 with html.Div(
-                                    classes="row", style="min-height: inherit; height: 30rem"
+                                    classes="row", style="min-height: inherit; height: 40rem"
                                 ):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self._embeddings_app.visualization_widget()
+                                    self._embeddings_app.visualization_widget()
 
                                 with html.Div(classes="row"):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self._transforms_app.original_dataset_widget()
+                                    with html.Div(classes="col-6 q-pa-md"):
+                                        html.H5("Original Dataset", classes="text-h5")
 
-                            with html.Div(
-                                classes="col-5 q-pa-md",
-                                style="background-color: #ffcdcd;",
-                            ):
-                                html.H5("Transformed Dataset", classes="text-h5")
-                                with html.Div(
-                                    classes="row", style="min-height: inherit; height: 30rem"
-                                ):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self._embeddings_app.visualization_widget_transformation()
+                                        with html.Div(classes="row"):
+                                            with html.Div(classes="col q-pa-md"):
+                                                self._transforms_app.original_dataset_widget()
 
-                                with html.Div(classes="row"):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self._transforms_app.transformed_dataset_widget()
+                                    with html.Div(
+                                        classes="col-6 q-pa-md",
+                                        style="background-color: #ffcdcd;",
+                                    ):
+                                        html.H5("Transformed Dataset", classes="text-h5")
+
+                                        with html.Div(classes="row"):
+                                            with html.Div(classes="col q-pa-md"):
+                                                self._transforms_app.transformed_dataset_widget()
 
             self._ui = layout
 

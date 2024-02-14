@@ -112,8 +112,10 @@ class EmbeddingsApp(Applet):
             content=self.context["image_objects"],
         )
 
+        points_transformations = []
+
         if self.state.tab == "PCA":
-            self.state.points_transformations = self.reducer.reduce(
+            points_transformations = self.reducer.reduce(
                 name="PCA",
                 fit_features=self.features,
                 features=transformation_features,
@@ -123,18 +125,23 @@ class EmbeddingsApp(Applet):
             )
 
         elif self.state.tab == "UMAP":
-            self.state.points_transformations = self.reducer.reduce(
+            points_transformations = self.reducer.reduce(
                 name="UMAP",
                 fit_features=self.features,
                 features=transformation_features,
                 dims=self.state.dimensionality,
             )
 
+        self.state.points_transformations = points_transformations[
+            len(self.state.points_sources or []) :
+        ]
+
     def set_on_select(self, fn):
         self._on_select_fn = fn
 
     def on_select(self, indices):
         self.state.user_selected_points_indices = indices
+        self.state.points_transformations = []
         ids = [self.state.images_ids[i] for i in indices]
         if self._on_select_fn:
             self._on_select_fn(ids)
@@ -167,18 +174,8 @@ class EmbeddingsApp(Applet):
             hover=(self.on_hover, "[$event]"),
             displayControl=True,
             points=("points_sources", []),
+            transformedPoints=("points_transformations", []),
             select=(self.on_select, "[$event]"),
-            selectedPoints=("user_selected_points_indices", []),
-        )
-
-    def visualization_widget_transformation(self):
-        ScatterPlot(
-            cameraMove="camera_position=$event",
-            cameraPosition=("camera_position",),
-            hover=(self.on_hover, "[$event]"),
-            highlightedPoint=("highlighted_point",),
-            displayControl=False,
-            points=("points_transformations", []),
             selectedPoints=("user_selected_points_indices", []),
         )
 

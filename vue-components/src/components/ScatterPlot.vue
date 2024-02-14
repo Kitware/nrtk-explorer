@@ -62,23 +62,20 @@ onMounted(() => {
         const pointIndex = props.selectedPoints[transformedPointIndex]
         const p0 = props.points[pointIndex]
         const p1 = props.transformedPoints[transformedPointIndex]
-        const dd = [
-          Math.abs(p0[0] - p1[0]),
-          Math.abs(p0[1] - p1[1]),
-          Math.abs((p0[2] || 0) - (p1[2] || 0))
-        ]
-        const dist = Math.sqrt(dd[0] * dd[0] + dd[1] * dd[1] + dd[2] * dd[2])
+        const dx = Math.abs(p0[0] - p1[0])
+        const dy = Math.abs(p0[1] - p1[1])
+        const dz = p0.length == 3 && p1.length == 3 ? Math.abs(p0[2] - p1[2]) : 0
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
         const color = colorMap.value(dist)
-
-        const hexColor = `#${toHex(color)}`
-
-        return hexColor
+        return `#${toHex(color)}`
       }
 
       if (props.selectedPoints.indexOf(i) > -1) {
+        // Return silver for selected points
         return '#bdbdbd'
       }
 
+      // Return blue for unselected points
       return '#1976d2'
     },
     onHover(index) {
@@ -269,7 +266,6 @@ function onResetModeClick() {
 
 function onColorMapChange(name: keyof typeof colors.value) {
   colorMapName.value = name
-  const range: Vector2<number> = [0, 1]
   const scale = linearScale(colorMapDomain.value, range)
   colorMap.value = createColorMap(colors.value[name], scale)
 

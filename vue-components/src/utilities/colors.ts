@@ -1,4 +1,5 @@
-import type { Vector3, Vector4 } from '../types'
+import type { Vector3 } from '../types'
+
 function uint8(value: number): number {
   if (value < 0) {
     return 0

@@ -2,8 +2,6 @@ from sklearn.decomposition import PCA
 
 import hashlib
 
-import numpy as np
-
 
 class DimReducerManager:
     def __init__(self):
@@ -34,17 +32,15 @@ class DimReducerManager:
             reducer.fit(fit_features)
             self.cached_reducers[reducer_id] = reducer
 
-        if cache is False or reduction_id not in self.cached_reductions:
-            # Perform reduction without modifying the model
-            reducer_input = fit_features
-            if features is not None:
-                reducer_input = np.concatenate((fit_features, features))
-
-            self.cached_reductions[reduction_id] = self.cached_reducers[reducer_id].reduce(
-                reducer_input
-            )
-
-        return self.cached_reductions[reduction_id]
+        if features is None or len(features) == 0:
+            return None
+        else:
+            if cache is False or reduction_id not in self.cached_reductions:
+                # Perform reduction without modifying the model
+                self.cached_reductions[reduction_id] = self.cached_reducers[reducer_id].reduce(
+                    features
+                )
+            return self.cached_reductions[reduction_id]
 
 
 class DimReducer:
@@ -75,20 +71,14 @@ class PCAReducer(DimReducer):
 
 
 class UMAPReducer(DimReducer):
-    def __init__(self, dims=3):
-        self._dims = dims
-        self.reducer = None
+    def __init__(self, dims=3, **kwargs):
+        import umap
+
+        self.umap = umap.UMAP(n_components=int(dims), **kwargs)
 
     def reduce(self, features):
-        embeddings = self.reducer.transform(features)
+        embeddings = self.umap.transform(features)
         return embeddings.tolist()
 
     def fit(self, features):
-        n_neighbors = 15
-        if features.shape[0] - 1 < 15:
-            n_neighbors = features.shape[0] - 1
-
-        import umap
-
-        self.reducer = umap.UMAP(n_components=int(self._dims), n_neighbors=n_neighbors)
-        self.reducer.fit(features)
+        self.umap.fit(features)

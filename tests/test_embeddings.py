@@ -96,15 +96,15 @@ def test_reducer_manager(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
     features = extractor.extract(image_paths[:10])
     mgr = dimension_reducers.DimReducerManager()
-    old_points = mgr.reduce(fit_features=features, name="PCA", dims=3)
+    old_points = mgr.reduce(fit_features=features, features=features, name="PCA", dims=3)
     assert len(old_points) > 0
     assert len(old_points[0]) == 3
 
     # breakpoint()
-    new_points = mgr.reduce(fit_features=features, name="PCA", dims=3)
+    new_points = mgr.reduce(fit_features=features, features=features, name="PCA", dims=3)
     assert id(old_points) == id(new_points)
 
-    new_points_2d = mgr.reduce(fit_features=features, name="PCA", dims=2)
+    new_points_2d = mgr.reduce(fit_features=features, features=features, name="PCA", dims=2)
     assert id(old_points) != id(new_points_2d)
 
 
@@ -147,7 +147,10 @@ def test_reducer_manager_benchmark(image_paths):
     # Short benchmarks cached
     for name, n, cache, iterations in setups:
         output = timeit.timeit(
-            lambda: mgr.reduce(features[:n], name=name, cache=cache), number=iterations
+            lambda: mgr.reduce(
+                fit_features=features[:n], features=features, name=name, cache=cache
+            ),
+            number=iterations,
         )
 
         print(

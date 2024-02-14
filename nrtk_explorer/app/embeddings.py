@@ -82,16 +82,26 @@ class EmbeddingsApp(Applet):
             self.state.points_sources = self.reducer.reduce(
                 name="PCA",
                 fit_features=features,
+                features=features,
                 dims=self.state.dimensionality,
                 whiten=self.state.pca_whiten,
                 solver=self.state.pca_solver,
             )
 
         elif self.state.tab == "UMAP":
+            args = {}
+            if self.state.umap_random_seed:
+                args["random_state"] = int(self.state.umap_random_seed_value)
+
+            if self.state.umap_n_neighbors:
+                args["n_neighbors"] = int(self.state.umap_n_neighbors_number)
+
             self.state.points_sources = self.reducer.reduce(
                 name="UMAP",
-                fit_features=features,
                 dims=self.state.dimensionality,
+                fit_features=features,
+                features=features,
+                **args,
             )
 
         # Unselect current selection of images
@@ -112,10 +122,8 @@ class EmbeddingsApp(Applet):
             content=self.context["image_objects"],
         )
 
-        points_transformations = []
-
         if self.state.tab == "PCA":
-            points_transformations = self.reducer.reduce(
+            self.state.points_transformations = self.reducer.reduce(
                 name="PCA",
                 fit_features=self.features,
                 features=transformation_features,
@@ -125,16 +133,20 @@ class EmbeddingsApp(Applet):
             )
 
         elif self.state.tab == "UMAP":
-            points_transformations = self.reducer.reduce(
+            args = {}
+            if self.state.umap_random_seed:
+                args["random_state"] = int(self.state.umap_random_seed_value)
+
+            if self.state.umap_n_neighbors:
+                args["n_neighbors"] = int(self.state.umap_n_neighbors_number)
+
+            self.state.points_transformations = self.reducer.reduce(
                 name="UMAP",
+                dims=self.state.dimensionality,
                 fit_features=self.features,
                 features=transformation_features,
-                dims=self.state.dimensionality,
+                **args,
             )
-
-        self.state.points_transformations = points_transformations[
-            len(self.state.points_sources or []) :
-        ]
 
     def set_on_select(self, fn):
         self._on_select_fn = fn
@@ -250,8 +262,32 @@ class EmbeddingsApp(Applet):
                         )
 
                     with quasar.QTabPanel(name="UMAP"):
-                        with html.Div(classes="row"):
-                            html.Div(classes="col-md-auto")
+                        quasar.QToggle(
+                            v_model=("umap_n_neighbors", False),
+                            label="Number of neighbors",
+                            left_label=True,
+                        )
+                        quasar.QInput(
+                            v_model=("umap_n_neighbors_number", 15),
+                            disable=("!umap_n_neighbors",),
+                            filled=True,
+                            stack_label=True,
+                            label="Neighbors amount",
+                            type="number",
+                        )
+                        quasar.QToggle(
+                            v_model=("umap_random_seed", True),
+                            label="Random seed",
+                            left_label=True,
+                        )
+                        quasar.QInput(
+                            v_model=("umap_random_seed_value", 0),
+                            disable=("!umap_random_seed",),
+                            filled=True,
+                            stack_label=True,
+                            label="Seed value",
+                            type="number",
+                        )
 
                 quasar.QSeparator()
                 quasar.QBtn(

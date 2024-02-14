@@ -39,6 +39,7 @@ class ScatterPlot(HtmlElement):
             "highlightedPoint",
             "displayControl",
             "points",
+            "transformedPoints",
             "selectedPoints",
         ]
         self._event_names += [

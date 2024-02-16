@@ -53,7 +53,7 @@ class EmbeddingsApp(Applet):
     def on_current_model_change(self, **kwargs):
         current_model = self.state.current_model
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
-            current_model, self.context.images_manager
+            model_name=current_model, manager=self.context.images_manager
         )
 
     def on_current_dataset_change(self, **kwargs):
@@ -68,21 +68,30 @@ class EmbeddingsApp(Applet):
             self.context.images_manager = images_manager.ImagesManager()
 
     def on_run_clicked(self):
+        self.state.is_loading = True
+        asynchronous.create_task(self.compute(self.compute_source_points))
+
+    async def compute(self, method):
+        # We need to yield twice for the is_loading=True to commit to the trame state
+        # before this routine ends
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        await method()
         with self.state:
-            self.state.is_loading = True
-        self.state.flush()
-        asynchronous.create_task(self.__compute())
+            self.state.is_loading = False
 
-    async def __compute(self, **kwargs):
-        await asyncio.sleep(1)
-
-        features = self.extractor.extract(paths=self.context.paths)
+    async def compute_source_points(self):
+        self.features = self.extractor.extract(
+            paths=self.context.paths,
+            content=self.context["image_objects"],
+            batch_size=int(self.state.model_batch_size),
+        )
 
         if self.state.tab == "PCA":
             self.state.points_sources = self.reducer.reduce(
                 name="PCA",
-                fit_features=features,
-                features=features,
+                fit_features=self.features,
+                features=self.features,
                 dims=self.state.dimensionality,
                 whiten=self.state.pca_whiten,
                 solver=self.state.pca_solver,
@@ -99,8 +108,8 @@ class EmbeddingsApp(Applet):
             self.state.points_sources = self.reducer.reduce(
                 name="UMAP",
                 dims=self.state.dimensionality,
-                fit_features=features,
-                features=features,
+                fit_features=self.features,
+                features=self.features,
                 **args,
             )
 
@@ -108,18 +117,15 @@ class EmbeddingsApp(Applet):
         if self._on_select_fn:
             self._on_select_fn([])
 
-        self.features = features
         self.state.points_transformations = []
         self.state.user_selected_points_indices = []
         self.state.camera_position = []
-        with self.state:
-            self.state.is_loading = False
 
     def on_run_transformations(self, transformed_image_ids):
         transformation_features = self.extractor.extract(
             paths=transformed_image_ids,
-            cache=False,
             content=self.context["image_objects"],
+            batch_size=int(self.state.model_batch_size),
         )
 
         if self.state.tab == "PCA":
@@ -227,6 +233,13 @@ class EmbeddingsApp(Applet):
                     emit_value=True,
                     map_options=True,
                 )
+                quasar.QInput(
+                    v_model=("model_batch_size", 32),
+                    filled=True,
+                    stack_label=True,
+                    label="Batch Size",
+                    type="number",
+                )
 
             with html.Div(classes="col"):
                 with quasar.QTabs(
@@ -281,7 +294,7 @@ class EmbeddingsApp(Applet):
                             left_label=True,
                         )
                         quasar.QInput(
-                            v_model=("umap_random_seed_value", 0),
+                            v_model=("umap_random_seed_value", 1),
                             disable=("!umap_random_seed",),
                             filled=True,
                             stack_label=True,

@@ -32,7 +32,7 @@ dependencies = [
     "pandas",
     "Pillow",
     "scikit-image==0.22.0",
-    "scikit-learn==1.4.0",
+    "scikit-learn==1.4.1.post1",
     "smqtk-classifier==0.19.0",
     "smqtk-core==0.19.0",
     "smqtk-dataprovider==0.18.0",

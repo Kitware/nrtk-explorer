@@ -22,6 +22,8 @@ jobs:
       run: black --check .
     - name: Analysing the code with flake8
       run: flake8
+    - name: Analysing the code with flake8
+      run: mypy
 
   linters_vue:
     name: ubuntu-latest-linters-vue

@@ -56,6 +56,7 @@ dev = [
   "flake8",
   "pytest",
   "tabulate",
+  "mypy",
 ]
 
 [tool.setuptools]
@@ -80,3 +81,7 @@ extend-exclude = '''
   | exploration/
 )/
 '''
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ['^nrtk_explorer/__init__.py$', '^nrtk_explorer/app/.*']

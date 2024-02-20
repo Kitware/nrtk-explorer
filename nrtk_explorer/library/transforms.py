@@ -54,7 +54,7 @@ class IdentityTransform(ImageTransform):
     def get_parameters_description(self) -> Dict[str, ParameterDescription]:
         return {}
 
-    def execute(self, input: Image) -> Image:
+    def execute(self, input: Image, *input_args: Any) -> Image:
         return input.copy()
 
 
@@ -83,7 +83,7 @@ class GaussianBlurTransform(ImageTransform):
             "radius": radius_description,
         }
 
-    def execute(self, input: Image) -> Image:
+    def execute(self, input: Image, *input_args: Any) -> Image:
         return input.filter(ImageFilter.GaussianBlur(self._radius))
 
 
@@ -97,7 +97,7 @@ class InvertTransform(ImageTransform):
     def get_parameters_description(self) -> Dict[str, ParameterDescription]:
         return {}
 
-    def execute(self, input: Image) -> Image:
+    def execute(self, input: Image, *input_args: Any) -> Image:
         return ImageOps.invert(input)
 
 
@@ -111,7 +111,7 @@ class DownSampleTransform(ImageTransform):
     def get_parameters_description(self) -> Dict[str, ParameterDescription]:
         return {}
 
-    def execute(self, input: Image) -> Image:
+    def execute(self, input: Image, *input_args: Any) -> Image:
         cx = 2
         return input.resize((input.size[0] // cx, input.size[1] // cx))
 
@@ -195,5 +195,5 @@ class TestTransform(ImageTransform):
             "select_param": select_description,
         }
 
-    def execute(self, input: Image) -> Image:
+    def execute(self, input: Image, *input_args: Any) -> Image:
         return input.copy()

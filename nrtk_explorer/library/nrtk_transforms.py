@@ -40,7 +40,7 @@ class NrtkGaussianBlurTransform(ImageTransform):
             "ksize": ksize_description,
         }
 
-    def execute(self, input: Image) -> Image:
+    def execute(self, input: Image, *input_args: Any) -> Image:
         input_array = np.asarray(input)
         output_array = self._perturber.perturb(input_array)
 
@@ -182,11 +182,11 @@ class NrtkPybsmTransform(ImageTransform):
             "f": focal_description,
         }
 
-    def execute(self, input: Image, input_parameters=None) -> Image:
-        if input_parameters is None:
-            input_parameters = {"img_gsd": 0.15}
+    def execute(self, input: Image, *input_args: Any) -> Image:
+        if len(input_args) == 0 :
+            input_parameters = [{"img_gsd": 0.15}]
 
         input_array = np.asarray(input)
-        output_array = self._perturber.perturb(input_array, input_parameters)
+        output_array = self._perturber.perturb(input_array, *input_parameters)
 
         return ImageModule.fromarray(output_array)

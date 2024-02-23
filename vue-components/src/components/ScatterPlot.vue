@@ -129,25 +129,24 @@ function drawPoints() {
     } else {
       ds = new ScatterGL.Dataset([...props.points, ...props.transformedPoints])
     }
-    scatterPlot.setSequences([])
     scatterPlot.render(ds)
     ;(scatterPlot as any).scatterPlot.render()
   }
 }
 
 function drawLines() {
-  if (!scatterPlot) {
-    return
-  }
-
-  if (props.selectedPoints.length > 0) {
-    const originalLength = props.points.length
-    const sequences: Sequence[] = props.transformedPoints.map((_, i) => ({
-      indices: [props.selectedPoints[i], i + originalLength]
-    }))
-    scatterPlot.setSequences(sequences)
-  } else {
-    scatterPlot.setSequences([])
+  if (scatterPlot) {
+    // Due to a bug in scatter-gl we unselect all points before setting the sequences
+    scatterPlot?.select([])
+    if (props.selectedPoints.length > 0) {
+      const originalLength = props.points.length
+      const sequences: Sequence[] = props.transformedPoints.map((_, i) => ({
+        indices: [props.selectedPoints[i], i + originalLength]
+      }))
+      scatterPlot.setSequences(sequences)
+    } else {
+      scatterPlot.setSequences([])
+    }
   }
 }
 
@@ -210,7 +209,6 @@ watch(
   () => {
     updateColorMapDomain()
     drawPoints()
-    drawLines()
   }
 )
 watch(

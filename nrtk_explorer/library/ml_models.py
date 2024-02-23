@@ -1,6 +1,13 @@
-from typing import List
-from typing import Tuple
-
+from typing import (
+    Any,
+    Dict,
+    List,
+    Protocol,
+    Tuple,
+    Optional,
+    Generic,
+    TypeVar,
+)
 import numpy as np
 from scipy.special import softmax
 from sklearn.metrics.pairwise import cosine_similarity
@@ -79,7 +86,29 @@ CENTERNET_RESNET50 = grabdata(
 # -----------------------------------------------------------------------------
 
 
-class AbstractModel:
+class ModelProtocol(Protocol):
+    @property
+    def device(self) -> Any: ...
+
+    @property
+    def state(self) -> Any: ...
+
+    @property
+    def model(self) -> Any: ...
+
+
+T = TypeVar("T", covariant=True)
+
+
+class PredictProtocol(Protocol, Generic[T]):
+    def predict(self, input) -> T: ...
+
+
+class RunProtocol(Protocol):
+    def run(self, input, *args) -> Dict[str, Any]: ...
+
+
+class AbstractModel(ModelProtocol):
     def __init__(self, server, model, device=None):
         if device is None:
             device = DEVICE
@@ -112,7 +141,7 @@ class AbstractModel:
 # -----------------------------------------------------------------------------
 
 
-class ResNetPredict:
+class ResNetPredict(ModelProtocol, PredictProtocol, Protocol):
     @torch.no_grad()
     def predict(self, input) -> np.ndarray:
         """
@@ -121,11 +150,13 @@ class ResNetPredict:
         """
         input = imagenet_model_loader(input).unsqueeze(0)
         input = input.to(self.device)
-        output = self._model(input).squeeze()
+        output = self.model(input).squeeze()
         return output.cpu().numpy()
 
 
-class ClassificationRun:
+class ClassificationRun(ModelProtocol, PredictProtocol, RunProtocol, Protocol):
+    topk: np.ndarray
+
     def run(self, input, *_):
         preds = self.predict(input)
         preds = softmax(preds)
@@ -163,7 +194,7 @@ class ClassificationVgg16(AbstractModel, ResNetPredict, ClassificationRun):
 # -----------------------------------------------------------------------------
 
 
-class SimilarityRun:
+class SimilarityRun(ModelProtocol, PredictProtocol, RunProtocol, Protocol):
     def run(self, query, reference, *_):
         p_query = self.predict(query)
         p_reference = self.predict(reference)
@@ -204,8 +235,8 @@ class SimilarityVgg16(AbstractModel, ResNetPredict, SimilarityRun):
 # -----------------------------------------------------------------------------
 
 
-class DetectionPredict:
-    def predict(self, input: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+class DetectionPredict(ModelProtocol, PredictProtocol, RunProtocol, Protocol):
+    def predict(self, input: np.ndarray) -> Tuple[np.ndarray, np.ndarray, Optional[List[str]]]:
         """
         Predict detections for a single image, returning bounding-boxes, scores
         and labels as arrays (in that order).
@@ -214,7 +245,7 @@ class DetectionPredict:
         Scores array is of shape (nDets x nClasses).
         Labels list is of length (nClasses).
         """
-        preds = list(list(self._model([input]))[0])
+        preds = list(list(self.model([input]))[0])
         n_preds = len(preds)
         # TODO: What should happen when there are no detections in the image?
         n_classes = len(preds[0][1])
@@ -231,7 +262,9 @@ class DetectionPredict:
         return bboxes, scores, labels
 
 
-class DetectionRun:
+class DetectionRun(ModelProtocol, PredictProtocol, RunProtocol, Protocol):
+    topk: np.ndarray
+
     def run(self, input: np.ndarray, *_):
         """
         Generic "run" function for producing top-K image object detections.
@@ -281,7 +314,7 @@ class DetectionCenterNetVisdrone(AbstractModel, DetectionPredict, DetectionRun):
 # Factory instance maps
 # -----------------------------------------------------------------------------
 
-MODEL_INSTANCES = {}
+MODEL_INSTANCES: Dict[str, Dict[str, AbstractModel]] = {}
 
 # -----------------------------------------------------------------------------
 # Factory methods

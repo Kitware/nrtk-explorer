@@ -1,6 +1,6 @@
-from sklearn.decomposition import PCA
-
 import hashlib
+
+from sklearn.decomposition import PCA
 
 
 class DimReducerManager:

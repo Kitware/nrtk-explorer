@@ -1,5 +1,9 @@
 from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
+from nrtk_explorer.library import images_manager
+
+from tabulate import tabulate
+from itertools import product
 
 import json
 import os
@@ -73,7 +77,7 @@ def test_pca_3d(image_paths):
 def test_umap_2d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
     features = extractor.extract(image_paths[:10])
-    model = dimension_reducers.UMAPReducer(2)
+    model = dimension_reducers.UMAPReducer(2, n_neighbors=8)
     points = model.fit(features)
     points = model.reduce(features)
     assert len(points) > 0
@@ -84,7 +88,7 @@ def test_umap_2d(image_paths):
 def test_umap_3d(image_paths):
     extractor = embeddings_extractor.EmbeddingsExtractor()
     features = extractor.extract(image_paths[:10])
-    model = dimension_reducers.UMAPReducer(3)
+    model = dimension_reducers.UMAPReducer(3, n_neighbors=8)
     points = model.fit(features)
     points = model.reduce(features)
     assert len(points) > 0
@@ -110,21 +114,29 @@ def test_reducer_manager(image_paths):
 
 @pytest.mark.slow
 def test_features_extractor_benchmark(image_paths):
-    setups = [
-        (10, True, 100),
-        (10, False, 100),
-        (100, True, 10),
-        (100, False, 10),
-    ]
+    repetitions = 3
+    sampling = [10, 100]
+    batch_size = [1, 8, 16, 32]
+    setups = list(product(sampling, batch_size))
+    setups.append([500, 1])
+    setups.append([500, 64])
+    table = list()
 
-    extractor = embeddings_extractor.EmbeddingsExtractor()
-    for n, cache, iterations in setups:
-        output = timeit.timeit(
-            lambda: extractor.extract(image_paths, n=n, cache=cache), number=iterations
+    # Pre-load images
+    manager = images_manager.ImagesManager()
+    for path in image_paths[: max(sampling)]:
+        manager.LoadImage(path)
+
+    for n, batch_size in setups:
+        extractor = embeddings_extractor.EmbeddingsExtractor(manager=manager)
+        output = timeit.repeat(
+            stmt=lambda: extractor.extract(image_paths[:n], batch_size=batch_size),
+            number=repetitions,
+            repeat=5,
         )
-        print(
-            f"Extract embeddings of {n} images cached={cache} mean(TotalExecTime)={output / iterations}s"
-        )
+        table.append([n, batch_size, min(output) / 10 / n])
+
+    print(tabulate(table, headers=["#Samples", "batch_size", "ExecTime(sec)"], tablefmt="github"))
 
 
 @pytest.mark.slow

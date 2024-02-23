@@ -22,8 +22,12 @@ from .assets import (
 )
 
 import logging
+import warnings
 
 logger = logging.getLogger("xaitks_saliency_demo")
+
+# ResNetFRCNN produces some deprecation warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # -----------------------------------------------------------------------------
 

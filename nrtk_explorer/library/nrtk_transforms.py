@@ -183,10 +183,10 @@ class NrtkPybsmTransform(ImageTransform):
         }
 
     def execute(self, input: Image, *input_args: Any) -> Image:
-        if len(input_args) == 0 :
-            input_parameters = [{"img_gsd": 0.15}]
+        if len(input_args) == 0:
+            input_args = ({"img_gsd": 0.15},)
 
         input_array = np.asarray(input)
-        output_array = self._perturber.perturb(input_array, *input_parameters)
+        output_array = self._perturber.perturb(input_array, *input_args)
 
         return ImageModule.fromarray(output_array)

@@ -12,7 +12,6 @@ import { toHex } from '../utilities/colors'
 interface Props<Vector extends Vector3<number> | Vector2<number>> {
   cameraPosition: number[]
   highlightedPoint: number
-  displayControl: boolean
   points: Vector[]
   transformedPoints: Vector[]
   selectedPoints: number[]
@@ -20,8 +19,7 @@ interface Props<Vector extends Vector3<number> | Vector2<number>> {
 
 const props = withDefaults(defineProps<Props<Vector3<number> | Vector2<number>>>(), {
   cameraPosition: () => [],
-  highlightedPoint: -1,
-  displayControl: true,
+  highlightedPoint: () => -1,
   points: () => [],
   transformedPoints: () => [],
   selectedPoints: () => []
@@ -54,7 +52,7 @@ onMounted(() => {
 
   scatterPlot = new ScatterGL(plotContainer.value, {
     rotateOnStart: false,
-    selectEnabled: props.displayControl,
+    selectEnabled: true,
     pointColorer(i) {
       if (i >= props.points.length) {
         const nPoints = props.points.length
@@ -78,11 +76,10 @@ onMounted(() => {
       // Return blue for unselected points
       return '#1976d2'
     },
-    onHover(index) {
-      if (!props.displayControl && index != null) {
-        const realLen = props.points.length - props.selectedPoints.length
-        if (index > realLen - 1) {
-          const selectedPointsIdx = index - realLen
+    onHover(index: number | null) {
+      if (index) {
+        if (index >= props.points.length) {
+          const selectedPointsIdx = index - props.points.length
           index = props.selectedPoints[selectedPointsIdx]
         }
       }
@@ -227,17 +224,13 @@ watch(
 )
 watch(
   () => props.highlightedPoint,
-  function (newValue) {
+  (newValue) => {
     if (scatterPlot) {
-      scatterPlot.setHoverPointIndex(newValue)
-
-      if (!props.displayControl) {
-        const transformationIdx = props.selectedPoints.indexOf(newValue)
-        if (transformationIdx > -1) {
-          const revIndex = props.selectedPoints.length - transformationIdx
-          const index = props.points.length - revIndex
-          scatterPlot.setHoverPointIndex(index)
-        }
+      const transformationIdx = props.selectedPoints.indexOf(newValue)
+      if (transformationIdx != -1) {
+        scatterPlot.setHoverPointIndex(props.points.length + transformationIdx)
+      } else {
+        scatterPlot.setHoverPointIndex(newValue)
       }
     }
   }
@@ -279,11 +272,7 @@ function onColorMapChange(name: keyof typeof colors.value) {
       style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"
       ref="plotContainer"
     ></div>
-    <div
-      v-if="displayControl"
-      style="position: absolute; top: 0; left: 0"
-      class="q-pa-md q-gutter-sm"
-    >
+    <div style="position: absolute; top: 0; left: 0" class="q-pa-md q-gutter-sm">
       <q-toolbar classes="q-gutter-y-sm shadow-2">
         <q-btn
           class="q-ma-sm"

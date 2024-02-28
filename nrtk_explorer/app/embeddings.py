@@ -188,9 +188,8 @@ class EmbeddingsApp(Applet):
         ScatterPlot(
             cameraMove="camera_position=$event",
             cameraPosition=("camera_position",),
-            highlightedPoint=("highlighted_point",),
+            highlightedPoint=("highlighted_point", -1),
             hover=(self.on_hover, "[$event]"),
-            displayControl=True,
             points=("points_sources", []),
             transformedPoints=("points_transformations", []),
             select=(self.on_select, "[$event]"),

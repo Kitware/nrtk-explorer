@@ -33,14 +33,6 @@ def image_id_to_result(image_id):
     return f"{image_id}_result"
 
 
-DIR_NAME = os.path.dirname(__file__)
-DATASET_DIRS = [
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_test.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_train.json",
-]
-
-
 def parse_dataset_dirs(datasets):
     return [{"label": Path(ds).name, "value": ds} for ds in datasets]
 
@@ -56,6 +48,14 @@ class Engine(Applet):
             server = get_server()
 
         super().__init__(server)
+
+        self.server.cli.add_argument(
+            "--dataset",
+            nargs="+",
+            default=[f"{os.path.dirname(__file__)}/../../assets/OIRDS_v1_0/oirds.json"],
+            help="Path of the json file describing the image dataset",
+        )
+        self.input_paths = self.server.cli.parse_args().dataset
 
         self.context["image_objects"] = {}
         self.context["images_manager"] = images_manager.ImagesManager()
@@ -84,8 +84,6 @@ class Engine(Applet):
 
         # Set state variable
         self.state.trame__title = "nrtk_explorer"
-
-        self.state.current_dataset = DATASET_DIRS[0]
 
         # Bind instance methods to controller
         self.ctrl.on_server_reload = self.ui
@@ -187,8 +185,8 @@ class Engine(Applet):
                                 ):
                                     quasar.QSelect(
                                         label="Dataset",
-                                        v_model=("current_dataset",),
-                                        options=(parse_dataset_dirs(DATASET_DIRS),),
+                                        v_model=("current_dataset", self.input_paths[0]),
+                                        options=(parse_dataset_dirs(self.input_paths),),
                                         filled=True,
                                         emit_value=True,
                                         map_options=True,

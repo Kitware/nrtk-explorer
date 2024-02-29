@@ -9,11 +9,11 @@ def image_list_component(image_ids_key, hover_fn=None):
             v_for=(f"image_id in {image_ids_key}",), key="image_id", classes="col-3 q-pa-sm"
         ):
             ImageDetection(
-                identifier=("image_id",),
+                identifier=("image_id.match(/\d+/)[0]",),  # noqa: W605
                 src=("get(image_id)",),
                 meta=("get(`${image_id}_meta`)",),
                 annotations=("get(`${image_id}_result`)",),
-                categories=("get('annotation_categories')",),
-                selected=("get(`${image_id}_selected`)",),
+                categories=("annotation_categories",),
+                selected=("(image_id.match(/\d+/)[0] == hovered_id)",),  # noqa: W605
                 hover=(hover_fn, "[$event]"),
             )

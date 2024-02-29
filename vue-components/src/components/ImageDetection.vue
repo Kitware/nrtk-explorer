@@ -17,12 +17,12 @@ const CATEGORY_COLORS: Vector3<number>[] = [
 ]
 
 interface Props {
-  identifier: Ref<string>
+  identifier: string
   src: Ref<string>
   meta: Ref<ImageMetadata>
   annotations: Ref<Annotation[]>
-  categories: Ref<{ [key: number]: Category }>
-  selected: Ref<boolean>
+  categories: { [key: number]: Category }
+  selected: boolean
 }
 
 type Events = {
@@ -138,14 +138,16 @@ watch(props.annotations, function (newValue) {
   drawPickingAnnotations(pickingCanvas.value, unref(props.meta), newValue)
 })
 
-watch(props.selected, function (newValue) {
-  const selected = newValue
-  if (selected) {
-    borderSize.value = '2'
-  } else {
-    borderSize.value = '0'
+watch(
+  () => props.selected,
+  function (newValue) {
+    if (newValue) {
+      borderSize.value = '2'
+    } else {
+      borderSize.value = '0'
+    }
   }
-})
+)
 
 onMounted(() => {
   drawAnnotations(canvas.value, unref(props.meta), unref(props.annotations))
@@ -164,7 +166,7 @@ function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement): [numbe
 
 function mouseEnter() {
   borderSize.value = '2'
-  emit('hover', unref(props.identifier))
+  emit('hover', props.identifier)
 }
 
 function mouseMove(e: MouseEvent) {
@@ -173,7 +175,7 @@ function mouseMove(e: MouseEvent) {
     !pickingCanvas.value ||
     !labelContainer.value ||
     !annotationsTree ||
-    !props.categories.value ||
+    !props.categories ||
     !props.annotations.value
   ) {
     return
@@ -214,7 +216,7 @@ function mouseMove(e: MouseEvent) {
       const item = document.createElement('li')
       if (hit.data != undefined) {
         const annotation = props.annotations.value[hit.data]
-        const category = props.categories.value[annotation.category_id]
+        const category = props.categories[annotation.category_id]
         item.textContent = `(${annotation.id}): ${category.name}`
         const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
         item.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
@@ -229,7 +231,7 @@ function mouseMove(e: MouseEvent) {
 function mouseLeave() {
   showLabelContainer.value = false
   borderSize.value = '0'
-  emit('hover', '')
+  emit('hover', '-1')
 }
 
 const borderSize = ref('borderSize')

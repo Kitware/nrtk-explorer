@@ -24,7 +24,6 @@ from nrtk_explorer.library.ml_models import (
 
 import json
 import os
-import re
 
 
 logger = logging.getLogger(__name__)
@@ -37,10 +36,6 @@ def image_id_to_meta(image_id):
 
 def image_id_to_result(image_id):
     return f"{image_id}_result"
-
-
-def image_id_to_selected(image_id):
-    return f"{image_id}_selected"
 
 
 # ---------------------------------------------------------
@@ -148,6 +143,8 @@ class TransformsApp(Applet):
             )
             self.state[transformed_meta_id] = self.state[meta_id]
 
+            self.state.hovered_id = -1
+
         self.state.transformed_image_ids = transformed_image_ids
 
         self.update_model_result(self.state.transformed_image_ids, self.state.current_model)
@@ -178,7 +175,6 @@ class TransformsApp(Applet):
 
             image_id = f"img_{image_metadata['id']}"
             meta_id = image_id_to_meta(image_id)
-            selected_id = image_id_to_selected(image_id)
 
             source_image_ids.append(image_id)
 
@@ -191,12 +187,11 @@ class TransformsApp(Applet):
                 "width": image_metadata["width"],
                 "height": image_metadata["height"],
             }
-            self.state[selected_id] = False
+            self.state.hovered_id = -1
 
             self.context.image_objects[image_id] = img
 
         self.state.source_image_ids = source_image_ids
-        self.state.images_selected = source_image_ids
 
         self.update_model_result(self.state.source_image_ids, self.state.current_model)
         self.on_apply_transform()
@@ -212,7 +207,6 @@ class TransformsApp(Applet):
         for image_id in source_image_ids:
             result_id = image_id_to_result(image_id)
             meta_id = image_id_to_meta(image_id)
-            selected_id = image_id_to_selected(image_id)
 
             if self.state.has(image_id) and self.state[image_id] is not None:
                 self.state[image_id] = None
@@ -222,9 +216,6 @@ class TransformsApp(Applet):
 
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
-
-            if self.state.has(selected_id) and self.state[selected_id] is not None:
-                self.state[selected_id] = None
 
             if image_id in self.context["image_objects"]:
                 del self.context["image_objects"][image_id]
@@ -232,7 +223,6 @@ class TransformsApp(Applet):
         for image_id in transformed_image_ids:
             result_id = image_id_to_result(image_id)
             meta_id = image_id_to_meta(image_id)
-            selected_id = image_id_to_selected(image_id)
 
             if self.state.has(image_id) and self.state[image_id] is not None:
                 self.state[image_id] = None
@@ -242,9 +232,6 @@ class TransformsApp(Applet):
 
             if self.state.has(meta_id) and self.state[meta_id] is not None:
                 self.state[meta_id] = None
-
-            if self.state.has(selected_id) and self.state[selected_id] is not None:
-                self.state[selected_id] = None
 
             if image_id in self.context["image_objects"]:
                 del self.context["image_objects"][image_id]
@@ -290,30 +277,16 @@ class TransformsApp(Applet):
             result_id = image_id_to_result(image_id)
             self.state[result_id] = self.context["annotations"].get(image_id, [])
 
-    def on_image_selected(self, index):
-        for image_id in self.state.source_image_ids:
-            selected_id = image_id_to_selected(image_id)
-            self.state[selected_id] = False
-
-        for image_id in self.state.transformed_image_ids:
-            selected_id = image_id_to_selected(image_id)
-            self.state[selected_id] = False
-
-        if index is not None:
-            selected_id = image_id_to_selected(f"img_{index}")
-            self.state[selected_id] = True
-            transformed_selected_id = image_id_to_selected(f"transformed_img_{index}")
-            self.state[transformed_selected_id] = True
+    def on_image_hovered(self, index):
+        self.state.hovered_id = index
 
     def set_on_hover(self, fn):
         self._on_hover_fn = fn
 
     def on_hover(self, point):
-        identifier = ""
-        if point != "":
-            identifier = int(re.findall(r"\d+", point)[0])
+        identifier = int(point)
 
-        self.on_image_selected(identifier)
+        self.on_image_hovered(identifier)
         if self._on_hover_fn:
             self._on_hover_fn(identifier)
 

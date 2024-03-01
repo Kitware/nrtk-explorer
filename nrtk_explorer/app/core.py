@@ -79,8 +79,8 @@ class Engine(Applet):
 
         self._embeddings_app.set_on_select(self._transforms_app.on_selected_images_change)
         self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
-        self._embeddings_app.set_on_hover(self._transforms_app.on_image_selected)
-        self._transforms_app.set_on_hover(self._embeddings_app.on_image_selected)
+        self._embeddings_app.set_on_hover(self._transforms_app.on_image_hovered)
+        self._transforms_app.set_on_hover(self._embeddings_app.on_image_hovered)
 
         # Set state variable
         self.state.trame__title = "nrtk_explorer"

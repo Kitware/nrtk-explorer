@@ -172,13 +172,13 @@ class EmbeddingsApp(Applet):
 
     def on_hover(self, point):
         self.state.highlighted_point = point
-        image_id = None
+        image_id = -1
         if point is not None and point in self.state.user_selected_points_indices:
             image_id = self.state.images_ids[int(point)]
         if self._on_hover_fn:
             self._on_hover_fn(image_id)
 
-    def on_image_selected(self, point):
+    def on_image_hovered(self, point):
         if point in self.state.images_ids:
             self.state.highlighted_point = self.state.images_ids.index(point)
         else:

@@ -11,18 +11,20 @@ import { toRGB } from '../utilities/colors'
 
 interface Props<Vector extends Vector3<number> | Vector2<number>> {
   cameraPosition: number[]
-  highlightedPoint: number
+  idHighlighted: number
   points: Vector[]
-  transformedPoints: Vector[]
-  selectedPoints: number[]
+  pointsTransformed: Vector[]
+  ids: number[]
+  idsTransformed: number[]
+  idsSelected: number[]
 }
 
 const props = withDefaults(defineProps<Props<Vector3<number> | Vector2<number>>>(), {
   cameraPosition: () => [],
-  highlightedPoint: () => -1,
-  points: () => [],
-  transformedPoints: () => [],
-  selectedPoints: () => []
+  idHighlighted: () => -1,
+  pointsTransformed: () => [],
+  idsTransformed: () => [],
+  idsSelected: () => []
 })
 
 type Events = {

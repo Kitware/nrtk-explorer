@@ -135,6 +135,8 @@ class EmbeddingsApp(Applet):
             batch_size=int(self.state.model_batch_size),
         )
 
+        self.state.points_transformations_ids = transformed_image_ids
+
         if self.state.tab == "PCA":
             self.state.points_transformations = self.reducer.reduce(
                 name="PCA",

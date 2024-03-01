@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { ref, unref, watch, onMounted, toRefs } from 'vue'
-
-import type { Ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 
 import { Quadtree, Rectangle } from '@timohausmann/quadtree-ts'
 
@@ -18,9 +16,9 @@ const CATEGORY_COLORS: Vector3<number>[] = [
 
 interface Props {
   identifier: string
-  src: Ref<string>
-  meta: Ref<ImageMetadata>
-  annotations: Ref<Annotation[]>
+  src: string
+  meta: ImageMetadata
+  annotations: Annotation[]
   categories: { [key: number]: Category }
   selected: boolean
 }
@@ -128,15 +126,21 @@ const labelContainer = ref<HTMLDivElement>()
 
 const showLabelContainer = ref(false)
 
-watch(props.meta, function (newValue) {
-  drawAnnotations(canvas.value, newValue, unref(props.annotations))
-  drawPickingAnnotations(pickingCanvas.value, newValue, unref(props.annotations))
-})
+watch(
+  () => props.meta,
+  function (newValue) {
+    drawAnnotations(canvas.value, newValue, props.annotations)
+    drawPickingAnnotations(pickingCanvas.value, newValue, props.annotations)
+  }
+)
 
-watch(props.annotations, function (newValue) {
-  drawAnnotations(canvas.value, unref(props.meta), newValue)
-  drawPickingAnnotations(pickingCanvas.value, unref(props.meta), newValue)
-})
+watch(
+  () => props.annotations,
+  function (newValue) {
+    drawAnnotations(canvas.value, props.meta, newValue)
+    drawPickingAnnotations(pickingCanvas.value, props.meta, newValue)
+  }
+)
 
 watch(
   () => props.selected,
@@ -150,8 +154,8 @@ watch(
 )
 
 onMounted(() => {
-  drawAnnotations(canvas.value, unref(props.meta), unref(props.annotations))
-  drawPickingAnnotations(pickingCanvas.value, unref(props.meta), unref(props.annotations))
+  drawAnnotations(canvas.value, props.meta, props.annotations)
+  drawPickingAnnotations(pickingCanvas.value, props.meta, props.annotations)
   borderSize.value = '0'
 })
 
@@ -176,7 +180,7 @@ function mouseMove(e: MouseEvent) {
     !labelContainer.value ||
     !annotationsTree ||
     !props.categories ||
-    !props.annotations.value
+    !props.annotations
   ) {
     return
   }
@@ -215,7 +219,7 @@ function mouseMove(e: MouseEvent) {
     hits.forEach((hit) => {
       const item = document.createElement('li')
       if (hit.data != undefined) {
-        const annotation = props.annotations.value[hit.data]
+        const annotation = props.annotations[hit.data]
         const category = props.categories[annotation.category_id]
         item.textContent = `(${annotation.id}): ${category.name}`
         const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
@@ -234,8 +238,8 @@ function mouseLeave() {
   emit('hover', '-1')
 }
 
-const borderSize = ref('borderSize')
-const { src } = toRefs(props)
+const borderSize = ref('0')
+const src = ref(props.src)
 </script>
 
 <template>

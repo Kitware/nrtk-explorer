@@ -7,7 +7,7 @@ import { viridis, cividis, magma, inferno } from '@colormap/presets'
 import type { ColorMap } from '@colormap/core'
 
 import type { Vector3, Vector2 } from '../types'
-import { toHex } from '../utilities/colors'
+import { toRGB } from '../utilities/colors'
 
 interface Props<Vector extends Vector3<number> | Vector2<number>> {
   cameraPosition: number[]
@@ -44,6 +44,7 @@ const colorMapDomain = ref<Vector2<number>>(domain)
 const colorMap = ref<ColorMap>(createColorMap(colors.value[colorMapName.value], scale))
 
 let scatterPlot: ScatterGL | undefined
+let hideSourcePoints = ref(false)
 
 onMounted(() => {
   if (!plotContainer.value) {
@@ -65,16 +66,17 @@ onMounted(() => {
         const dz = p0.length == 3 && p1.length == 3 ? Math.abs(p0[2] - p1[2]) : 0
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
         const color = colorMap.value(dist)
-        return `#${toHex(color)}`
+        return `rgba(${toRGB(color)}, 255)`
       }
 
       if (props.selectedPoints.indexOf(i) > -1) {
         // Return silver for selected points
-        return '#bdbdbd'
+        return `rgba(189,189,189,255)`
       }
 
       // Return blue for unselected points
-      return '#1976d2'
+      let alpha = hideSourcePoints.value ? 0 : 255
+      return `rgba(25,118,210,${alpha})`
     },
     onHover(index: number | null) {
       if (index) {
@@ -255,6 +257,17 @@ function onResetModeClick() {
   emitCameraPosition()
 }
 
+function onHideModeClick() {
+  if (hideSourcePoints.value) {
+    hideSourcePoints.value = false
+  } else {
+    hideSourcePoints.value = true
+  }
+
+  drawPoints()
+  drawLines()
+}
+
 function onColorMapChange(name: keyof typeof colors.value) {
   colorMapName.value = name
   const scale = linearScale(colorMapDomain.value, range)
@@ -297,6 +310,14 @@ function onColorMapChange(name: keyof typeof colors.value) {
           text-color="black"
           icon="refresh"
           @click="onResetModeClick"
+        />
+        <q-btn
+          class="q-ma-sm"
+          round
+          :color="hideSourcePoints ? 'grey' : 'white'"
+          text-color="black"
+          icon="hide_source"
+          @click="onHideModeClick"
         />
         <q-btn-dropdown class="q-ma-sm" rounded :label="colorMapName">
           <q-list>

@@ -36,3 +36,11 @@ export function toHex<T extends MapValue<number>>(mapped: T): string {
     return hex(mapped as number)
   }
 }
+
+export function toRGB<T extends MapValue<number>>(mapped: T): string {
+  if (isColor(mapped)) {
+    return mapped.map((v) => uint8(v)).join(',')
+  } else {
+    return `${uint8(mapped as number)}`
+  }
+}

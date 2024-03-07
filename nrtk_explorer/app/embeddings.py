@@ -197,118 +197,115 @@ class EmbeddingsApp(Applet):
         )
 
     def settings_widget(self):
-        with html.Div(
-            trame_server=self.server, classes="column justify-center", style="padding:1rem"
-        ):
-            with html.Div(classes="col"):
-                with html.Div(classes="q-gutter-y-md"):
-                    quasar.QBtnToggle(
-                        v_model=("dimensionality", "3"),
+        with html.Div(trame_server=self.server, classes="col"):
+            with html.Div(classes="q-gutter-y-md"):
+                quasar.QBtnToggle(
+                    v_model=("dimensionality", "3"),
+                    toggler_color="primary",
+                    flat=True,
+                    spread=True,
+                    options=(
+                        [
+                            {"label": "2D", "value": "2"},
+                            {"label": "3D", "value": "3"},
+                        ],
+                    ),
+                )
+
+            quasar.QSelect(
+                label="Embeddings Model",
+                v_model=("current_model",),
+                options=(
+                    [
+                        {"label": "ResNet50", "value": "resnet50.a1_in1k"},
+                        {"label": "EfficientNet_b0", "value": "efficientnet_b0.ra_in1k"},
+                        {
+                            "label": "MobileNetV3Large",
+                            "value": "mobilenetv3_large_100.ra_in1k",
+                        },
+                    ],
+                ),
+                filled=True,
+                emit_value=True,
+                map_options=True,
+            )
+            quasar.QInput(
+                v_model=("model_batch_size", 32),
+                filled=True,
+                stack_label=True,
+                label="Batch Size",
+                type="number",
+            )
+
+        with html.Div(classes="col"):
+            with quasar.QTabs(
+                v_model=("tab", "PCA"),
+                dense=True,
+                narrow_indicator=True,
+                active_color="primary",
+                indicator_color="primary",
+                align="justify",
+            ):
+                quasar.QTab(name="PCA", label="pca")
+                quasar.QTab(name="UMAP", label="umap")
+            quasar.QSeparator()
+            with quasar.QTabPanels(v_model=("tab", "PCA")):
+                with quasar.QTabPanel(name="PCA"):
+                    quasar.QToggle(
+                        v_model=("pca_whiten", False),
+                        label="Whiten",
+                        left_label=True,
+                    )
+                    quasar.QSelect(
+                        v_model=("pca_solver", "auto"),
+                        label="SVD Solver",
                         toggler_color="primary",
-                        flat=True,
-                        spread=True,
                         options=(
                             [
-                                {"label": "2D", "value": "2"},
-                                {"label": "3D", "value": "3"},
+                                "auto",
+                                "full",
+                                "arpack",
+                                "randomized",
                             ],
                         ),
                     )
 
-                quasar.QSelect(
-                    label="Embeddings Model",
-                    v_model=("current_model",),
-                    options=(
-                        [
-                            {"label": "ResNet50", "value": "resnet50.a1_in1k"},
-                            {"label": "EfficientNet_b0", "value": "efficientnet_b0.ra_in1k"},
-                            {
-                                "label": "MobileNetV3Large",
-                                "value": "mobilenetv3_large_100.ra_in1k",
-                            },
-                        ],
-                    ),
-                    filled=True,
-                    emit_value=True,
-                    map_options=True,
-                )
-                quasar.QInput(
-                    v_model=("model_batch_size", 32),
-                    filled=True,
-                    stack_label=True,
-                    label="Batch Size",
-                    type="number",
-                )
+                with quasar.QTabPanel(name="UMAP"):
+                    quasar.QToggle(
+                        v_model=("umap_n_neighbors", False),
+                        label="Number of neighbors",
+                        left_label=True,
+                    )
+                    quasar.QInput(
+                        v_model=("umap_n_neighbors_number", 15),
+                        disable=("!umap_n_neighbors",),
+                        filled=True,
+                        stack_label=True,
+                        label="Neighbors amount",
+                        type="number",
+                    )
+                    quasar.QToggle(
+                        v_model=("umap_random_seed", True),
+                        label="Random seed",
+                        left_label=True,
+                    )
+                    quasar.QInput(
+                        v_model=("umap_random_seed_value", 1),
+                        disable=("!umap_random_seed",),
+                        filled=True,
+                        stack_label=True,
+                        label="Seed value",
+                        type="number",
+                    )
 
-            with html.Div(classes="col"):
-                with quasar.QTabs(
-                    v_model=("tab", "PCA"),
-                    dense=True,
-                    narrow_indicator=True,
-                    active_color="primary",
-                    indicator_color="primary",
-                    align="justify",
-                ):
-                    quasar.QTab(name="PCA", label="pca")
-                    quasar.QTab(name="UMAP", label="umap")
-                quasar.QSeparator()
-                with quasar.QTabPanels(v_model=("tab", "PCA")):
-                    with quasar.QTabPanel(name="PCA"):
-                        quasar.QToggle(
-                            v_model=("pca_whiten", False),
-                            label="Whiten",
-                            left_label=True,
-                        )
-                        quasar.QSelect(
-                            v_model=("pca_solver", "auto"),
-                            label="SVD Solver",
-                            toggler_color="primary",
-                            options=(
-                                [
-                                    "auto",
-                                    "full",
-                                    "arpack",
-                                    "randomized",
-                                ],
-                            ),
-                        )
-
-                    with quasar.QTabPanel(name="UMAP"):
-                        quasar.QToggle(
-                            v_model=("umap_n_neighbors", False),
-                            label="Number of neighbors",
-                            left_label=True,
-                        )
-                        quasar.QInput(
-                            v_model=("umap_n_neighbors_number", 15),
-                            disable=("!umap_n_neighbors",),
-                            filled=True,
-                            stack_label=True,
-                            label="Neighbors amount",
-                            type="number",
-                        )
-                        quasar.QToggle(
-                            v_model=("umap_random_seed", True),
-                            label="Random seed",
-                            left_label=True,
-                        )
-                        quasar.QInput(
-                            v_model=("umap_random_seed_value", 1),
-                            disable=("!umap_random_seed",),
-                            filled=True,
-                            stack_label=True,
-                            label="Seed value",
-                            type="number",
-                        )
-
-                quasar.QSeparator()
-                quasar.QBtn(
-                    label="Compute Analysis",
-                    size="sm",
-                    classes="full-width",
-                    loading=("is_loading", False),
-                    click=self.on_run_clicked,
-                )
+            quasar.QSeparator()
+            quasar.QBtn(
+                label="Compute Analysis",
+                size="sm",
+                classes="full-width",
+                loading=("is_loading", False),
+                click=self.on_run_clicked,
+            )
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

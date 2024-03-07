@@ -240,14 +240,14 @@ const { src } = toRefs(props)
 
 <template>
   <div
-    :style="{ borderWidth: borderSize + 'px' }"
+    :style="{ outlineWidth: borderSize + 'px' }"
     style="
       width: 100%;
       position: relative;
       white-space: pre;
       font-size: small;
-      border-style: dotted;
-      border-color: red;
+      outline-style: dotted;
+      outline-color: red;
     "
   >
     <img :src="src" style="width: 100%; position: relative; left: 0; top: 0" />

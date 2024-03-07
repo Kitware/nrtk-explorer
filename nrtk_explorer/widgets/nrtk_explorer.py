@@ -59,3 +59,23 @@ class ParamsWidget(HtmlElement):
             "descriptions",
         ]
         self._event_names += ["valuesChanged"]
+
+
+class FilterWidget(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "filter-widget",
+            **kwargs,
+        )
+        self._attr_names += [
+            "label",
+            "modelValue",
+            "options",
+            "operator",
+            "invert",
+        ]
+        self._event_names += [
+            "update:modelValue",
+            "update:operator",
+            "update:invert",
+        ]

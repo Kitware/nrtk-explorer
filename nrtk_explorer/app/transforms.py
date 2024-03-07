@@ -111,6 +111,8 @@ class TransformsApp(Applet):
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_num_elements")(self.on_current_num_elements_change)
 
+        self.on_current_dataset_change(self.state.current_dataset)
+
     def set_on_transform(self, fn):
         self._on_transform_fn = fn
 
@@ -291,9 +293,7 @@ class TransformsApp(Applet):
             self._on_hover_fn(identifier)
 
     def settings_widget(self):
-        with html.Div(
-            trame_server=self.server, classes="column justify-center", style="padding:1rem"
-        ):
+        with html.Div(trame_server=self.server):
             with html.Div(classes="col"):
                 self._parameters_app.transform_select_ui()
 

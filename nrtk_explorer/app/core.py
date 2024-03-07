@@ -3,15 +3,18 @@ Define your classes and create the instances that you need to expose
 """
 
 import logging
+from typing import Iterable
 from trame.app import get_server
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library import images_manager
+from nrtk_explorer.library.filtering import FilterProtocol
 
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
+from nrtk_explorer.app.filtering import FilteringApp
 from nrtk_explorer.app.applet import Applet
 from pathlib import Path
 
@@ -77,10 +80,17 @@ class Engine(Applet):
             server=self.server.create_child_server(translator=embeddings_translator),
         )
 
+        filtering_translator = Translator()
+        filtering_translator.add_translation("categories", "annotation_categories")
+        self._filtering_app = FilteringApp(
+            server=self.server.create_child_server(translator=filtering_translator),
+        )
+
         self._embeddings_app.set_on_select(self._transforms_app.on_selected_images_change)
         self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
         self._embeddings_app.set_on_hover(self._transforms_app.on_image_hovered)
         self._transforms_app.set_on_hover(self._embeddings_app.on_image_hovered)
+        self._filtering_app.set_on_apply_filter(self.on_filter_apply)
 
         # Set state variable
         self.state.trame__title = "nrtk_explorer"
@@ -119,6 +129,22 @@ class Engine(Applet):
         self.state.num_images_disabled = False
 
         self.reload_images()
+
+    def on_filter_apply(self, filter: FilterProtocol[Iterable[int]], **kwargs):
+        selected_indices = []
+
+        for index, image_id in enumerate(self.state.images_ids):
+            image_annotations_categories = map(
+                lambda annotation: annotation["category_id"],
+                self.context["annotations"].get(f"img_{image_id}", []),
+            )
+
+            include = filter.evaluate(image_annotations_categories)
+
+            if include:
+                selected_indices.append(index)
+
+        self._embeddings_app.on_select(selected_indices)
 
     def on_num_images_change(self, **kwargs):
         self.reload_images()
@@ -180,38 +206,50 @@ class Engine(Applet):
                     with quasar.QPage():
                         with html.Div(classes="row"):
                             with html.Div(classes="col-2 q-pa-md"):
-                                with html.Div(
-                                    classes="column justify-center", style="padding:1rem"
-                                ):
-                                    quasar.QSelect(
-                                        label="Dataset",
-                                        v_model=("current_dataset", self.input_paths[0]),
-                                        options=(parse_dataset_dirs(self.input_paths),),
-                                        filled=True,
-                                        emit_value=True,
-                                        map_options=True,
-                                        dense=True,
-                                    )
+                                html.P("Dataset Selection", classes="text-h6")
 
-                                    quasar.QSeparator(inset=True, spaced=True)
-                                    quasar.QSlider(
-                                        v_model=("num_images", 15),
-                                        min=(0,),
-                                        max=("num_images_max", 25),
-                                        disable=("num_images_disabled", True),
-                                        step=(1,),
-                                    )
-                                    html.P(
-                                        "{{num_images}}/{{num_images_max}} images",
-                                        classes="text-caption text-center",
-                                    )
-                                    quasar.QSeparator(inset=True, spaced=True)
-                                    quasar.QToggle(
-                                        v_model=("random_sampling", False),
-                                        dense=False,
-                                        label="Random selection",
-                                    )
+                                quasar.QSelect(
+                                    label="Dataset",
+                                    v_model=("current_dataset", self.input_paths[0]),
+                                    options=(parse_dataset_dirs(self.input_paths),),
+                                    filled=True,
+                                    emit_value=True,
+                                    map_options=True,
+                                    dense=True,
+                                )
+                                quasar.QSlider(
+                                    v_model=("num_images", 15),
+                                    min=(0,),
+                                    max=("num_images_max", 25),
+                                    disable=("num_images_disabled", True),
+                                    step=(1,),
+                                )
+                                html.P(
+                                    "{{num_images}}/{{num_images_max}} images",
+                                    classes="text-caption text-center",
+                                )
+
+                                quasar.QToggle(
+                                    v_model=("random_sampling", False),
+                                    dense=False,
+                                    label="Random selection",
+                                )
+
+                                quasar.QSeparator(inset=True, spaced=True)
+
+                                html.P("Embeddings", classes="text-h6")
+
                                 self._embeddings_app.settings_widget()
+
+                                quasar.QSeparator(inset=True, spaced=True)
+
+                                self._filtering_app.filter_ui()
+                                self._filtering_app.filter_apply_ui()
+
+                                quasar.QSeparator(inset=True, spaced=True)
+
+                                html.P("Transform Settings", classes="text-h6")
+
                                 self._transforms_app.settings_widget()
 
                             with html.Div(classes="col-10 q-pa-md"):

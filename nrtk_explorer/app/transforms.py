@@ -63,7 +63,8 @@ class TransformsApp(Applet):
 
         self._ui = None
 
-        if self.context.images_manager is None:
+        self.is_standalone_app = self.server.state.parent is None
+        if self.is_standalone_app:
             self.context.images_manager = images_manager.ImagesManager()
 
         if self.context["image_objects"] is None:
@@ -170,10 +171,11 @@ class TransformsApp(Applet):
             dataset = json.load(f)
 
         for selected_id in selected_ids:
-            if selected_id >= len(dataset["images"]):
+            image_index = self.context.image_id_to_index[selected_id]
+            if image_index >= len(dataset["images"]):
                 continue
 
-            image_metadata = dataset["images"][selected_id - 1]
+            image_metadata = dataset["images"][image_index]
 
             image_id = f"img_{image_metadata['id']}"
             meta_id = image_id_to_meta(image_id)
@@ -255,6 +257,10 @@ class TransformsApp(Applet):
 
         self.context["annotations"] = {}
 
+        self.context.image_id_to_index = {}
+        for i, image in enumerate(dataset["images"]):
+            self.context.image_id_to_index[image["id"]] = i
+
         for annotation in dataset["annotations"]:
             image_id = f"img_{annotation['image_id']}"
             image_annotations = self.context["annotations"].setdefault(image_id, [])
@@ -264,7 +270,8 @@ class TransformsApp(Applet):
             image_annotations = self.context["annotations"].setdefault(transformed_image_id, [])
             image_annotations.append(annotation)
 
-        self.context.images_manager = images_manager.ImagesManager()
+        if self.is_standalone_app:
+            self.context.images_manager = images_manager.ImagesManager()
 
     def on_current_model_change(self, **kwargs):
         logger.info(f">>> ENGINE(a): on_current_model_change change {self.state}")

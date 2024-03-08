@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, toRefs } from 'vue'
 
 import { Quadtree, Rectangle } from '@timohausmann/quadtree-ts'
 
@@ -239,7 +239,7 @@ function mouseLeave() {
 }
 
 const borderSize = ref('0')
-const src = ref(props.src)
+const { src } = toRefs(props)
 </script>
 
 <template>

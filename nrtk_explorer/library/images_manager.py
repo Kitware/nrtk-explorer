@@ -22,7 +22,13 @@ class ImagesManager:
     def LoadImage(self, path):
         if path not in self.images:
             img = ImageModule.open(path)
-            img = img.resize((224, 224))
+            w, h = img.size
+            ratio = w / h
+
+            new_w = min(w, 224)
+            new_h = round(new_w / ratio)
+
+            img = img.resize((new_w, new_h))
             img = img.convert("RGB")
             self.images[path] = img
 

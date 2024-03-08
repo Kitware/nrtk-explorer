@@ -59,6 +59,7 @@ class Engine(Applet):
             help="Path of the json file describing the image dataset",
         )
         self.input_paths = self.server.cli.parse_args().dataset
+        self.state.current_dataset = self.input_paths[0]
 
         self.context["image_objects"] = {}
         self.context["images_manager"] = images_manager.ImagesManager()
@@ -210,7 +211,7 @@ class Engine(Applet):
 
                                 quasar.QSelect(
                                     label="Dataset",
-                                    v_model=("current_dataset", self.input_paths[0]),
+                                    v_model=("current_dataset",),
                                     options=(parse_dataset_dirs(self.input_paths),),
                                     filled=True,
                                     emit_value=True,

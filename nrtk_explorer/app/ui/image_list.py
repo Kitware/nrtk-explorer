@@ -10,9 +10,9 @@ def image_list_component(image_ids_key, hover_fn=None):
         ):
             ImageDetection(
                 identifier=("image_id.match(/\d+/)[0]",),  # noqa: W605
-                src=("get(image_id).value",),
-                meta=("get(`${image_id}_meta`).value",),
-                annotations=("get(`${image_id}_result`).value",),
+                src=("get(image_id)",),
+                meta=("get(`${image_id}_meta`)",),
+                annotations=("get(`${image_id}_result`)",),
                 categories=("annotation_categories",),
                 selected=("(image_id.match(/\d+/)[0] == hovered_id)",),  # noqa: W605
                 hover=(hover_fn, "[$event]"),

@@ -70,7 +70,7 @@ class EmbeddingsExtractor:
             if content and path in content:
                 img = content[path]
             else:
-                img = self.manager.LoadImage(path)
+                img = self.manager.load_image_for_model(path)
 
             transformed_images.append(self.transform_image(img))
 

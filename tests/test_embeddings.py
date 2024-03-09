@@ -125,7 +125,7 @@ def test_features_extractor_benchmark(image_paths):
     # Pre-load images
     manager = images_manager.ImagesManager()
     for path in image_paths[: max(sampling)]:
-        manager.LoadImage(path)
+        manager.load_image_for_model(path)
 
     for n, batch_size in setups:
         extractor = embeddings_extractor.EmbeddingsExtractor(manager=manager)

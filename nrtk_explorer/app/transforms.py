@@ -290,12 +290,12 @@ class TransformsApp(Applet):
     def set_on_hover(self, fn):
         self._on_hover_fn = fn
 
-    def on_hover(self, point):
-        identifier = int(point)
-
-        self.on_image_hovered(identifier)
+    def on_hover(self, hover_event):
+        id_ = int(hover_event["id"])
+        is_transformation = bool(hover_event["isTransformation"])
+        self.on_image_hovered(id_)
         if self._on_hover_fn:
-            self._on_hover_fn(identifier)
+            self._on_hover_fn(id_, is_transformation)
 
     def settings_widget(self):
         with html.Div(trame_server=self.server):
@@ -326,7 +326,7 @@ class TransformsApp(Applet):
 
     def transformed_dataset_widget(self):
         with html.Div(trame_server=self.server):
-            image_list_component("transformed_image_ids", self.on_hover)
+            image_list_component("transformed_image_ids", self.on_hover, is_transformation=True)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

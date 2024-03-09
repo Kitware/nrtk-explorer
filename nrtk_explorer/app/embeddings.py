@@ -4,14 +4,14 @@ from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.app.applet import Applet
 
+import asyncio
 import json
+import os
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
 from trame.app import get_server, asynchronous
 
-import os
-import asyncio
 
 os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
 
@@ -184,10 +184,17 @@ class EmbeddingsApp(Applet):
         if self._on_hover_fn:
             self._on_hover_fn(image_id)
 
-    def on_image_hovered(self, point):
-        if point in self.state.images_ids:
-            self.state.highlighted_point = self.state.images_ids.index(point)
+    def on_image_hovered(self, id_, is_transformation):
+        # If the point is in the list of selected points, we set it as the highlighted point
+        if id_ in self.state.images_ids:
+            index = self.state.images_ids.index(id_)
+            if is_transformation:
+                index_selected = self.state.user_selected_points_indices.index(index)
+                self.state.highlighted_point = len(self.state.points_sources) + index_selected
+            else:
+                self.state.highlighted_point = index
         else:
+            # If the point is not in the list of selected points, we set it to a negative point
             self.state.highlighted_point = -1
 
     def visualization_widget(self):

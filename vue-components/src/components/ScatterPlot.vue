@@ -43,6 +43,7 @@ const scale = linearScale(domain, range)
 const colorMapDomain = ref<Vector2<number>>(domain)
 const colorMap = ref<ColorMap>(createColorMap(colors.value[colorMapName.value], scale))
 
+let currenthighlightedPoint: number = -1
 let scatterPlot: ScatterGL | undefined
 let hideSourcePoints = ref(false)
 
@@ -55,6 +56,10 @@ onMounted(() => {
     rotateOnStart: false,
     selectEnabled: true,
     pointColorer(i) {
+      if (i == currenthighlightedPoint) {
+        return `rgba(255,0,0,255)`
+      }
+
       if (i >= props.points.length) {
         const nPoints = props.points.length
         const transformedPointIndex = i - nPoints
@@ -224,14 +229,16 @@ watch(
     drawLines()
   }
 )
+
 watch(
   () => props.highlightedPoint,
   (newValue) => {
     if (scatterPlot) {
-      const transformationIdx = props.selectedPoints.indexOf(newValue)
-      if (transformationIdx != -1) {
-        scatterPlot.setHoverPointIndex(props.points.length + transformationIdx)
+      if (newValue == -1) {
+        currenthighlightedPoint = -1
+        scatterPlot.setHoverPointIndex(-1)
       } else {
+        currenthighlightedPoint = newValue
         scatterPlot.setHoverPointIndex(newValue)
       }
     }

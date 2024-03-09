@@ -21,10 +21,16 @@ interface Props {
   annotations: Annotation[]
   categories: { [key: number]: Category }
   selected: boolean
+  isTransformation: boolean
+}
+
+interface HoverEvent {
+  id: number
+  isTransformation: boolean
 }
 
 type Events = {
-  hover: [point: string | null]
+  hover: [HoverEvent]
 }
 
 const emit = defineEmits<Events>()
@@ -170,7 +176,11 @@ function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement): [numbe
 
 function mouseEnter() {
   borderSize.value = '2'
-  emit('hover', props.identifier)
+  if (props.isTransformation) {
+    emit('hover', { id: Number(props.identifier), isTransformation: true })
+  } else {
+    emit('hover', { id: Number(props.identifier), isTransformation: false })
+  }
 }
 
 function mouseMove(e: MouseEvent) {
@@ -235,7 +245,7 @@ function mouseMove(e: MouseEvent) {
 function mouseLeave() {
   showLabelContainer.value = false
   borderSize.value = '0'
-  emit('hover', '-1')
+  emit('hover', { id: -1, isTransformation: false })
 }
 
 const borderSize = ref('0')

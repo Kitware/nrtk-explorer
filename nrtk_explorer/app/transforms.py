@@ -141,9 +141,7 @@ class TransformsApp(Applet):
 
             transformed_image_ids.append(transformed_image_id)
 
-            self.state[transformed_image_id] = self.context.images_manager.ComputeBase64(
-                transformed_image_id, transformed_img
-            )
+            self.state[transformed_image_id] = images_manager.convert_to_base64(transformed_img)
             self.state[transformed_meta_id] = self.state[meta_id]
 
             self.state.hovered_id = -1
@@ -184,9 +182,9 @@ class TransformsApp(Applet):
 
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
 
-            img = self.context.images_manager.LoadImage(image_filename)
+            img = self.context.images_manager.load_thumbnail(image_filename)
 
-            self.state[image_id] = self.context.images_manager.ComputeBase64(image_id, img)
+            self.state[image_id] = images_manager.convert_to_base64(img)
             self.state[meta_id] = {
                 "width": image_metadata["width"],
                 "height": image_metadata["height"],

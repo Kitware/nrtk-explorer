@@ -42,6 +42,7 @@ class EmbeddingsApp(Applet):
         self.state.current_model = "resnet50.a1_in1k"
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
+        self.transformed_images_cache = {}
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
@@ -83,7 +84,6 @@ class EmbeddingsApp(Applet):
     async def compute_source_points(self):
         self.features = self.extractor.extract(
             paths=self.context.paths,
-            content=self.context["image_objects"],
             batch_size=int(self.state.model_batch_size),
         )
 
@@ -122,9 +122,15 @@ class EmbeddingsApp(Applet):
         self.state.camera_position = []
 
     def on_run_transformations(self, transformed_image_ids):
+        # Fillup the cache with the transformed images
+        for img_id in transformed_image_ids:
+            img = self.context.image_objects[img_id]
+            img = self.context.images_manager.prepare_for_model(img)
+            self.transformed_images_cache[img_id] = img
+
         transformation_features = self.extractor.extract(
             paths=transformed_image_ids,
-            content=self.context["image_objects"],
+            content=self.transformed_images_cache,
             batch_size=int(self.state.model_batch_size),
         )
 

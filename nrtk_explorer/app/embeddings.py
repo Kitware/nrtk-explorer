@@ -311,13 +311,13 @@ class EmbeddingsApp(Applet):
                         type="number",
                     )
 
-            quasar.QSeparator()
+    def compute_ui(self):
+        with html.Div(trame_server=self.server):
             quasar.QBtn(
-                label="Compute Analysis",
-                size="sm",
-                classes="full-width",
+                label="Compute",
                 loading=("is_loading", False),
                 click=self.on_run_clicked,
+                flat=True,
             )
 
     # This is only used within when this module (file) is executed as an Standalone app.
@@ -352,6 +352,7 @@ class EmbeddingsApp(Applet):
                                 map_options=True,
                             )
                     self.settings_widget()
+                    self.compute_ui()
 
                 # Main content
                 with quasar.QPageContainer():

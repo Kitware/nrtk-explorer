@@ -17,10 +17,6 @@ from nrtk_explorer.library.transforms import (
 )
 
 
-def on_change(*args, **kwargs):
-    print(args, kwargs)
-
-
 class ParametersApp(Applet):
     def __init__(self, server):
         super().__init__(server)
@@ -81,10 +77,10 @@ class ParametersApp(Applet):
     def transform_apply_ui(self):
         with html.Div(trame_server=self.server):
             quasar.QBtn(
-                "Apply Transform",
-                size="sm",
+                "Apply",
                 click=(self.on_apply_transform,),
                 classes="full-width",
+                flat=True,
             )
 
     @property

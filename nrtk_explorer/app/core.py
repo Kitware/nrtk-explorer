@@ -16,6 +16,7 @@ from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
 from nrtk_explorer.app.filtering import FilteringApp
 from nrtk_explorer.app.applet import Applet
+from nrtk_explorer.app.ui.collapsible_card import collapsible_card
 from pathlib import Path
 
 import os
@@ -59,12 +60,21 @@ class Engine(Applet):
             help="Path of the json file describing the image dataset",
         )
         self.input_paths = self.server.cli.parse_args().dataset
+        self.state.current_dataset = self.input_paths[0]
 
         self.context["image_objects"] = {}
         self.context["images_manager"] = images_manager.ImagesManager()
         self.context["annotations"] = {}
 
         self._ui = None
+
+        self.state.collapse_dataset = False
+        self.state.collapse_embeddings = False
+        self.state.collapse_filter = False
+        self.state.collapse_transforms = False
+        self.state.client_only(
+            "collapse_dataset", "collapse_embeddings", "collapse_filter", "collapse_transforms"
+        )
 
         transforms_translator = Translator()
         transforms_translator.add_translation("current_model", "current_transforms_model")
@@ -205,52 +215,87 @@ class Engine(Applet):
                 with quasar.QPageContainer():
                     with quasar.QPage():
                         with html.Div(classes="row"):
-                            with html.Div(classes="col-2 q-pa-md"):
-                                html.P("Dataset Selection", classes="text-h6")
+                            with html.Div(classes="col-2 q-pa-md q-gutter-md"):
+                                (
+                                    dataset_title_slot,
+                                    dataset_content_slot,
+                                    dataset_actions_slot,
+                                ) = collapsible_card("collapse_dataset")
 
-                                quasar.QSelect(
-                                    label="Dataset",
-                                    v_model=("current_dataset", self.input_paths[0]),
-                                    options=(parse_dataset_dirs(self.input_paths),),
-                                    filled=True,
-                                    emit_value=True,
-                                    map_options=True,
-                                    dense=True,
+                                with dataset_title_slot:
+                                    html.Span("Dataset Selection", classes="text-h6")
+
+                                with dataset_content_slot:
+                                    quasar.QSelect(
+                                        label="Dataset",
+                                        v_model=("current_dataset",),
+                                        options=(parse_dataset_dirs(self.input_paths),),
+                                        filled=True,
+                                        emit_value=True,
+                                        map_options=True,
+                                        dense=True,
+                                    )
+                                    quasar.QSlider(
+                                        v_model=("num_images", 15),
+                                        min=(0,),
+                                        max=("num_images_max", 25),
+                                        disable=("num_images_disabled", True),
+                                        step=(1,),
+                                    )
+                                    html.P(
+                                        "{{num_images}}/{{num_images_max}} images",
+                                        classes="text-caption text-center",
+                                    )
+
+                                    quasar.QToggle(
+                                        v_model=("random_sampling", False),
+                                        dense=False,
+                                        label="Random selection",
+                                    )
+
+                                (
+                                    embeddings_title_slot,
+                                    embeddings_content_slot,
+                                    embeddings_actions_slot,
+                                ) = collapsible_card("collapse_embeddings")
+
+                                with embeddings_title_slot:
+                                    html.Span("Embeddings", classes="text-h6")
+
+                                with embeddings_content_slot:
+                                    self._embeddings_app.settings_widget()
+
+                                with embeddings_actions_slot:
+                                    self._embeddings_app.compute_ui()
+
+                                filter_title_slot, filter_content_slot, filter_actions_slot = (
+                                    collapsible_card("collapse_filter")
                                 )
-                                quasar.QSlider(
-                                    v_model=("num_images", 15),
-                                    min=(0,),
-                                    max=("num_images_max", 25),
-                                    disable=("num_images_disabled", True),
-                                    step=(1,),
-                                )
-                                html.P(
-                                    "{{num_images}}/{{num_images_max}} images",
-                                    classes="text-caption text-center",
-                                )
 
-                                quasar.QToggle(
-                                    v_model=("random_sampling", False),
-                                    dense=False,
-                                    label="Random selection",
-                                )
+                                with filter_title_slot:
+                                    html.Span("Category Filter", classes="text-h6")
 
-                                quasar.QSeparator(inset=True, spaced=True)
+                                with filter_content_slot:
+                                    self._filtering_app.filter_operator_ui()
+                                    self._filtering_app.filter_options_ui()
 
-                                html.P("Embeddings", classes="text-h6")
+                                with filter_actions_slot:
+                                    self._filtering_app.filter_apply_ui()
 
-                                self._embeddings_app.settings_widget()
+                                (
+                                    transforms_title_slot,
+                                    transforms_content_slot,
+                                    transforms_actions_slot,
+                                ) = collapsible_card("collapse_transforms")
 
-                                quasar.QSeparator(inset=True, spaced=True)
+                                with transforms_title_slot:
+                                    html.Span("Transform Settings", classes="text-h6")
 
-                                self._filtering_app.filter_ui()
-                                self._filtering_app.filter_apply_ui()
+                                with transforms_content_slot:
+                                    self._transforms_app.settings_widget()
 
-                                quasar.QSeparator(inset=True, spaced=True)
-
-                                html.P("Transform Settings", classes="text-h6")
-
-                                self._transforms_app.settings_widget()
+                                with transforms_actions_slot:
+                                    self._transforms_app.apply_ui()
 
                             with html.Div(classes="col-10 q-pa-md"):
                                 with html.Div(

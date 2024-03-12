@@ -308,17 +308,9 @@ class TransformsApp(Applet):
                 ):
                     self._parameters_app.transform_params_ui()
 
-                self._parameters_app.transform_apply_ui()
-
-                quasar.QSelect(
-                    label="Model",
-                    v_model=("current_model",),
-                    options=("models",),
-                    classes="q-mt-md",
-                    filled=True,
-                    emit_value=True,
-                    map_options=True,
-                )
+    def apply_ui(self):
+        with html.Div(trame_server=self.server):
+            self._parameters_app.transform_apply_ui()
 
     def original_dataset_widget(self):
         with html.Div(trame_server=self.server):
@@ -375,6 +367,7 @@ class TransformsApp(Applet):
                                             label_always=True,
                                         )
                                 self.settings_widget()
+                                self.apply_ui()
 
                             with html.Div(classes="col-5 q-pa-md"):
                                 with html.Div(classes="row"):

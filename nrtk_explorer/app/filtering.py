@@ -13,11 +13,7 @@ from nrtk_explorer.library.filtering import (
     ConcreteIdFilter,
 )
 
-from nrtk_explorer.widgets.nrtk_explorer import FilterWidget
-
-
-def on_operator_change(*args, **kwargs):
-    print(args, kwargs)
+from nrtk_explorer.widgets.nrtk_explorer import FilterOptionsWidget, FilterOperatorWidget
 
 
 class FilteringApp(Applet):
@@ -61,22 +57,24 @@ class FilteringApp(Applet):
             self._on_apply_filter(self._filter)
 
     def on_filter_categories_change(self, **kwargs):
-        print("filter categories changed", self.state.filter_categories)
         self._filter.set_ids(self.state.filter_categories, self.state.filter_operator)
 
     def on_update_operator(self, operator, **kwargs):
         self.state.filter_operator = operator
 
     def on_update_filter_not(self, filter_not):
-        print("on update filter not", filter_not)
         self.state.filter_not = filter_not
 
-    def filter_ui(self):
+    def filter_options_ui(self):
         with html.Div(trame_server=self.server):
-            FilterWidget(
-                label="Category Filter",
+            FilterOptionsWidget(
                 v_model=("filter_categories",),
                 options=("categories",),
+            )
+
+    def filter_operator_ui(self):
+        with html.Div(trame_server=self.server):
+            FilterOperatorWidget(
                 operator=("filter_operator",),
                 invert=("filter_not",),
                 **{
@@ -88,10 +86,9 @@ class FilteringApp(Applet):
     def filter_apply_ui(self):
         with html.Div(trame_server=self.server):
             quasar.QBtn(
-                "Apply Filter",
-                size="sm",
+                "Apply",
                 click=(self.on_apply_click,),
-                classes="full-width",
+                flat=True,
             )
 
     @property
@@ -105,7 +102,9 @@ class FilteringApp(Applet):
                     side="left",
                     elevated=True,
                 ):
-                    self.filter_ui()
+                    self.filter_operator_ui()
+
+                    self.filter_options_ui()
 
                     self.filter_apply_ui()
 

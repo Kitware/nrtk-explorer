@@ -1,0 +1,7 @@
+.inherit-height {
+    min-height: inherit;
+}
+
+.zero-height {
+    height: 0!important;
+}

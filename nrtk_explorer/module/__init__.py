@@ -10,7 +10,7 @@ serve = {"__nrtk_explorer": serve_path}
 scripts = ["__nrtk_explorer/nrtk_explorer.umd.js"]
 
 # List of CSS files to load (usually from the serve path above)
-# styles = ["__nrtk_explorer/style.css"]
+styles = ["__nrtk_explorer/styles.css"]
 
 # List of Vue plugins to install/load
 vue_use = ["nrtk_explorer"]

@@ -284,10 +284,17 @@ function onColorMapChange(name: keyof typeof colors.value) {
     ;(scatterPlot as any).scatterPlot.render()
   }
 }
+
+function onContainerResize() {
+  if (scatterPlot) {
+    scatterPlot.resize()
+  }
+}
 </script>
 
 <template>
-  <div style="width: 100%; height: 100%; position: relative">
+  <q-resize-observer @resize="onContainerResize" :debounce="50" />
+  <div style="width: 100%; height: 100%; position: relative; overflow: hidden">
     <div
       style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"
       ref="plotContainer"

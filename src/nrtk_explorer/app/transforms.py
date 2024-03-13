@@ -21,6 +21,7 @@ from nrtk_explorer.library.ml_models import (
     ClassificationAlexNet,
     ClassificationVgg16,
 )
+import nrtk_explorer.test_data
 
 import json
 import os
@@ -43,11 +44,11 @@ def image_id_to_result(image_id):
 # ---------------------------------------------------------
 
 
-DIR_NAME = os.path.dirname(__file__)
+DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DATASET_DIRS = [
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_test.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_train.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
 ]
 
 

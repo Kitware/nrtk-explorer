@@ -23,7 +23,7 @@ jobs:
     - name: Analysing the code with flake8
       run: flake8
     - name: Analysing the code with mypy
-      run: mypy nrtk_explorer
+      run: mypy src/nrtk_explorer
 
   linters_vue:
     name: ubuntu-latest-linters-vue

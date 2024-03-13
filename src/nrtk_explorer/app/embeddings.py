@@ -3,6 +3,7 @@ from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.app.applet import Applet
+import nrtk_explorer.test_data
 
 import asyncio
 import json
@@ -15,11 +16,11 @@ from trame.app import get_server, asynchronous
 
 os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
 
-DIR_NAME = os.path.dirname(__file__)
+DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DATASET_DIRS = [
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_test.json",
-    f"{DIR_NAME}/../../assets/OIRDS_v1_0/oirds_train.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
 ]
 
 

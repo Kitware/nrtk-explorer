@@ -20,7 +20,7 @@ export default defineConfig({
         },
       },
     },
-    outDir: "../nrtk_explorer/module/serve",
+    outDir: "../src/nrtk_explorer/module/serve",
     assetsDir: ".",
   },
   plugins: [

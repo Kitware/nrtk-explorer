@@ -17,6 +17,7 @@ from nrtk_explorer.app.transforms import TransformsApp
 from nrtk_explorer.app.filtering import FilteringApp
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.ui.collapsible_card import collapsible_card
+import nrtk_explorer.test_data
 from pathlib import Path
 
 import os
@@ -33,6 +34,13 @@ html.Template.slot_names.add("after")
 
 HORIZONTAL_SPLIT_DEFAULT_VALUE = 17
 VERTICAL_SPLIT_DEFAULT_VALUE = 40
+
+DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
+DEFAULT_DATASETS = [
+    f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
+    f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
+]
 
 
 def image_id_to_meta(image_id):
@@ -62,7 +70,7 @@ class Engine(Applet):
         self.server.cli.add_argument(
             "--dataset",
             nargs="+",
-            default=[f"{os.path.dirname(__file__)}/../../assets/OIRDS_v1_0/oirds.json"],
+            default=DEFAULT_DATASETS,
             help="Path of the json file describing the image dataset",
         )
         self.input_paths = self.server.cli.parse_args().dataset

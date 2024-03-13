@@ -1,6 +1,7 @@
 from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library import images_manager
+import nrtk_explorer.test_data
 
 from tabulate import tabulate
 from itertools import product
@@ -10,8 +11,8 @@ import os
 import pytest
 import timeit
 
-CURRENT_DIR_NAME = os.path.dirname(__file__)
-DATASET = f"{CURRENT_DIR_NAME}/../assets/OIRDS_v1_0/oirds.json"
+CURRENT_DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
+DATASET = f"{CURRENT_DIR_NAME}/OIRDS_v1_0/oirds.json"
 
 
 def image_paths_impl():

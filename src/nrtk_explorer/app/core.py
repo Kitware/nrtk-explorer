@@ -73,7 +73,9 @@ class Engine(Applet):
             default=DEFAULT_DATASETS,
             help="Path of the json file describing the image dataset",
         )
-        self.input_paths = self.server.cli.parse_args().dataset
+
+        known_args, _ = self.server.cli.parse_known_args()
+        self.input_paths = known_args.dataset
         self.state.current_dataset = self.input_paths[0]
 
         self.context["image_objects"] = {}

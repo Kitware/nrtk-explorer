@@ -28,6 +28,12 @@ import random
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+html.Template.slot_names.add("before")
+html.Template.slot_names.add("after")
+
+HORIZONTAL_SPLIT_DEFAULT_VALUE = 17
+VERTICAL_SPLIT_DEFAULT_VALUE = 40
+
 
 def image_id_to_meta(image_id):
     return f"{image_id}_meta"
@@ -75,6 +81,10 @@ class Engine(Applet):
         self.state.client_only(
             "collapse_dataset", "collapse_embeddings", "collapse_filter", "collapse_transforms"
         )
+
+        self.state.horizontal_split = HORIZONTAL_SPLIT_DEFAULT_VALUE
+        self.state.vertical_split = VERTICAL_SPLIT_DEFAULT_VALUE
+        self.state.client_only("horizontal_split", "vertical_split")
 
         transforms_translator = Translator()
         transforms_translator.add_translation("current_model", "current_transforms_model")
@@ -202,124 +212,137 @@ class Engine(Applet):
                 # # Toolbar
                 with quasar.QHeader():
                     with quasar.QToolbar(classes="shadow-4"):
-                        quasar.QBtn(
-                            flat=True,
-                            click="drawerLeft = !drawerLeft",
-                            round=True,
-                            dense=False,
-                            icon="menu",
-                        )
                         quasar.QToolbarTitle("NRTK_EXPLORER")
 
                 # # Main content
                 with quasar.QPageContainer():
                     with quasar.QPage():
-                        with html.Div(classes="row"):
-                            with html.Div(classes="col-2 q-pa-md q-gutter-md"):
-                                (
-                                    dataset_title_slot,
-                                    dataset_content_slot,
-                                    dataset_actions_slot,
-                                ) = collapsible_card("collapse_dataset")
+                        with quasar.QSplitter(
+                            model_value=("horizontal_split",),
+                            classes="inherit-height",
+                            before_class="inherit-height zero-height scroll",
+                            after_class="inherit-height zero-height",
+                        ):
+                            with html.Template(v_slot_before=True):
+                                with html.Div(classes="q-pa-md q-gutter-md"):
+                                    (
+                                        dataset_title_slot,
+                                        dataset_content_slot,
+                                        dataset_actions_slot,
+                                    ) = collapsible_card("collapse_dataset")
 
-                                with dataset_title_slot:
-                                    html.Span("Dataset Selection", classes="text-h6")
+                                    with dataset_title_slot:
+                                        html.Span("Dataset Selection", classes="text-h6")
 
-                                with dataset_content_slot:
-                                    quasar.QSelect(
-                                        label="Dataset",
-                                        v_model=("current_dataset",),
-                                        options=(parse_dataset_dirs(self.input_paths),),
-                                        filled=True,
-                                        emit_value=True,
-                                        map_options=True,
-                                        dense=True,
+                                    with dataset_content_slot:
+                                        quasar.QSelect(
+                                            label="Dataset",
+                                            v_model=("current_dataset",),
+                                            options=(parse_dataset_dirs(self.input_paths),),
+                                            filled=True,
+                                            emit_value=True,
+                                            map_options=True,
+                                            dense=True,
+                                        )
+                                        quasar.QSlider(
+                                            v_model=("num_images", 15),
+                                            min=(0,),
+                                            max=("num_images_max", 25),
+                                            disable=("num_images_disabled", True),
+                                            step=(1,),
+                                        )
+                                        html.P(
+                                            "{{num_images}}/{{num_images_max}} images",
+                                            classes="text-caption text-center",
+                                        )
+
+                                        quasar.QToggle(
+                                            v_model=("random_sampling", False),
+                                            dense=False,
+                                            label="Random selection",
+                                        )
+
+                                    (
+                                        embeddings_title_slot,
+                                        embeddings_content_slot,
+                                        embeddings_actions_slot,
+                                    ) = collapsible_card("collapse_embeddings")
+
+                                    with embeddings_title_slot:
+                                        html.Span("Embeddings", classes="text-h6")
+
+                                    with embeddings_content_slot:
+                                        self._embeddings_app.settings_widget()
+
+                                    with embeddings_actions_slot:
+                                        self._embeddings_app.compute_ui()
+
+                                    filter_title_slot, filter_content_slot, filter_actions_slot = (
+                                        collapsible_card("collapse_filter")
                                     )
-                                    quasar.QSlider(
-                                        v_model=("num_images", 15),
-                                        min=(0,),
-                                        max=("num_images_max", 25),
-                                        disable=("num_images_disabled", True),
-                                        step=(1,),
-                                    )
-                                    html.P(
-                                        "{{num_images}}/{{num_images_max}} images",
-                                        classes="text-caption text-center",
-                                    )
 
-                                    quasar.QToggle(
-                                        v_model=("random_sampling", False),
-                                        dense=False,
-                                        label="Random selection",
-                                    )
+                                    with filter_title_slot:
+                                        html.Span("Category Filter", classes="text-h6")
 
-                                (
-                                    embeddings_title_slot,
-                                    embeddings_content_slot,
-                                    embeddings_actions_slot,
-                                ) = collapsible_card("collapse_embeddings")
+                                    with filter_content_slot:
+                                        self._filtering_app.filter_operator_ui()
+                                        self._filtering_app.filter_options_ui()
 
-                                with embeddings_title_slot:
-                                    html.Span("Embeddings", classes="text-h6")
+                                    with filter_actions_slot:
+                                        self._filtering_app.filter_apply_ui()
 
-                                with embeddings_content_slot:
-                                    self._embeddings_app.settings_widget()
+                                    (
+                                        transforms_title_slot,
+                                        transforms_content_slot,
+                                        transforms_actions_slot,
+                                    ) = collapsible_card("collapse_transforms")
 
-                                with embeddings_actions_slot:
-                                    self._embeddings_app.compute_ui()
+                                    with transforms_title_slot:
+                                        html.Span("Transform Settings", classes="text-h6")
 
-                                filter_title_slot, filter_content_slot, filter_actions_slot = (
-                                    collapsible_card("collapse_filter")
-                                )
+                                    with transforms_content_slot:
+                                        self._transforms_app.settings_widget()
 
-                                with filter_title_slot:
-                                    html.Span("Category Filter", classes="text-h6")
+                                    with transforms_actions_slot:
+                                        self._transforms_app.apply_ui()
 
-                                with filter_content_slot:
-                                    self._filtering_app.filter_operator_ui()
-                                    self._filtering_app.filter_options_ui()
-
-                                with filter_actions_slot:
-                                    self._filtering_app.filter_apply_ui()
-
-                                (
-                                    transforms_title_slot,
-                                    transforms_content_slot,
-                                    transforms_actions_slot,
-                                ) = collapsible_card("collapse_transforms")
-
-                                with transforms_title_slot:
-                                    html.Span("Transform Settings", classes="text-h6")
-
-                                with transforms_content_slot:
-                                    self._transforms_app.settings_widget()
-
-                                with transforms_actions_slot:
-                                    self._transforms_app.apply_ui()
-
-                            with html.Div(classes="col-10 q-pa-md"):
-                                with html.Div(
-                                    classes="row", style="min-height: inherit; height: 40rem"
+                            with html.Template(v_slot_after=True):
+                                with quasar.QSplitter(
+                                    v_model=("vertical_split",),
+                                    horizontal=True,
+                                    classes="inherit-height zero-height",
+                                    before_class="q-pa-md",
+                                    after_class="q-pa-md",
                                 ):
-                                    self._embeddings_app.visualization_widget()
+                                    with html.Template(v_slot_before=True):
+                                        self._embeddings_app.visualization_widget()
 
-                                with html.Div(classes="row"):
-                                    with html.Div(classes="col-6 q-pa-md"):
-                                        html.H5("Original Dataset", classes="text-h5")
+                                    with html.Template(v_slot_after=True):
+                                        with html.Div(classes="row q-col-gutter-md"):
+                                            with html.Div(classes="col-6"):
+                                                with quasar.QCard(flat=True, bordered=True):
+                                                    with quasar.QCardSection():
+                                                        html.Span(
+                                                            "Original Dataset", classes="text-h5"
+                                                        )
 
-                                        with html.Div(classes="row"):
-                                            with html.Div(classes="col q-pa-md"):
-                                                self._transforms_app.original_dataset_widget()
+                                                    with quasar.QCardSection():
+                                                        self._transforms_app.original_dataset_widget()
 
-                                    with html.Div(
-                                        classes="col-6 q-pa-md",
-                                        style="background-color: #ffcdcd;",
-                                    ):
-                                        html.H5("Transformed Dataset", classes="text-h5")
+                                            with html.Div(classes="col-6"):
+                                                with quasar.QCard(
+                                                    flat=True,
+                                                    bordered=True,
+                                                    style="background-color: #ffcdd2;",
+                                                ):
+                                                    with quasar.QCardSection():
+                                                        html.Span(
+                                                            "Transformed Dataset",
+                                                            classes="text-h5",
+                                                        )
 
-                                        with html.Div(classes="row"):
-                                            with html.Div(classes="col q-pa-md"):
-                                                self._transforms_app.transformed_dataset_widget()
+                                                    with quasar.QCardSection():
+                                                        self._transforms_app.transformed_dataset_widget()
 
             self._ui = layout
 

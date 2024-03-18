@@ -37,9 +37,8 @@ VERTICAL_SPLIT_DEFAULT_VALUE = 40
 
 DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
+    f"{DIR_NAME}/coco-od-2017/mini_val2017.json",
     f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
-    f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
-    f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
 ]
 
 
@@ -97,14 +96,18 @@ class Engine(Applet):
         self.state.client_only("horizontal_split", "vertical_split")
 
         transforms_translator = Translator()
-        transforms_translator.add_translation("current_model", "current_transforms_model")
+        transforms_translator.add_translation(
+            "feature_extraction_model", "current_transforms_model"
+        )
 
         self._transforms_app = TransformsApp(
             server=self.server.create_child_server(translator=transforms_translator)
         )
 
         embeddings_translator = Translator()
-        embeddings_translator.add_translation("current_model", "current_embeddings_model")
+        embeddings_translator.add_translation(
+            "feature_extraction_model", "current_embeddings_model"
+        )
 
         self._embeddings_app = EmbeddingsApp(
             server=self.server.create_child_server(translator=embeddings_translator),
@@ -319,6 +322,7 @@ class Engine(Applet):
                             with html.Template(v_slot_after=True):
                                 with quasar.QSplitter(
                                     v_model=("vertical_split",),
+                                    limits=("[0,100]",),
                                     horizontal=True,
                                     classes="inherit-height zero-height",
                                     before_class="q-pa-md",

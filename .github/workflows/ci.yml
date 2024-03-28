@@ -9,9 +9,9 @@ jobs:
     name: ubuntu-latest-linters-python
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
     - name: Install dependencies
@@ -32,7 +32,7 @@ jobs:
       run:
         working-directory: vue-components
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
         node-version: 18
@@ -53,9 +53,9 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
@@ -63,4 +63,4 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e '.[dev]'
     - name: Invoke PyTest
-      run: pytest .
+      run: pytest -v .

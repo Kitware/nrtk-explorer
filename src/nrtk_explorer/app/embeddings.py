@@ -40,7 +40,7 @@ class EmbeddingsApp(Applet):
         self.features = None
 
         self.state.client_only("camera_position")
-        self.state.current_model = "resnet50.a1_in1k"
+        self.state.feature_extraction_model = "resnet50.a1_in1k"
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self.transformed_images_cache = {}
@@ -48,14 +48,14 @@ class EmbeddingsApp(Applet):
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.on_current_dataset_change()
-        self.on_current_model_change()
+        self.on_feature_extraction_model_change()
         self.state.change("current_dataset")(self.on_current_dataset_change)
-        self.state.change("current_model")(self.on_current_model_change)
+        self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
 
-    def on_current_model_change(self, **kwargs):
-        current_model = self.state.current_model
+    def on_feature_extraction_model_change(self, **kwargs):
+        feature_extraction_model = self.state.feature_extraction_model
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
-            model_name=current_model, manager=self.context.images_manager
+            model_name=feature_extraction_model, manager=self.context.images_manager
         )
 
     def on_current_dataset_change(self, **kwargs):
@@ -228,7 +228,7 @@ class EmbeddingsApp(Applet):
 
             quasar.QSelect(
                 label="Embeddings Model",
-                v_model=("current_model",),
+                v_model=("feature_extraction_model",),
                 options=(
                     [
                         {"label": "ResNet50", "value": "resnet50.a1_in1k"},

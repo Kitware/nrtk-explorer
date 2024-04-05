@@ -12,7 +12,7 @@ from trame.app import get_server
 
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
-from nrtk_explorer.library import images_manager
+from nrtk_explorer.library import images_manager, object_detector
 from nrtk_explorer.app.ui.image_list import image_list_component
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
@@ -79,7 +79,7 @@ class TransformsApp(Applet):
 
         self._on_transform_fn = None
         self.state.models = [k for k in self.models.keys()]
-        self.state.current_model = self.state.models[0]
+        self.state.feature_extraction_model = self.state.models[0]
 
         self._transforms: Dict[str, trans.ImageTransform] = {
             "identity": trans.IdentityTransform(),
@@ -106,10 +106,11 @@ class TransformsApp(Applet):
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self._on_hover_fn = None
+        self.detector = object_detector.ObjectDetector(model_name="hustvl/yolos-tiny")
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
-        self.state.change("current_model")(self.on_current_model_change)
+        self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_num_elements")(self.on_current_num_elements_change)
 
@@ -128,7 +129,6 @@ class TransformsApp(Applet):
         current_transform = self.state.current_transform
         transformed_image_ids = []
         transform = self._transforms[current_transform]
-
         for image_id in self.state.source_image_ids:
             image = self.context["image_objects"][image_id]
 
@@ -148,12 +148,45 @@ class TransformsApp(Applet):
             self.state.hovered_id = -1
 
         self.state.transformed_image_ids = transformed_image_ids
-
-        self.update_model_result(self.state.transformed_image_ids, self.state.current_model)
+        self.compute_annotations(transformed_image_ids)
 
         # Only invoke callbacks when we transform images
         if len(transformed_image_ids) > 0:
             self.on_transform(transformed_image_ids)
+
+    def compute_annotations(self, ids):
+        """Compute annotations for the given image ids using the object detector model."""
+        if len(ids) == 0:
+            return
+
+        for id_ in ids:
+            self.context["annotations"][id_] = []
+
+        prediction = self.detector.eval(paths=ids, content=self.context.image_objects)
+
+        for id_, annotations in zip(ids, prediction):
+            image_annotations = self.context["annotations"].setdefault(id_, [])
+            for prediction in annotations:
+                category_id = 0
+                for cat_id, cat in self.state.annotation_categories.items():
+                    if cat["name"] == prediction["label"]:
+                        category_id = cat_id
+
+                bbox = prediction["box"]
+                image_annotations.append(
+                    {
+                        "category_id": category_id,
+                        "id": category_id,
+                        "bbox": [
+                            bbox["xmin"],
+                            bbox["ymin"],
+                            bbox["xmax"] - bbox["xmin"],
+                            bbox["ymax"] - bbox["ymin"],
+                        ],
+                    }
+                )
+
+        self.update_model_result(ids, self.state.feature_extraction_model)
 
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
         with open(self.state.current_dataset) as f:
@@ -183,7 +216,7 @@ class TransformsApp(Applet):
 
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
 
-            img = self.context.images_manager.load_thumbnail(image_filename)
+            img = self.context.images_manager.load_image(image_filename)
 
             self.state[image_id] = images_manager.convert_to_base64(img)
             self.state[meta_id] = {
@@ -195,8 +228,8 @@ class TransformsApp(Applet):
             self.context.image_objects[image_id] = img
 
         self.state.source_image_ids = source_image_ids
-
-        self.update_model_result(self.state.source_image_ids, self.state.current_model)
+        self.compute_annotations(source_image_ids)
+        self.update_model_result(self.state.source_image_ids, self.state.feature_extraction_model)
         self.on_apply_transform()
 
     def reset_data(self):
@@ -260,27 +293,18 @@ class TransformsApp(Applet):
         for i, image in enumerate(dataset["images"]):
             self.context.image_id_to_index[image["id"]] = i
 
-        for annotation in dataset["annotations"]:
-            image_id = f"img_{annotation['image_id']}"
-            image_annotations = self.context["annotations"].setdefault(image_id, [])
-            image_annotations.append(annotation)
-
-            transformed_image_id = f"transformed_{image_id}"
-            image_annotations = self.context["annotations"].setdefault(transformed_image_id, [])
-            image_annotations.append(annotation)
-
         if self.is_standalone_app:
             self.context.images_manager = images_manager.ImagesManager()
 
-    def on_current_model_change(self, **kwargs):
-        logger.info(f">>> ENGINE(a): on_current_model_change change {self.state}")
+    def on_feature_extraction_model_change(self, **kwargs):
+        logger.info(f">>> ENGINE(a): on_feature_extraction_model_change change {self.state}")
 
-        current_model = self.state.current_model
+        feature_extraction_model = self.state.feature_extraction_model
 
-        self.update_model_result(self.state.source_image_ids, current_model)
-        self.update_model_result(self.state.transformed_image_ids, current_model)
+        self.update_model_result(self.state.source_image_ids, feature_extraction_model)
+        self.update_model_result(self.state.transformed_image_ids, feature_extraction_model)
 
-    def update_model_result(self, image_ids, current_model):
+    def update_model_result(self, image_ids, feature_extraction_model):
         for image_id in image_ids:
             result_id = image_id_to_result(image_id)
             self.state[result_id] = self.context["annotations"].get(image_id, [])
@@ -301,6 +325,22 @@ class TransformsApp(Applet):
     def settings_widget(self):
         with html.Div(trame_server=self.server):
             with html.Div(classes="col"):
+                quasar.QSelect(
+                    label="Object detection Model",
+                    v_model=("object_detection_model", "facebook/detr-resnet-50"),
+                    options=(
+                        [
+                            {
+                                "label": "facebook/detr-resnet-50",
+                                "value": "facebook/detr-resnet-50",
+                            },
+                        ],
+                    ),
+                    filled=True,
+                    emit_value=True,
+                    map_options=True,
+                )
+
                 self._parameters_app.transform_select_ui()
 
                 with html.Div(

@@ -1,0 +1,105 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  push_to_release:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Configure git user
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+
+      - name: Sync git branches
+        run: |
+          git fetch
+          git checkout main
+          git pull
+          git checkout release
+          git pull
+
+      - name: History main
+        run: |
+          git log main
+
+      - name: History release
+        run: |
+          git log release
+
+      - name: Merge main to release
+        run: |
+          git merge --no-ff main -m "Merge main to release"
+          git push
+  release:
+    needs: push_to_release
+    runs-on: ubuntu-latest
+    concurrency: release
+    environment:
+      name: pypi
+      url: https://pypi.org/project/nrtk-explorer/
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: release
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install ".[dev]"
+
+      - name: Check pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit install
+          pre-commit run --all-files
+
+      - name: Python Semantic Release
+        id: release
+        uses: python-semantic-release/python-semantic-release@v9.4.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: steps.release.outputs.released == 'true'
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Publish package distributions to GitHub Releases
+        uses: python-semantic-release/upload-to-gh-release@main
+        if: steps.release.outputs.released == 'true'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.release.outputs.tag }}
+
+      - name: Merge release back to main
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+
+          git fetch
+          git checkout main
+          git pull
+          git merge --no-ff release -m "Auto-merge release back to main"
+          git push

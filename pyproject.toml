@@ -59,8 +59,13 @@ dev = [
   "pytest",
   "tabulate",
   "mypy",
+]
+
+package = [
+  "build<0.10.0",
   "python-semantic-release",
-  "pre-commit",
+  "setuptools",
+  "wheel",
 ]
 
 [build-system]
@@ -109,12 +114,18 @@ version_toml = [
     "pyproject.toml:project.version",
 ]
 build_command = """
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  nvm install 20
+  node -v
+  npm -v
   python -m venv .venv
   source .venv/bin/activate
   pip install -U pip
-  python -m pip install ".[dev]"
+  python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+  python -m pip install ".[package]"
   python -m build .
-  pre-commit install
 """
 
 [tool.semantic_release.branches.main]

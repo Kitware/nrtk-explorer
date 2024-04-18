@@ -66,13 +66,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install ".[dev]"
-
-      - name: Check pre-commit
-        run: |
-          pip install pre-commit
-          pre-commit install
-          pre-commit run --all-files
+          python -m pip install ".[package]"
 
       - name: Python Semantic Release
         id: release

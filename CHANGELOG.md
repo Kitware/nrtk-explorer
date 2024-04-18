@@ -2,6 +2,13 @@
 
 
 
+## v0.0.3 (2024-04-18)
+
+### Fix
+
+* fix(nrtk-explorer): removed large tests datasets ([`b219a75`](https://github.com/Kitware/nrtk-explorer/commit/b219a75402fcbd534e881fa66732a204817a534a))
+
+
 ## v0.0.2 (2024-04-18)
 
 ### Fix

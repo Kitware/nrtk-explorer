@@ -6,7 +6,7 @@ authors = [
   {name = "Alessandro Genova", email = "alessandro.genova@kitware.com"},
   {name = "Vicente Adolfo Bolea Sanchez", email = "vicente.bolea@kitware.com"},
 ]
-
+readme = "README.md"
 keywords = [
     "Python",
     "Interactive",

@@ -1,6 +1,6 @@
-====================
+=============================
 Contributing to nrtk-explorer
-====================
+=============================
 
 #. Clone the repository using ``git clone``
 #. Install pre-commit via ``pip install pre-commit``

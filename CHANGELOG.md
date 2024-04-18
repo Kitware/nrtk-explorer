@@ -2,6 +2,13 @@
 
 
 
+## v0.0.2 (2024-04-18)
+
+### Fix
+
+* fix(nrtk-explorer): new release ([`51c0607`](https://github.com/Kitware/nrtk-explorer/commit/51c06075c83d93bf61db772cdbe4470b477864f5))
+
+
 ## v0.0.1 (2024-04-18)
 
 ### Ci

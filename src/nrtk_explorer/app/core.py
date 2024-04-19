@@ -38,7 +38,6 @@ VERTICAL_SPLIT_DEFAULT_VALUE = 40
 DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
     f"{DIR_NAME}/coco-od-2017/test_val2017.json",
-    f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
 ]
 
 

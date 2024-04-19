@@ -2,6 +2,34 @@
 
 
 
+## v0.0.5 (2024-04-19)
+
+### Fix
+
+* fix(nrtk-explorer): fix tag ([`c366639`](https://github.com/Kitware/nrtk-explorer/commit/c366639eff412acddf5032f1d1e7f7aaee45b557))
+
+* fix(nrtk-explorer): fix readme ([`3fa6717`](https://github.com/Kitware/nrtk-explorer/commit/3fa6717604bd071d1bf1298400e76fd9353859cc))
+
+* fix(nrtk-explorer): fix image in readme ([`f3964d4`](https://github.com/Kitware/nrtk-explorer/commit/f3964d404c1a296f8bc2394be2ffdbd8ff476714))
+
+### Unknown
+
+* Merge main to release ([`49ccd85`](https://github.com/Kitware/nrtk-explorer/commit/49ccd85f7dbd51aed7feaba5eb5b0b67c982b5ed))
+
+* Auto-merge release back to main ([`4cfb5d5`](https://github.com/Kitware/nrtk-explorer/commit/4cfb5d5cc8a2f320cd2b806353969fcdc80b49a0))
+
+* Merge main to release ([`c5ea4c4`](https://github.com/Kitware/nrtk-explorer/commit/c5ea4c4af7172ff8b3928aead1026d2fef25d3bc))
+
+* Auto-merge release back to main ([`0cd0732`](https://github.com/Kitware/nrtk-explorer/commit/0cd07325b62152da316448be466e2eb350ed3f63))
+
+
+## v0.0.4 (2024-04-19)
+
+### Fix
+
+* fix(nrtk-explorer): fix image in readme ([`80850aa`](https://github.com/Kitware/nrtk-explorer/commit/80850aa0ad37343ca6b0a2c0961c54d92ba23a81))
+
+
 ## v0.0.3 (2024-04-18)
 
 ### Fix

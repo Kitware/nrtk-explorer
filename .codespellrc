@@ -1,2 +1,2 @@
 [codespell]
-skip = **/package-lock.json
+skip = **/package-lock.json,vue-components/src/components/ImageDetection.vue,CHANGELOG.md,src/nrtk_explorer/library/assets/imagenet_classes.txt

@@ -1,8 +1,8 @@
-from nrtk_explorer.app.core import create_engine
+from nrtk_explorer.app.core import Engine
 
 
-def main(server=None, *args, **kwargs):
-    engine = create_engine(server)
+def main(server=None, **kwargs):
+    engine = Engine(server)
     engine.server.start(**kwargs)
 
 

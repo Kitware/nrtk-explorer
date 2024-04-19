@@ -2,6 +2,31 @@
 
 
 
+## v0.1.0 (2024-04-19)
+
+### Documentation
+
+* docs(readme): add usage section ([`7bfdbc4`](https://github.com/Kitware/nrtk-explorer/commit/7bfdbc4ad511eadda75c14aca3d310b2cd9a996a))
+
+* docs(readme): add usage example ([`b668617`](https://github.com/Kitware/nrtk-explorer/commit/b6686178eae2ea22be410260e4a3d1f1eb182403))
+
+### Feature
+
+* feat(web): add test apps ([`f58c6ea`](https://github.com/Kitware/nrtk-explorer/commit/f58c6eaf8b2cc27ea331afaa91423f81deeb551b))
+
+### Fix
+
+* fix(cli): update executable name to use - ([`cab041b`](https://github.com/Kitware/nrtk-explorer/commit/cab041b4ca675b0eaca9d6c02c93615a4f1806a8))
+
+* fix(dataset): better handling of dataset arg ([`b8bb107`](https://github.com/Kitware/nrtk-explorer/commit/b8bb1075b1a206118ce3c0d18ae726ee1f447dc8))
+
+### Unknown
+
+* Merge main to release ([`6e871d2`](https://github.com/Kitware/nrtk-explorer/commit/6e871d26b2039197bcc6b6e9c14c6e1495d6b9b0))
+
+* Auto-merge release back to main ([`2c3cd2b`](https://github.com/Kitware/nrtk-explorer/commit/2c3cd2b36508a43fccb595995ba5cc7a2ea9f7b1))
+
+
 ## v0.0.6 (2024-04-19)
 
 ### Fix

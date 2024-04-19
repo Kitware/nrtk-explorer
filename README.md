@@ -77,7 +77,9 @@ CLI flags and options
   command line options and flags.
 - `--dataset` specify the directory containing a json file describing a COCO
   image dataset. You can specify multiple directory using a comma `,` as a
-  separator.
+  separator. Example usage: `nrtk_explorer --dataset <dataset dir>`. More
+  images datasets available at:
+  https://github.com/vicentebolea/nrtk_explorer_datasets/
 
 Contribute to NRTK_EXPLORER
 ---------------------------

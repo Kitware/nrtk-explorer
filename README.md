@@ -6,7 +6,7 @@ insights of a image dataset in [COCO][3] format and it evaluate image
 transformation and perturbation resilience of object recognition DL models. It
 is built using [trame][1] by the [kitware][2] team.
 
-![nrtk explorer](https://github.com/Kitware/nrtk-explorer/blob/d3df0ecf748664d806f09ad11e2bbd71a0bca1dd/screenshot.png?raw=true)
+![nrtk explorer](https://raw.githubusercontent.com/Kitware/nrtk-explorer/main/screenshot.png)
 
 Features
 --------
@@ -40,6 +40,8 @@ git clone https://github.com/vicentebolea/nrtk_explorer_datasets.git
 # Run the application on given dataset (908 images)
 nrtk-explorer --dataset ./nrtk_explorer_datasets/OIRDS_v1_0/oirds.json
 ```
+
+![nrtk explorer usage](https://raw.githubusercontent.com/Kitware/nrtk-explorer/main/usage.png)
 
 Installing
 ----------

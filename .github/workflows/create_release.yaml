@@ -68,8 +68,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install ".[package]"
+          python -m pip install --upgrade pip setuptools wheel "build<0.10.0" python-semantic-release
 
       - name: Python Semantic Release
         id: release

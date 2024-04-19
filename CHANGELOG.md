@@ -2,6 +2,21 @@
 
 
 
+## v0.1.1 (2024-04-19)
+
+### Fix
+
+* fix(core): removed unused default dataset ([`5f870ef`](https://github.com/Kitware/nrtk-explorer/commit/5f870ef74d8445d786990641fdad12b8afa065f2))
+
+* fix(sample): sample dataset categories ([`e85de50`](https://github.com/Kitware/nrtk-explorer/commit/e85de50d59c26f97ddccf23c3d893353855a60d4))
+
+### Unknown
+
+* fix(workflow) workflow fixes ([`e7540f1`](https://github.com/Kitware/nrtk-explorer/commit/e7540f12e0f19e529b685160fc28d82a1567e8a6))
+
+* Auto-merge release back to main ([`f652c12`](https://github.com/Kitware/nrtk-explorer/commit/f652c1294fffc930fd6d06daa87d55386f812b0f))
+
+
 ## v0.1.0 (2024-04-19)
 
 ### Documentation

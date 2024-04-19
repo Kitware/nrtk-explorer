@@ -2,6 +2,21 @@
 
 
 
+## v0.1.2 (2024-04-19)
+
+### Fix
+
+* fix(nrtk-explorer): fix readme ([`968e42e`](https://github.com/Kitware/nrtk-explorer/commit/968e42e38d0b9a15d62b4a27681aa1df300abde4))
+
+* fix(workflow): do not install uneeded deps ([`a29260f`](https://github.com/Kitware/nrtk-explorer/commit/a29260f2abcbc81d19c607d1f8c143bd435d4073))
+
+### Unknown
+
+* Merge main to release ([`40e7ad5`](https://github.com/Kitware/nrtk-explorer/commit/40e7ad58264254bec2c5b0014aff68a3d82f3e2e))
+
+* Auto-merge release back to main ([`0981c3c`](https://github.com/Kitware/nrtk-explorer/commit/0981c3caaa4a120f24a3b345a487e73df510d0e7))
+
+
 ## v0.1.1 (2024-04-19)
 
 ### Fix

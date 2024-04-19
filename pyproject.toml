@@ -1,12 +1,12 @@
 [project]
 name="nrtk-explorer"
-version="0.0.1"
+version="0.0.3"
 description="Model Visualizer"
 authors = [
   {name = "Alessandro Genova", email = "alessandro.genova@kitware.com"},
   {name = "Vicente Adolfo Bolea Sanchez", email = "vicente.bolea@kitware.com"},
 ]
-
+readme = "README.md"
 keywords = [
     "Python",
     "Interactive",

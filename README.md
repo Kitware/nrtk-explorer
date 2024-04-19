@@ -6,7 +6,7 @@ insights of a image dataset in [COCO][3] format and it evaluate image
 transformation and perturbation resilience of object recognition DL models. It
 is built using [trame][1] by the [kitware][2] team.
 
-![nrtk explorer](screenshot.png)
+![nrtk explorer](https://github.com/Kitware/nrtk-explorer/blob/d3df0ecf748664d806f09ad11e2bbd71a0bca1dd/screenshot.png?raw=true)
 
 Features
 --------

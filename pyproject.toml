@@ -128,8 +128,7 @@ build_command = """
   python -m venv .venv
   source .venv/bin/activate
   pip install -U pip
-  python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-  python -m pip install ".[package]"
+  python -m pip install "build<0.10.0" "python-semantic-release" "setuptools" "wheel"
   python -m build .
 """
 

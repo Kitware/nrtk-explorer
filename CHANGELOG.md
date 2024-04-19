@@ -2,6 +2,19 @@
 
 
 
+## v0.0.6 (2024-04-19)
+
+### Fix
+
+* fix(nrtk-explorer): fix tests ([`2693689`](https://github.com/Kitware/nrtk-explorer/commit/269368975e16e21d9caf2575ebeba717c7ff7543))
+
+### Unknown
+
+* Merge main to release ([`3de4c18`](https://github.com/Kitware/nrtk-explorer/commit/3de4c18ae7b4d87b7b74dd5bc62e121e01238ebe))
+
+* Auto-merge release back to main ([`e26a9c4`](https://github.com/Kitware/nrtk-explorer/commit/e26a9c41b47c95d9cf4864356d1fb66d15ab279b))
+
+
 ## v0.0.5 (2024-04-19)
 
 ### Fix

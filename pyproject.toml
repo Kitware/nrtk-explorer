@@ -68,6 +68,11 @@ package = [
   "wheel",
 ]
 
+web = [
+  "trame-vtk",
+  "trame-vuetify",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -1,9 +1,10 @@
 from trame_server.core import Server, State, Controller
+from trame.app import get_server
 
 
 class Applet:
     def __init__(self, server: Server):
-        self._server = server
+        self._server = get_server(server, client_type="vue3")
 
     @property
     def server(self) -> Server:

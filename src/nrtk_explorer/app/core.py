@@ -4,7 +4,7 @@ Define your classes and create the instances that you need to expose
 
 import logging
 from typing import Iterable
-from trame.app import get_server
+
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
@@ -61,9 +61,6 @@ def parse_dataset_dirs(datasets):
 
 class Engine(Applet):
     def __init__(self, server=None):
-        if server is None:
-            server = get_server()
-
         super().__init__(server)
 
         self.server.cli.add_argument(
@@ -361,16 +358,3 @@ class Engine(Applet):
             self._ui = layout
 
         return self._ui
-
-
-def create_engine(server=None):
-    # Get or create server
-    if server is None:
-        server = get_server()
-
-    if isinstance(server, str):
-        server = get_server(server)
-
-    server.client_type = "vue3"
-
-    return Engine(server)

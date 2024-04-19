@@ -39,11 +39,6 @@ def image_id_to_result(image_id):
     return f"{image_id}_result"
 
 
-# ---------------------------------------------------------
-# Engine class
-# ---------------------------------------------------------
-
-
 DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DATASET_DIRS = [
     f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
@@ -124,7 +119,7 @@ class TransformsApp(Applet):
             self._on_transform_fn(*args, **kwargs)
 
     def on_apply_transform(self, *args, **kwargs):
-        logger.info(">>> ENGINE(a): on_apply_transform")
+        logger.debug("on_apply_transform")
 
         current_transform = self.state.current_transform
         transformed_image_ids = []
@@ -273,7 +268,7 @@ class TransformsApp(Applet):
                 del self.context["image_objects"][image_id]
 
     def on_current_dataset_change(self, current_dataset, **kwargs):
-        logger.info(f">>> ENGINE(a): on_current_dataset_change change {self.state}")
+        logger.debug(f"on_current_dataset_change change {self.state}")
 
         self.reset_data()
 
@@ -297,7 +292,7 @@ class TransformsApp(Applet):
             self.context.images_manager = images_manager.ImagesManager()
 
     def on_feature_extraction_model_change(self, **kwargs):
-        logger.info(f">>> ENGINE(a): on_feature_extraction_model_change change {self.state}")
+        logger.debug(f">>> on_feature_extraction_model_change change {self.state}")
 
         feature_extraction_model = self.state.feature_extraction_model
 

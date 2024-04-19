@@ -2,6 +2,13 @@
 
 
 
+## v0.0.4 (2024-04-19)
+
+### Fix
+
+* fix(nrtk-explorer): fix image in readme ([`80850aa`](https://github.com/Kitware/nrtk-explorer/commit/80850aa0ad37343ca6b0a2c0961c54d92ba23a81))
+
+
 ## v0.0.3 (2024-04-18)
 
 ### Fix

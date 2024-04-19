@@ -72,7 +72,7 @@ class Engine(Applet):
 
         known_args, _ = self.server.cli.parse_known_args()
         self.input_paths = known_args.dataset
-        self.state.current_dataset = self.input_paths[0]
+        self.state.current_dataset = str(Path(self.input_paths[0]).resolve())
 
         self.context["image_objects"] = {}
         self.context["images_manager"] = images_manager.ImagesManager()

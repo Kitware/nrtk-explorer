@@ -12,7 +12,7 @@ import pytest
 import timeit
 
 CURRENT_DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
-DATASET = f"{CURRENT_DIR_NAME}/OIRDS_v1_0/oirds.json"
+DATASET = f"{CURRENT_DIR_NAME}/coco-od-2017/test_val2017.json"
 
 
 def image_paths_impl():

@@ -5,6 +5,7 @@ import nrtk_explorer.test_data
 
 from tabulate import tabulate
 from itertools import product
+from pathlib import Path
 
 import json
 import os
@@ -12,17 +13,17 @@ import pytest
 import timeit
 
 CURRENT_DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
-DATASET = f"{CURRENT_DIR_NAME}/coco-od-2017/test_val2017.json"
+inc_ds_path = Path(f"{CURRENT_DIR_NAME}/coco-od-2017/test_val2017.json")
 
 
 def image_paths_impl():
-    with open(DATASET) as f:
+    with open(inc_ds_path) as f:
         dataset = json.load(f)
     images = dataset["images"]
 
     paths = list()
     for image_metadata in images:
-        paths.append(os.path.join(os.path.dirname(DATASET), image_metadata["file_name"]))
+        paths.append(os.path.join(os.path.dirname(inc_ds_path), image_metadata["file_name"]))
     return paths
 
 

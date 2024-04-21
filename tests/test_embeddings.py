@@ -16,20 +16,26 @@ CURRENT_DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 inc_ds_path = Path(f"{CURRENT_DIR_NAME}/coco-od-2017/test_val2017.json")
 
 
-def image_paths_impl():
-    with open(inc_ds_path) as f:
+def image_paths_impl(file_name):
+    with open(file_name) as f:
         dataset = json.load(f)
     images = dataset["images"]
 
     paths = list()
     for image_metadata in images:
-        paths.append(os.path.join(os.path.dirname(inc_ds_path), image_metadata["file_name"]))
+        paths.append(os.path.join(os.path.dirname(file_name), image_metadata["file_name"]))
+
     return paths
 
 
 @pytest.fixture
-def image_paths():
-    return image_paths_impl()
+def image_paths(request):
+    return image_paths_impl(inc_ds_path)
+
+
+@pytest.fixture
+def image_paths_external(request):
+    return image_paths_impl(request.config.getoption("--benchmark-dataset-file"))
 
 
 def test_features_small(image_paths):
@@ -46,11 +52,11 @@ def test_features_zero(image_paths):
     print(features)
 
 
-@pytest.mark.slow
-def test_features_all(image_paths):
+@pytest.mark.benchmark
+def test_features_all(image_paths_external):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths)
-    assert len(features) == len(image_paths)
+    features = extractor.extract(image_paths_external)
+    assert len(features) == len(image_paths_external)
     print(f"Number of features: {len(features)}")
 
 
@@ -106,7 +112,6 @@ def test_reducer_manager(image_paths):
     assert len(old_points) > 0
     assert len(old_points[0]) == 3
 
-    # breakpoint()
     new_points = mgr.reduce(fit_features=features, features=features, name="PCA", dims=3)
     assert id(old_points) == id(new_points)
 
@@ -114,8 +119,8 @@ def test_reducer_manager(image_paths):
     assert id(old_points) != id(new_points_2d)
 
 
-@pytest.mark.slow
-def test_features_extractor_benchmark(image_paths):
+@pytest.mark.benchmark
+def test_features_extractor_benchmark(image_paths_external):
     repetitions = 3
     sampling = [10, 100]
     batch_size = [1, 8, 16, 32]
@@ -126,13 +131,13 @@ def test_features_extractor_benchmark(image_paths):
 
     # Pre-load images
     manager = images_manager.ImagesManager()
-    for path in image_paths[: max(sampling)]:
+    for path in image_paths_external[: max(sampling)]:
         manager.load_image_for_model(path)
 
     for n, batch_size in setups:
         extractor = embeddings_extractor.EmbeddingsExtractor(manager=manager)
         output = timeit.repeat(
-            stmt=lambda: extractor.extract(image_paths[:n], batch_size=batch_size),
+            stmt=lambda: extractor.extract(image_paths_external[:n], batch_size=batch_size),
             number=repetitions,
             repeat=5,
         )
@@ -141,8 +146,8 @@ def test_features_extractor_benchmark(image_paths):
     print(tabulate(table, headers=["#Samples", "batch_size", "ExecTime(sec)"], tablefmt="github"))
 
 
-@pytest.mark.slow
-def test_reducer_manager_benchmark(image_paths):
+@pytest.mark.benchmark
+def test_reducer_manager_benchmark(image_paths_external):
     setups = [
         ("PCA", 10, True, 100),
         ("PCA", 10, False, 100),
@@ -156,7 +161,7 @@ def test_reducer_manager_benchmark(image_paths):
 
     mgr = dimension_reducers.DimReducerManager()
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths)
+    features = extractor.extract(image_paths_external)
 
     # Short benchmarks cached
     for name, n, cache, iterations in setups:
@@ -172,10 +177,10 @@ def test_reducer_manager_benchmark(image_paths):
         )
 
 
-@pytest.mark.slow
-def test_pca_3d_large(image_paths):
+@pytest.mark.benchmark
+def test_pca_3d_large(image_paths_external):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths)
+    features = extractor.extract(image_paths_external)
     model = dimension_reducers.PCAReducer(3)
     points = model.reduce(features)
     assert len(points) > 0
@@ -184,10 +189,10 @@ def test_pca_3d_large(image_paths):
     print(points)
 
 
-@pytest.mark.slow
-def test_umap_3d_large(image_paths):
+@pytest.mark.benchmark
+def test_umap_3d_large(image_paths_external):
     extractor = embeddings_extractor.EmbeddingsExtractor()
-    features = extractor.extract(image_paths)
+    features = extractor.extract(image_paths_external)
     model = dimension_reducers.UMAPReducer(3)
     points = model.reduce(features)
     assert len(points) > 0

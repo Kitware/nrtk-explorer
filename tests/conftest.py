@@ -4,21 +4,24 @@ import pytest
 
 
 def pytest_addoption(parser):
-    parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
+    parser.addoption(
+        "--benchmark-dataset-file", default=None, help="COCO JSON path for benchmarks"
+    )
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "slow: mark test as slow to run")
+    config.addinivalue_line("markers", "benchmark: mark test as benchmarks")
 
 
 def pytest_collection_modifyitems(config, items):
-    if config.getoption("--runslow"):
+    json_file = config.getoption("--benchmark-dataset-file")
+    if json_file is not None:
         # list test durations
         config.option.verbose = 1
         config.option.durations = 0
-        # --runslow given in cli: do not skip slow tests
-        return
-    skip_slow = pytest.mark.skip(reason="need --runslow option to run")
-    for item in items:
-        if "slow" in item.keywords:
-            item.add_marker(skip_slow)
+
+    else:
+        do_skip = pytest.mark.skip(reason="need --benchmark-dataset-file opt set to run")
+        for item in items:
+            if "benchmark" in item.keywords:
+                item.add_marker(do_skip)

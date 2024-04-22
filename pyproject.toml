@@ -133,7 +133,7 @@ build_command = """
 """
 
 [tool.semantic_release.branches.main]
-match = "(release)"
+match = "(release|test_release)"
 prerelease_token = "rc"
 prerelease = false
 

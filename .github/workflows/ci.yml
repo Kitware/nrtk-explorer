@@ -34,14 +34,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
-      with:
-        node-version: 18
+      with2
+        node-version: 20
+    - name: Install commitlint
+      run: |
+        npm install --save-dev @commitlint/cli
+        npm install --save-dev @commitlint/config-conventional
+    - name: Validate current commit (last commit) with commitlint
+      if: github.event_name == 'push'
+      run: npx commitlint --last --verbose
+    - name: Validate PR commits with commitlint
+      if: github.event_name == 'pull_request'
+      run: npx commitlint --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} --to ${{ github.event.pull_request.head.sha }} --verbose
     - name: Install dependencies
       run: npm install
     - name: Analysing the code with prettier
       run: npm run prettier:check-all
     - name: Analysing the code with eslint
       run: npm run eslint
+
 
   unit_tests:
     needs:
@@ -64,6 +75,7 @@ jobs:
         pip install -e '.[dev]'
     - name: Invoke PyTest
       run: pytest -v .
+
   test_release:
     needs:
       - linters_python

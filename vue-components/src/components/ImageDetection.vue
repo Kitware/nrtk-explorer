@@ -230,8 +230,8 @@ function mouseMove(e: MouseEvent) {
       const item = document.createElement('li')
       if (hit.data != undefined) {
         const annotation = props.annotations[hit.data]
-        const category = props.categories[annotation.category_id]
-        item.textContent = `(${annotation.id}): ${category.name}`
+        const { name } = props.categories[annotation.category_id] ?? { name: 'Unknown' }
+        item.textContent = `(${annotation.id}): ${name}`
         const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
         item.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
         list.appendChild(item)

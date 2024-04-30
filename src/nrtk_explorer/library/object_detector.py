@@ -1,9 +1,7 @@
 import logging
-import operator
 import torch
 import transformers
 
-from functools import reduce
 from typing import Optional
 
 from nrtk_explorer.library import images_manager
@@ -62,17 +60,25 @@ class ObjectDetector:
 
         images: dict = {}
 
-        # Group images by size (shape)
+        # Some models require all the images in a batch to be the same size,
+        # otherwise crash or UB.
         for path in paths:
             img = None
             if content and path in content:
                 img = content[path]
             else:
                 img = self.manager.load_image(path)
+            images.setdefault(img.size, {})[path] = img
 
-            images.setdefault(img.size, []).append(img)
+        def run_group(group):
+            imgs = list(group.values())
+            predictions = self.pipeline(imgs, batch_size=batch_size)
+            # { path -> prediction }
+            paths = group.keys()
+            return {path: pred for path, pred in zip(paths, predictions)}
 
-        # Call by each group
-        predictions = [self.pipeline(group, batch_size=batch_size) for group in images.values()]
-        # Flatten the list of predictions
-        return reduce(operator.iadd, predictions)
+        predictions = [run_group(group) for group in images.values()]
+
+        # match order of input paths arg
+        pathsToPrediction = {path: pred for group in predictions for path, pred in group.items()}
+        return [pathsToPrediction[path] for path in paths]

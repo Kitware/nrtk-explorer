@@ -1,12 +1,14 @@
 import logging
+import operator
 import torch
 import transformers
 
+from functools import reduce
 from typing import Optional
 
 from nrtk_explorer.library import images_manager
 
-Annotations = list[list[dict]]
+Annotations = list[tuple[str, dict]]
 
 
 class ObjectDetector:
@@ -54,7 +56,7 @@ class ObjectDetector:
         content: Optional[dict] = None,
         batch_size: int = 32,
     ) -> Annotations:
-        """Compute object recognition, return it in a dictionary of COCO format"""
+        """Compute object recognition, return it in a list of tuples in the form of [(path, annotations dict in COCO Format)]"""
         if len(paths) == 0:
             return []
 
@@ -68,17 +70,15 @@ class ObjectDetector:
                 img = content[path]
             else:
                 img = self.manager.load_image(path)
-            images.setdefault(img.size, {})[path] = img
 
-        def run_group(group):
-            imgs = list(group.values())
-            predictions = self.pipeline(imgs, batch_size=batch_size)
-            # { path -> prediction }
-            paths = group.keys()
-            return {path: pred for path, pred in zip(paths, predictions)}
+            images.setdefault(img.size, [[], []])
+            images[img.size][0].append(path)
+            images[img.size][1].append(img)
 
-        predictions = [run_group(group) for group in images.values()]
-
-        # match order of input paths arg
-        pathsToPrediction = {path: pred for group in predictions for path, pred in group.items()}
-        return [pathsToPrediction[path] for path in paths]
+        # Call by each group
+        predictions = [
+            list(zip(group[0], self.pipeline(group[1], batch_size=batch_size)))
+            for group in images.values()
+        ]
+        # Flatten the list of predictions
+        return reduce(operator.iadd, predictions)

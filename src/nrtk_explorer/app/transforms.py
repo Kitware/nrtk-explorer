@@ -157,9 +157,9 @@ class TransformsApp(Applet):
         for id_ in ids:
             self.context["annotations"][id_] = []
 
-        prediction = self.detector.eval(paths=ids, content=self.context.image_objects)
+        predictions = self.detector.eval(paths=ids, content=self.context.image_objects)
 
-        for id_, annotations in zip(ids, prediction):
+        for id_, annotations in predictions:
             image_annotations = self.context["annotations"].setdefault(id_, [])
             for prediction in annotations:
                 category_id = 0

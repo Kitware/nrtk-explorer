@@ -1,15 +1,13 @@
 from typing import Any, Optional, Dict, Tuple
 
-from PIL.Image import Image
-
-from nrtk_explorer.library.transforms import ImageTransform, ParameterDescription
-
-from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
-from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
-import pybsm
-
 import numpy as np
 from PIL import Image as ImageModule
+from PIL.Image import Image
+from pybsm.otf import darkCurrentFromDensity
+from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
+from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
+
+from nrtk_explorer.library.transforms import ImageTransform, ParameterDescription
 
 
 class NrtkGaussianBlurTransform(ImageTransform):
@@ -48,7 +46,8 @@ class NrtkGaussianBlurTransform(ImageTransform):
 
 
 # Taken from the nrtk package tests
-def createSampleSensorandScenario() -> Tuple[PybsmSensor, PybsmScenario]:
+# https://github.com/Kitware/nrtk/blob/main/tests/impls/perturb_image/pybsm/test_pybsm_pertuber.py#L21
+def createSampleSensorAndScenario() -> Tuple[PybsmSensor, PybsmScenario]:
 
     name = "L32511x"
 
@@ -76,7 +75,7 @@ def createSampleSensorandScenario() -> Tuple[PybsmSensor, PybsmScenario]:
     intTime = 30.0e-3
 
     # dark current density of 1 nA/cm2 guess, guess mid range for a silicon camera
-    darkCurrent = pybsm.darkCurrentFromDensity(1e-5, wx, wy)
+    darkCurrent = darkCurrentFromDensity(1e-5, wx, wy)
 
     # rms read noise (rms electrons)
     readNoise = 25.0
@@ -144,7 +143,7 @@ def createSampleSensorandScenario() -> Tuple[PybsmSensor, PybsmScenario]:
 class NrtkPybsmTransform(ImageTransform):
     def __init__(self, perturber: Optional[PybsmPerturber] = None):
         if perturber is None:
-            sensor, scenario = createSampleSensorandScenario()
+            sensor, scenario = createSampleSensorAndScenario()
             perturber = PybsmPerturber(sensor=sensor, scenario=scenario)
 
         self._perturber: PybsmPerturber = perturber
@@ -158,7 +157,6 @@ class NrtkPybsmTransform(ImageTransform):
     def set_parameters(self, params: Dict[str, Any]):
         self._perturber.sensor.D = params["D"]
         self._perturber.sensor.f = params["f"]
-        self._perturber.metrics = pybsm.niirs(self._perturber.sensor, self._perturber.scenario)
 
     def get_parameters_description(self) -> Dict[str, ParameterDescription]:
         aperture_description: ParameterDescription = {

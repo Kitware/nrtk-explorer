@@ -2,7 +2,7 @@ from trame.widgets import quasar
 from trame.widgets import html
 
 
-def collapsible_card(collapse_key):
+def card(collapse_key):
     with quasar.QCard():
         with quasar.QCardSection():
             with html.Div(classes="row items-center no-wrap"):

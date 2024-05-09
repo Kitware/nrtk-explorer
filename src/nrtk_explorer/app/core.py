@@ -67,8 +67,6 @@ class Engine(Applet):
         self.context["images_manager"] = images_manager.ImagesManager()
         self.context["annotations"] = {}
 
-        self._ui = None
-
         self.state.collapse_dataset = False
         self.state.collapse_embeddings = False
         self.state.collapse_filter = False
@@ -115,7 +113,7 @@ class Engine(Applet):
         self.state.trame__title = "nrtk_explorer"
 
         # Bind instance methods to controller
-        self.ctrl.on_server_reload = self.ui
+        self.ctrl.on_server_reload = self._build_ui
         self.ctrl.add("on_server_ready")(self.on_server_ready)
 
         self.state.num_images_max = 0
@@ -124,8 +122,8 @@ class Engine(Applet):
         self.state.random_sampling_disabled = True
         self.state.images_id = []
 
-        # Generate UI
-        self.ui()
+        self._build_ui()
+
         self.context.images_manager = images_manager.ImagesManager()
 
     def on_server_ready(self, *args, **kwargs):
@@ -203,17 +201,17 @@ class Engine(Applet):
         self.state.annotation_categories = categories
         self.state.images_ids = [img["id"] for img in selected_images]
 
-    def ui(self):
+    def _build_ui(self):
         extra_args = {}
         if self.server.hot_reload:
             ui.reload(ui)
-            extra_args["reload"] = self.ui
+            extra_args["reload"] = self._build_ui
 
-        return ui.build_layout(
-            self.server,
-            self.input_paths,
-            self._embeddings_app,
-            self._filtering_app,
-            self._transforms_app,
+        self.ui = ui.build_layout(
+            server=self.server,
+            dataset_paths=self.input_paths,
+            embeddings_app=self._embeddings_app,
+            filtering_app=self._filtering_app,
+            transforms_app=self._transforms_app,
             **extra_args,
         )

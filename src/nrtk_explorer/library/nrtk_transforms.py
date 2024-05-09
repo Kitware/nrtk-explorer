@@ -158,9 +158,10 @@ class NrtkPybsmTransform(ImageTransform):
     def set_parameters(self, params: Dict[str, Any]):
         self._perturber.sensor.D = params["D"]
         self._perturber.sensor.f = params["f"]
-        self._perturber = PybsmPerturber(
-            sensor=self._perturber.sensor, scenario=self._perturber.scenario
-        )
+        # self._perturber = PybsmPerturber(
+        #     sensor=self._perturber.sensor, scenario=self._perturber.scenario
+        # )
+        self._perturber.metrics = pybsm.niirs(self._perturber.sensor, self._perturber.scenario)
 
     def get_parameters_description(self) -> Dict[str, ParameterDescription]:
         aperture_description: ParameterDescription = {

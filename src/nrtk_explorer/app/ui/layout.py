@@ -119,29 +119,7 @@ def dataset_view(
             embeddings_app.visualization_widget()
 
         with html.Template(v_slot_after=True):
-            with html.Div(classes="row q-col-gutter-md"):
-                with html.Div(classes="col-6"):
-                    with quasar.QCard(flat=True, bordered=True):
-                        with quasar.QCardSection():
-                            html.Span("Original Dataset", classes="text-h5")
-
-                        with quasar.QCardSection():
-                            transforms_app.original_dataset_widget()
-
-                with html.Div(classes="col-6"):
-                    with quasar.QCard(
-                        flat=True,
-                        bordered=False,
-                        style="background-color: #ffcdd2;",
-                    ):
-                        with quasar.QCardSection():
-                            html.Span(
-                                "Transformed Dataset",
-                                classes="text-h5",
-                            )
-
-                        with quasar.QCardSection():
-                            transforms_app.transformed_dataset_widget()
+            transforms_app.dataset_widget()
 
 
 def explorer(

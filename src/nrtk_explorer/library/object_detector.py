@@ -8,7 +8,7 @@ from typing import Optional
 
 from nrtk_explorer.library import images_manager
 
-Annotations = list[tuple[str, dict]]
+Annotations = list[list[tuple[str, dict]]]
 
 
 class ObjectDetector:
@@ -17,12 +17,14 @@ class ObjectDetector:
     def __init__(
         self,
         model_name: str = "facebook/detr-resnet-50",
+        task: Optional[str] = None,
         manager: Optional[images_manager.ImagesManager] = None,
         force_cpu: bool = False,
     ):
         if manager is None:
             manager = images_manager.ImagesManager()
 
+        self.task = task
         self.manager = manager
         self.device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
         self.pipeline = model_name
@@ -46,7 +48,12 @@ class ObjectDetector:
     @pipeline.setter
     def pipeline(self, model_name: str):
         """Set the pipeline for object detection using Hugging Face's transformers library"""
-        self._pipeline = transformers.pipeline(model=model_name, device=self.device)
+        if self.task is None:
+            self._pipeline = transformers.pipeline(model=model_name, device=self.device)
+        else:
+            self._pipeline = transformers.pipeline(
+                model=model_name, device=self.device, task=self.task
+            )
         # Do not display warnings
         transformers.utils.logging.set_verbosity_error()
 
@@ -77,8 +84,21 @@ class ObjectDetector:
 
         # Call by each group
         predictions = [
-            list(zip(group[0], self.pipeline(group[1], batch_size=batch_size)))
+            list(
+                zip(
+                    group[0],
+                    self.pipeline(group[1], batch_size=batch_size),
+                )
+            )
             for group in images.values()
         ]
         # Flatten the list of predictions
-        return reduce(operator.iadd, predictions)
+        predictions = reduce(operator.iadd, predictions)  # type: ignore
+
+        output = list()
+        for path in paths:
+            for prediction in predictions:
+                if prediction[0] == path:
+                    output.append(prediction)
+
+        return output

@@ -75,6 +75,44 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
         with embeddings_actions_slot:
             embeddings_app.compute_ui()
 
+        (annotations_title_slot, annotations_content_slot, _) = ui.card("collapse_annotations")
+
+        with annotations_title_slot:
+            html.Span("Annotations settings", classes="text-h6")
+
+        with annotations_content_slot:
+            quasar.QSelect(
+                label="Object detection Model",
+                v_model=("object_detection_model", "facebook/detr-resnet-50"),
+                options=(
+                    [
+                        {
+                            "label": "facebook/detr-resnet-50",
+                            "value": "facebook/detr-resnet-50",
+                        },
+                    ],
+                ),
+                filled=True,
+                emit_value=True,
+                map_options=True,
+            )
+            quasar.QOptionGroup(
+                v_model=("enabled_model_images", ["transformation"]),
+                options=(
+                    [
+                        {
+                            "label": "Source images",
+                            "value": "source",
+                        },
+                        {
+                            "label": "Transformation images",
+                            "value": "transformation",
+                        },
+                    ],
+                ),
+                type="toggle",
+            )
+
         filter_title_slot, filter_content_slot, filter_actions_slot = ui.card("collapse_filter")
 
         with filter_title_slot:

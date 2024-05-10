@@ -27,13 +27,13 @@ classifiers = [
 ]
 
 dependencies = [
+    "accelerate",
     "nrtk>=0.4.2",
     "numpy",
     "Pillow",
     "scikit-learn==1.5.0",
-    "accelerate",
+    "smqtk_image_io",
     "tabulate",
-    "transformers",
     "timm>=1.0.3",
     "torch",
     "torchvision",
@@ -41,17 +41,17 @@ dependencies = [
     "trame-client>=2.15.0",
     "trame-quasar",
     "trame-server>=2.15.0",
+    "transformers",
     "umap-learn",
-    "tabulate",
 ]
 
 [project.optional-dependencies]
 dev = [
   "black",
   "flake8",
+  "mypy",
   "pytest",
   "tabulate",
-  "mypy",
 ]
 
 package = [

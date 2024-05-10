@@ -3,7 +3,6 @@ from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.app.applet import Applet
-from nrtk_explorer.app.image_meta import update_image_meta
 import nrtk_explorer.test_data
 
 import asyncio
@@ -161,17 +160,6 @@ class EmbeddingsApp(Applet):
                 features=transformation_features,
                 **args,
             )
-
-        for index, image_id in enumerate(transformed_image_ids):
-            transform_point = self.state.points_transformations[index]
-            original_image_point_index = self.state.user_selected_points_indices[index]
-            original_point = self.state.points_sources[original_image_point_index]
-            distance = sum(
-                (transform_point[i] - original_point[i]) ** 2 for i in range(len(original_point))
-            )
-            distance = distance**0.5
-            dataset_id = image_id.split("_")[-1]
-            update_image_meta(self.state, dataset_id, {"distance": distance})
 
     def set_on_select(self, fn):
         self._on_select_fn = fn

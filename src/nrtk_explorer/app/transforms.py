@@ -86,6 +86,15 @@ class TransformsApp(Applet):
 
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
+        # Image types to display per image in ImageList
+        self.state.image_kinds = [
+            {"image_id_key": "source_image_ids", "kind": "Original", "is_transformation": False},
+            {
+                "image_id_key": "transformed_image_ids",
+                "kind": "Transformed",
+                "is_transformation": True,
+            },
+        ]
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
@@ -343,13 +352,8 @@ class TransformsApp(Applet):
         with html.Div(trame_server=self.server):
             self._parameters_app.transform_apply_ui()
 
-    def original_dataset_widget(self):
-        with html.Div(trame_server=self.server):
-            ui.image_list_component("source_image_ids", self.on_hover)
-
-    def transformed_dataset_widget(self):
-        with html.Div(trame_server=self.server):
-            ui.image_list_component("transformed_image_ids", self.on_hover, is_transformation=True)
+    def dataset_widget(self):
+        ui.ImageList(self.on_hover)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property
@@ -400,18 +404,7 @@ class TransformsApp(Applet):
                                 self.settings_widget()
                                 self.apply_ui()
 
-                            with html.Div(classes="col-5 q-pa-md"):
-                                with html.Div(classes="row"):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self.original_dataset_widget()
-
-                            with html.Div(
-                                classes="col-5 q-pa-md",
-                                style="background-color: #ffcdcd;",
-                            ):
-                                with html.Div(classes="row"):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self.transformed_dataset_widget()
+                            self.dataset_widget()
 
                 self._ui = layout
         return self._ui

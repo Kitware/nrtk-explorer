@@ -36,7 +36,7 @@ class ImageTable(html.Div):
                         { name: 'id', label: 'ID', field: 'id', sortable: true },
                         { name: 'original', label: 'Original Image', field: 'original' },
                         { name: 'transformed', label: 'Transformed Image', field: 'transformed' },
-                        { name: 'distance', label: 'Transformed Embedding Distance', field: 'distance', sortable: true },
+                        { name: 'distance', label: 'Annotations similarity score', field: 'distance', sortable: true },
                         { name: 'width', label: 'Width', field: 'width', sortable: true },
                         { name: 'height', label: 'Height', field: 'height', sortable: true },
                     ]""",

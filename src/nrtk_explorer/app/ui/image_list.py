@@ -18,19 +18,14 @@ class ImageList(html.Div):
                         with html.Div(v_for=("set in image_kinds",), classes="col-6 q-pa-sm"):
                             html.Div("{{set.kind}}", classes="text-caption text-center")
                             ImageDetection(
-                                identifier=(
-                                    "get(set.image_id_key).value[idx].match(/\d+/)[0]",  # noqa: W605
-                                ),
+                                identifier=("get(set.image_id_key).value[idx]",),
                                 src=("get(get(set.image_id_key).value[idx]).value",),
                                 meta=("get(`${get(set.image_id_key).value[idx]}_meta`).value",),
                                 annotations=(
                                     "get(`${get(set.image_id_key).value[idx]}_result`).value",
                                 ),
                                 categories=("annotation_categories",),
-                                selected=(
-                                    "(get(set.image_id_key).value[idx].match(/\d+/)[0] == hovered_id)",  # noqa: W605
-                                ),
-                                isTransformation=("set.is_transformation",),
+                                selected=("(get(set.image_id_key).value[idx] == hovered_id)",),
                                 hover=(hover_fn, "[$event]"),
                             )
             html.Div(

@@ -144,7 +144,8 @@ class TransformsApp(Applet):
             self.state[transformed_image_id] = images_manager.convert_to_base64(transformed_img)
             self.state[transformed_meta_id] = self.state[meta_id]
 
-            self.state.hovered_id = -1
+        if len(self.state.source_image_ids) > 0:
+            self.state.hovered_id = ""
 
         self.state.transformed_image_ids = transformed_image_ids
         self.compute_annotations(transformed_image_ids)
@@ -222,9 +223,11 @@ class TransformsApp(Applet):
                 "width": image_metadata["width"],
                 "height": image_metadata["height"],
             }
-            self.state.hovered_id = -1
 
             self.context.image_objects[image_id] = img
+
+        if len(selected_ids) > 0:
+            self.state.hovered_id = ""
 
         self.state.source_image_ids = source_image_ids
         self.compute_annotations(source_image_ids)
@@ -308,18 +311,17 @@ class TransformsApp(Applet):
             result_id = image_id_to_result(image_id)
             self.state[result_id] = self.context["annotations"].get(image_id, [])
 
-    def on_image_hovered(self, index):
-        self.state.hovered_id = index
+    def on_image_hovered(self, id):
+        self.state.hovered_id = id
 
     def set_on_hover(self, fn):
         self._on_hover_fn = fn
 
     def on_hover(self, hover_event):
-        id_ = int(hover_event["id"])
-        is_transformation = bool(hover_event["isTransformation"])
+        id_ = hover_event["id"]
         self.on_image_hovered(id_)
         if self._on_hover_fn:
-            self._on_hover_fn(id_, is_transformation)
+            self._on_hover_fn(id_)
 
     def settings_widget(self):
         with html.Div(trame_server=self.server):

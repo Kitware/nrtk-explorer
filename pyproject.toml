@@ -1,6 +1,6 @@
 [project]
 name="nrtk-explorer"
-version="0.1.2"
+version="0.2.0"
 description="Model Visualizer"
 authors = [
   {name = "Alessandro Genova", email = "alessandro.genova@kitware.com"},
@@ -128,7 +128,7 @@ build_command = """
   python -m venv .venv
   source .venv/bin/activate
   pip install -U pip
-  python -m pip install build<0.10.0 python-semantic-release setuptools wheel
+  python -m pip install "build<0.10.0" python-semantic-release setuptools wheel
   python -m build .
 """
 

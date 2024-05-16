@@ -2,6 +2,110 @@
 
 
 
+## v0.2.0 (2024-05-16)
+
+### Ci
+
+* ci: fixture in semantic release script ([`5ce57e5`](https://github.com/Kitware/nrtk-explorer/commit/5ce57e57b18eb0c77677dc61694d6a3f52588c9e))
+
+### Feature
+
+* feat: support hot-reload for ui
+
+If starting app with `nrtk_explorer --hot-reload`,
+then a button appears in the upper right to reload
+the ui modules and re-run Engine.ui method. ([`42ae90d`](https://github.com/Kitware/nrtk-explorer/commit/42ae90d33325b2251a8d7585776ee6ebc129c6db))
+
+### Fix
+
+* fix(nrtk_transforms): support new nrtk PybsmPerturber api
+
+(cherry picked from commit efaf36a602b3383ab7a7374ec698b49a6e80d5b9) ([`edea3f8`](https://github.com/Kitware/nrtk-explorer/commit/edea3f83206799c2db8536c8a4038bcc89234ca3))
+
+* fix: change object_detector output
+
+(cherry picked from commit 633e5f46b22eaf594f3eab657b124f75386fff45) ([`fec5df0`](https://github.com/Kitware/nrtk-explorer/commit/fec5df0712d4743498d1f62fd56f46d94feaa22f))
+
+* fix(ImageDetection): fallback to Unknown name when uncatagorized
+
+Horse drawn trolly thing has category ID of 0.
+
+(cherry picked from commit f12cd7b2432b2b7fa957602e8dc34196bb183643) ([`75a236f`](https://github.com/Kitware/nrtk-explorer/commit/75a236f5b8309e1ab0839c50ba89eead09a5a6a7))
+
+* fix(object_detector): maintain input paths order of output predictions
+
+Caused annotations to be overlaid on the wrong
+images in image list view.
+
+(cherry picked from commit fcc8f0a278acf9cd8837185b8f046c75c315246a) ([`1b2fdb3`](https://github.com/Kitware/nrtk-explorer/commit/1b2fdb3615063be6e92a548ec0a6ab27751a001d))
+
+* fix(benchmarks): allow using a external COCO ds
+
+(cherry picked from commit 34b2fdbeff7b724c542ac053d4d19fca6114939c) ([`3e7e56e`](https://github.com/Kitware/nrtk-explorer/commit/3e7e56ed3f53e0baf2649336844e669f4213bcf8))
+
+* fix(nrtk-explorer): multi platform paths
+
+(cherry picked from commit 0131172a2480a3e75bdb353741561e31d1625bcd) ([`cc631d7`](https://github.com/Kitware/nrtk-explorer/commit/cc631d718476286a19222debc0382295e54885a2))
+
+* fix(nrtk_transforms): support new nrtk PybsmPerturber api ([`efaf36a`](https://github.com/Kitware/nrtk-explorer/commit/efaf36a602b3383ab7a7374ec698b49a6e80d5b9))
+
+* fix: change object_detector output ([`633e5f4`](https://github.com/Kitware/nrtk-explorer/commit/633e5f46b22eaf594f3eab657b124f75386fff45))
+
+* fix(ImageDetection): fallback to Unknown name when uncatagorized
+
+Horse drawn trolly thing has category ID of 0. ([`f12cd7b`](https://github.com/Kitware/nrtk-explorer/commit/f12cd7b2432b2b7fa957602e8dc34196bb183643))
+
+* fix(object_detector): maintain input paths order of output predictions
+
+Caused annotations to be overlaid on the wrong
+images in image list view. ([`fcc8f0a`](https://github.com/Kitware/nrtk-explorer/commit/fcc8f0a278acf9cd8837185b8f046c75c315246a))
+
+* fix(benchmarks): allow using a external COCO ds ([`34b2fdb`](https://github.com/Kitware/nrtk-explorer/commit/34b2fdbeff7b724c542ac053d4d19fca6114939c))
+
+* fix(nrtk-explorer): multi platform paths ([`0131172`](https://github.com/Kitware/nrtk-explorer/commit/0131172a2480a3e75bdb353741561e31d1625bcd))
+
+### Refactor
+
+* refactor(layout): factor out sections to functions ([`dfa9a85`](https://github.com/Kitware/nrtk-explorer/commit/dfa9a857675766fae6fdb66d3b4d68346607dea9))
+
+### Unknown
+
+* Merge main to release ([`e32828d`](https://github.com/Kitware/nrtk-explorer/commit/e32828d8011151e63093864411b037488275fa21))
+
+* Bump ubelt from 1.3.4 to 1.3.5
+
+Bumps [ubelt](https://github.com/Erotemic/ubelt) from 1.3.4 to 1.3.5.
+- [Release notes](https://github.com/Erotemic/ubelt/releases)
+- [Changelog](https://github.com/Erotemic/ubelt/blob/main/CHANGELOG.md)
+- [Commits](https://github.com/Erotemic/ubelt/compare/v1.3.4...v1.3.5)
+
+---
+updated-dependencies:
+- dependency-name: ubelt
+  dependency-type: direct:production
+  update-type: version-update:semver-patch
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`87a292d`](https://github.com/Kitware/nrtk-explorer/commit/87a292df21262e9f1f723a5a9be82d3fa3f89acc))
+
+* Bump scikit-learn from 1.4.1.post1 to 1.4.2
+
+Bumps [scikit-learn](https://github.com/scikit-learn/scikit-learn) from 1.4.1.post1 to 1.4.2.
+- [Release notes](https://github.com/scikit-learn/scikit-learn/releases)
+- [Commits](https://github.com/scikit-learn/scikit-learn/compare/1.4.1.post1...1.4.2)
+
+---
+updated-dependencies:
+- dependency-name: scikit-learn
+  dependency-type: direct:production
+  update-type: version-update:semver-patch
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`a8a4862`](https://github.com/Kitware/nrtk-explorer/commit/a8a4862075cc57dc891ef40e6d46f9fbac29a267))
+
+* Auto-merge release back to main ([`12ea17d`](https://github.com/Kitware/nrtk-explorer/commit/12ea17d04d5790f9b5abea53684b34d2faab8b46))
+
+
 ## v0.1.2 (2024-04-19)
 
 ### Fix

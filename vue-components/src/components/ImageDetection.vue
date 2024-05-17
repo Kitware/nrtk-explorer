@@ -202,22 +202,20 @@ const borderSize = computed(() => (props.selected ? '2' : '0'))
 </script>
 
 <template>
-  <div
-    :style="{ outlineWidth: borderSize + 'px' }"
-    style="
-      width: 100%;
-      position: relative;
-      white-space: pre;
-      font-size: small;
-      outline-style: dotted;
-      outline-color: red;
-    "
-  >
+  <div style="width: 100%; position: relative; white-space: pre; font-size: small">
     <img
       :src="src"
       ref="img"
       @load="onImageLoad"
-      style="width: 100%; position: relative; left: 0; top: 0"
+      :style="{ outlineWidth: borderSize + 'px' }"
+      style="
+        width: 100%;
+        position: relative;
+        left: 0;
+        top: 0;
+        outline-style: dotted;
+        outline-color: red;
+      "
     />
     <canvas ref="visibleCanvas" style="width: 100%; position: absolute; left: 0; top: 0"></canvas>
     <div

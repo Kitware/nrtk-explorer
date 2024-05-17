@@ -4,12 +4,6 @@ export type Vector4<T> = [T, T, T, T]
 export type Vector5<T> = [T, T, T, T, T]
 export type Vector6<T> = [T, T, T, T, T, T]
 
-export type ImageMetadata = {
-  id: number
-  width: number
-  height: number
-}
-
 export type Annotation = {
   id: number
   category_id: number

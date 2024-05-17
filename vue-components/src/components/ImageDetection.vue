@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, toRefs } from 'vue'
+import { ref, watchEffect, computed } from 'vue'
 
 import { Quadtree, Rectangle } from '@timohausmann/quadtree-ts'
 
-import type { Annotation, ImageMetadata, Category, Vector3 } from '../types'
+import type { Annotation, Category, Vector3 } from '../types'
 
 const CATEGORY_COLORS: Vector3<number>[] = [
   [255, 0, 0],
@@ -17,52 +17,12 @@ const CATEGORY_COLORS: Vector3<number>[] = [
 interface Props {
   identifier: string
   src: string
-  meta: ImageMetadata
   annotations: Annotation[]
   categories: { [key: number]: Category }
   selected: boolean
 }
 
-interface HoverEvent {
-  id: string
-}
-
-type Events = {
-  hover: [HoverEvent]
-}
-
-const emit = defineEmits<Events>()
-
 let annotationsTree: Quadtree<Rectangle<number>> | undefined = undefined
-
-function drawAnnotations(
-  canvas: HTMLCanvasElement | undefined,
-  meta: ImageMetadata,
-  annotations: Annotation[]
-) {
-  if (!canvas) {
-    return
-  }
-
-  canvas.width = meta.width
-  canvas.height = meta.height
-
-  const ctx = canvas.getContext('2d')
-
-  if (!ctx) {
-    return
-  }
-
-  const opacity = 0.5
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-  annotations.forEach((annotation) => {
-    const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
-    ctx.fillStyle = `rgba(${[...color, opacity].join(',')})`
-
-    ctx.fillRect(annotation.bbox[0], annotation.bbox[1], annotation.bbox[2], annotation.bbox[3])
-  })
-}
 
 function doRectanglesOverlap(recA: Rectangle<any>, recB: Rectangle<any>) {
   const noHOverlap: boolean = recB.x >= recA.x + recA.width || recA.x >= recB.x + recB.width
@@ -76,26 +36,58 @@ function doRectanglesOverlap(recA: Rectangle<any>, recB: Rectangle<any>) {
   return !noVOverlap
 }
 
-function drawPickingAnnotations(
-  canvas: HTMLCanvasElement | undefined,
-  meta: ImageMetadata,
-  annotations: Annotation[]
-) {
-  annotationsTree = undefined
+const props = defineProps<Props>()
 
+const visibleCanvas = ref<HTMLCanvasElement>()
+const pickingCanvas = ref<HTMLCanvasElement>()
+const labelContainer = ref<HTMLDivElement>()
+
+const showLabelContainer = ref(false)
+
+const imageSize = ref({ width: 0, height: 0 })
+const img = ref<HTMLImageElement>()
+const onImageLoad = () => {
+  imageSize.value = { width: img.value?.naturalWidth ?? 0, height: img.value?.naturalHeight ?? 0 }
+}
+
+// draw visible annotations
+watchEffect(() => {
+  const canvas = visibleCanvas.value
   if (!canvas) {
     return
   }
-
-  canvas.width = meta.width
-  canvas.height = meta.height
-
   const ctx = canvas.getContext('2d')
-
   if (!ctx) {
+    console.error('Could not get 2d context')
     return
   }
 
+  canvas.width = imageSize.value.width
+  canvas.height = imageSize.value.height
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  const opacity = 0.5
+  props.annotations.forEach((annotation) => {
+    const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
+    ctx.fillStyle = `rgba(${[...color, opacity].join(',')})`
+    ctx.fillRect(annotation.bbox[0], annotation.bbox[1], annotation.bbox[2], annotation.bbox[3])
+  })
+})
+
+// draw picking annotations
+watchEffect(() => {
+  const canvas = pickingCanvas.value
+  if (!canvas) {
+    return
+  }
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    console.error('Could not get 2d context')
+    return
+  }
+
+  canvas.width = imageSize.value.width
+  canvas.height = imageSize.value.height
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   annotationsTree = new Quadtree({
@@ -105,7 +97,7 @@ function drawPickingAnnotations(
     maxObjects: 10
   })
 
-  annotations.forEach((annotation, i) => {
+  props.annotations.forEach((annotation, i) => {
     const treeNode = new Rectangle<number>({
       x: annotation.bbox[0],
       y: annotation.bbox[1],
@@ -113,55 +105,30 @@ function drawPickingAnnotations(
       height: annotation.bbox[3],
       data: i
     })
-
     annotationsTree?.insert(treeNode)
-
     ctx.fillStyle = `rgb(255, 0, 0)`
-
     ctx.fillRect(annotation.bbox[0], annotation.bbox[1], annotation.bbox[2], annotation.bbox[3])
   })
+})
+
+interface HoverEvent {
+  id: string
 }
 
-const props = defineProps<Props>()
+type Events = {
+  hover: [HoverEvent]
+}
 
-const canvas = ref<HTMLCanvasElement>()
-const pickingCanvas = ref<HTMLCanvasElement>()
-const labelContainer = ref<HTMLDivElement>()
+const emit = defineEmits<Events>()
 
-const showLabelContainer = ref(false)
+function mouseEnter() {
+  emit('hover', { id: props.identifier })
+}
 
-watch(
-  () => props.meta,
-  function (newValue) {
-    drawAnnotations(canvas.value, newValue, props.annotations)
-    drawPickingAnnotations(pickingCanvas.value, newValue, props.annotations)
-  }
-)
-
-watch(
-  () => props.annotations,
-  function (newValue) {
-    drawAnnotations(canvas.value, props.meta, newValue)
-    drawPickingAnnotations(pickingCanvas.value, props.meta, newValue)
-  }
-)
-
-watch(
-  () => props.selected,
-  function (newValue) {
-    if (newValue) {
-      borderSize.value = '2'
-    } else {
-      borderSize.value = '0'
-    }
-  }
-)
-
-onMounted(() => {
-  drawAnnotations(canvas.value, props.meta, props.annotations)
-  drawPickingAnnotations(pickingCanvas.value, props.meta, props.annotations)
-  borderSize.value = '0'
-})
+function mouseLeave() {
+  showLabelContainer.value = false
+  emit('hover', { id: '' })
+}
 
 function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement): [number, number] {
   const canvasBounds = canvas.getBoundingClientRect()
@@ -172,14 +139,10 @@ function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement): [numbe
   return [pixelX, pixelY]
 }
 
-function mouseEnter() {
-  emit('hover', { id: props.identifier })
-}
-
 function mouseMove(e: MouseEvent) {
   if (
-    !canvas.value ||
     !pickingCanvas.value ||
+    pickingCanvas.value.width === 0 ||
     !labelContainer.value ||
     !annotationsTree ||
     !props.categories ||
@@ -188,7 +151,7 @@ function mouseMove(e: MouseEvent) {
     return
   }
 
-  const [pixelX, pixelY] = displayToPixel(e.clientX, e.clientY, canvas.value)
+  const [pixelX, pixelY] = displayToPixel(e.clientX, e.clientY, pickingCanvas.value)
 
   const ctx = pickingCanvas.value.getContext('2d')
 
@@ -235,13 +198,7 @@ function mouseMove(e: MouseEvent) {
   }
 }
 
-function mouseLeave() {
-  showLabelContainer.value = false
-  emit('hover', { id: '' })
-}
-
-const borderSize = ref('0')
-const { src } = toRefs(props)
+const borderSize = computed(() => (props.selected ? '2' : '0'))
 </script>
 
 <template>
@@ -256,13 +213,13 @@ const { src } = toRefs(props)
       outline-color: red;
     "
   >
-    <img :src="src" style="width: 100%; position: relative; left: 0; top: 0" />
-    <canvas
-      ref="canvas"
-      width="100"
-      height="100"
-      style="width: 100%; position: absolute; left: 0; top: 0"
-    ></canvas>
+    <img
+      :src="src"
+      ref="img"
+      @load="onImageLoad"
+      style="width: 100%; position: relative; left: 0; top: 0"
+    />
+    <canvas ref="visibleCanvas" style="width: 100%; position: absolute; left: 0; top: 0"></canvas>
     <div
       v-show="showLabelContainer"
       ref="labelContainer"
@@ -280,8 +237,6 @@ const { src } = toRefs(props)
     ></div>
     <canvas
       ref="pickingCanvas"
-      width="100"
-      height="100"
       style="opacity: 0; width: 100%; position: absolute; left: 0; top: 0"
       @mouseenter="mouseEnter"
       @mousemove="mouseMove"

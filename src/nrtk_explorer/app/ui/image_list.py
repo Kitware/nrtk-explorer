@@ -26,7 +26,6 @@ class ImageList(html.Div):
                                 ImageDetection(
                                     identifier=("image_id",),
                                     src=("get(image_id).value",),
-                                    meta=(r"get(`${image_id}_meta`).value",),
                                     annotations=(r"get(`${image_id}_result`).value",),
                                     categories=("annotation_categories",),
                                     selected=("(image_id == hovered_id)",),

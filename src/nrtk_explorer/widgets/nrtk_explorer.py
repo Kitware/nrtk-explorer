@@ -18,7 +18,6 @@ class ImageDetection(HtmlElement):
         self._attr_names += [
             "identifier",
             "src",
-            "meta",
             "annotations",
             "categories",
             "selected",

@@ -35,14 +35,6 @@ DEFAULT_DATASETS = [
 ]
 
 
-def image_id_to_meta(image_id):
-    return f"{image_id}_meta"
-
-
-def image_id_to_result(image_id):
-    return f"{image_id}_result"
-
-
 # ---------------------------------------------------------
 # Engine class
 # ---------------------------------------------------------

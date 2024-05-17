@@ -4,11 +4,12 @@ Define your classes and create the instances that you need to expose
 
 import logging
 from typing import Dict
+import asyncio
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
-from trame.app import get_server
+from trame.app import get_server, asynchronous
 
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
@@ -188,9 +189,12 @@ class TransformsApp(Applet):
         with open(self.state.current_dataset) as f:
             dataset = json.load(f)
         ids = [img["id"] for img in dataset["images"]]
-        return self.on_selected_images_change(ids[:current_num_elements])
+        return self.set_source_images(ids[:current_num_elements])
 
-    def on_selected_images_change(self, selected_ids):
+    async def _set_source_images(self, selected_ids):
+        # We need to yield twice for the loading_images=True to commit to the trame state
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
         source_image_ids = []
 
         current_dir = os.path.dirname(self.state.current_dataset)
@@ -229,6 +233,18 @@ class TransformsApp(Applet):
         self.compute_annotations(source_image_ids)
         self.update_model_result(self.state.source_image_ids, self.state.feature_extraction_model)
         self.on_apply_transform()
+
+        with self.state:
+            self.state.loading_images = False
+
+    def set_source_images(self, selected_ids):
+        if len(selected_ids):
+            self.state.loading_images = True
+        if hasattr(self, "_set_source_images_task"):
+            self._set_source_images_task.cancel()
+        self._set_source_images_task = asynchronous.create_task(
+            self._set_source_images(selected_ids)
+        )
 
     def reset_data(self):
         source_image_ids = self.state.source_image_ids

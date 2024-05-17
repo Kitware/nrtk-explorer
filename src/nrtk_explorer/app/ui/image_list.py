@@ -33,7 +33,11 @@ class ImageList(html.Div):
                                 )
             html.Div(
                 "No images selected",
-                v_else=True,
+                v_if="get(image_kinds[0].image_ids_list).value.length === 0 && !loading_images",
                 classes="text-h5 col-12 row flex-center",
                 style="height: 100%",
+            )
+            quasar.QInnerLoading(
+                showing=("loading_images", False),
+                label="Loading, transforming, and annotating images...",
             )

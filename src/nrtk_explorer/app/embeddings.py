@@ -165,9 +165,20 @@ class EmbeddingsApp(Applet):
         self._on_select_fn = fn
 
     def on_select(self, indices):
-        self.state.user_selected_points_indices = indices
+        # remap transformed indices to original indices
+        original_indices = set()
+        for point_index in indices:
+            original_image_point_index = point_index
+            if point_index >= len(self.state.points_sources):
+                original_image_point_index = self.state.user_selected_points_indices[
+                    point_index - len(self.state.points_sources)
+                ]
+            original_indices.add(original_image_point_index)
+        original_indices = list(original_indices)
+
+        self.state.user_selected_points_indices = original_indices
         self.state.points_transformations = []
-        ids = [self.state.images_ids[i] for i in indices]
+        ids = [self.state.images_ids[i] for i in original_indices]
         if self._on_select_fn:
             self._on_select_fn(ids)
 

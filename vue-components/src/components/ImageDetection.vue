@@ -198,7 +198,7 @@ function mouseMove(e: MouseEvent) {
   }
 }
 
-const borderSize = computed(() => (props.selected ? '2' : '0'))
+const borderSize = computed(() => (props.selected ? '4' : '0'))
 </script>
 
 <template>

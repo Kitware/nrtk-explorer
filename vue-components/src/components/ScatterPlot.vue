@@ -87,11 +87,7 @@ onMounted(() => {
       emit('hover', index)
     },
     onSelect(indices) {
-      onPanModeClick()
-      indices = indices.filter((index) => index < props.points.length)
-      if (scatterPlot) {
-        scatterPlot.setSequences([])
-      }
+      scatterPlot!.setSequences([])
       emit('select', indices)
     }
   })

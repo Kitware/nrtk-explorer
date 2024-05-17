@@ -86,10 +86,10 @@ class TransformsApp(Applet):
 
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
-        # Image kinds (Original, Transformed, ...) to display per image in ImageList
+        # Image kinds (Original, Transformed, ...) to display per dataset image in ImageList
         self.state.image_kinds = [
-            {"image_id_key": "source_image_ids", "readable": "Original"},
-            {"image_id_key": "transformed_image_ids", "readable": "Transformed"},
+            {"image_ids_list": "source_image_ids", "readable": "Original"},
+            {"image_ids_list": "transformed_image_ids", "readable": "Transformed"},
         ]
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]

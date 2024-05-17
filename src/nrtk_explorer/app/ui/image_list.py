@@ -10,17 +10,17 @@ class ImageList(html.Div):
             with html.Div(
                 # For each original image, show all kinds of images.
                 # Assume equal number of images in each image kind array.
-                v_for=("id, idx in get(image_kinds[0].image_id_key).value",),
+                v_for=("id, idx in get(image_kinds[0].image_ids_list).value",),
                 key="id",
                 classes="col-xs-12 col-sm-6 col-md-4 col-xl-3 q-pa-xs",
-                v_if="get(image_kinds[0].image_id_key).value.length > 0",
+                v_if="get(image_kinds[0].image_ids_list).value.length > 0",
             ):
                 with quasar.QCard(flat=True, bordered=True):
                     with html.Div(classes="row"):
                         with html.Div(v_for=("kind in image_kinds",), classes="col-6 q-pa-sm"):
                             with client.Getter(
                                 key_name="image_id",
-                                name=("get(kind.image_id_key).value[idx]",),
+                                name=("get(kind.image_ids_list).value[idx]",),
                             ):
                                 html.Div("{{kind.readable}}", classes="text-caption text-center")
                                 ImageDetection(

@@ -2,6 +2,25 @@
 
 
 
+## v0.2.1 (2024-05-21)
+
+### Ci
+
+* ci: create_release only in release branch ([`d07bdf4`](https://github.com/Kitware/nrtk-explorer/commit/d07bdf4ad712a8a2936782b1fab8a934858cedd3))
+
+### Fix
+
+* fix: gracefully disable nrtk transform if we have import error ([`05efbcc`](https://github.com/Kitware/nrtk-explorer/commit/05efbccf345d43b02aa86bb6ba978a77a1f65135))
+
+### Unknown
+
+* Update create_release.yaml ([`73f6e97`](https://github.com/Kitware/nrtk-explorer/commit/73f6e9784552588e7e36919bfda72f77df10b324))
+
+* Merge main to release ([`511736c`](https://github.com/Kitware/nrtk-explorer/commit/511736c5cdaea66704001f3a327b744fe844adeb))
+
+* Auto-merge release back to main ([`facc6aa`](https://github.com/Kitware/nrtk-explorer/commit/facc6aafee5b1ff17e178ea7151fb46fec407056))
+
+
 ## v0.2.0 (2024-05-16)
 
 ### Ci

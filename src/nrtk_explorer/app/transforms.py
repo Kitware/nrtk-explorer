@@ -81,9 +81,11 @@ class TransformsApp(Applet):
             "blur": trans.GaussianBlurTransform(),
             "invert": trans.InvertTransform(),
             "downsample": trans.DownSampleTransform(),
-            "nrtk_blur": nrtk_trans.NrtkGaussianBlurTransform(),
-            "nrtk_pybsm": nrtk_trans.NrtkPybsmTransform(),
         }
+
+        if nrtk_trans.nrtk_transforms_available():
+            self._transforms["nrtk_blur"] = nrtk_trans.NrtkGaussianBlurTransform()
+            self._transforms["nrtk_pybsm"] = nrtk_trans.NrtkPybsmTransform()
 
         self._parameters_app._transforms = self._transforms
 

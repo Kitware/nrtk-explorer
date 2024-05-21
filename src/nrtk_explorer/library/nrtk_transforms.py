@@ -1,17 +1,31 @@
-from typing import Any, Optional, Dict, Tuple
+from typing import Any, Dict
 
 import numpy as np
+import logging
 from PIL import Image as ImageModule
 from PIL.Image import Image
-from pybsm.otf import darkCurrentFromDensity
-from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
-from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
-
 from nrtk_explorer.library.transforms import ImageTransform, ParameterDescription
+
+ENABLED_NRTK_TRANSFORMS = True
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+try:
+    from pybsm.otf import darkCurrentFromDensity
+    from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
+    from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
+except ImportError:
+    logger.info("Disabling NRTK transforms due to missing library/failing imports")
+    ENABLED_NRTK_TRANSFORMS = False
+
+
+def nrtk_transforms_available():
+    return ENABLED_NRTK_TRANSFORMS
 
 
 class NrtkGaussianBlurTransform(ImageTransform):
-    def __init__(self, perturber: Optional[GaussianBlurPerturber] = None):
+    def __init__(self, perturber=None):
         if perturber is None:
             perturber = GaussianBlurPerturber()
 
@@ -47,7 +61,7 @@ class NrtkGaussianBlurTransform(ImageTransform):
 
 # Taken from the nrtk package tests
 # https://github.com/Kitware/nrtk/blob/main/tests/impls/perturb_image/pybsm/test_pybsm_pertuber.py#L21
-def createSampleSensorAndScenario() -> Tuple[PybsmSensor, PybsmScenario]:
+def createSampleSensorAndScenario():
 
     name = "L32511x"
 
@@ -141,7 +155,7 @@ def createSampleSensorAndScenario() -> Tuple[PybsmSensor, PybsmScenario]:
 
 
 class NrtkPybsmTransform(ImageTransform):
-    def __init__(self, perturber: Optional[PybsmPerturber] = None):
+    def __init__(self, perturber=None):
         if perturber is None:
             sensor, scenario = createSampleSensorAndScenario()
             perturber = PybsmPerturber(sensor=sensor, scenario=scenario)

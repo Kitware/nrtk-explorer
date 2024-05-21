@@ -7,9 +7,7 @@ on:
 
 jobs:
   release:
-    needs: push_to_release
     runs-on: ubuntu-latest
-    concurrency: release
     environment:
       name: pypi
       url: https://pypi.org/project/nrtk-explorer/

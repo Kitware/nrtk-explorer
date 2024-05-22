@@ -2,6 +2,23 @@
 
 
 
+## v0.2.2 (2024-05-22)
+
+### Chore
+
+* chore: remove unused python module ([`5a9271c`](https://github.com/Kitware/nrtk-explorer/commit/5a9271caeb5a9924cc272780fa3ecb143a26a523))
+
+### Fix
+
+* fix: remove unused libraries and python modules ([`f82b46c`](https://github.com/Kitware/nrtk-explorer/commit/f82b46c2bf7e93e0b11c24bee06c4a415497964b))
+
+### Unknown
+
+* Merge main to release ([`7b2e41e`](https://github.com/Kitware/nrtk-explorer/commit/7b2e41ebc0f282e0f8630052156b0d6e3db036d1))
+
+* Auto-merge release back to main ([`cbb920a`](https://github.com/Kitware/nrtk-explorer/commit/cbb920a5d164f45667556c2fbee935dc917ef457))
+
+
 ## v0.2.1 (2024-05-21)
 
 ### Ci

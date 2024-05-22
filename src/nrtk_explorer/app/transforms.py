@@ -16,11 +16,6 @@ from nrtk_explorer.library import images_manager, object_detector
 from nrtk_explorer.app import ui
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
-from nrtk_explorer.library.ml_models import (
-    ClassificationResNet50,
-    ClassificationAlexNet,
-    ClassificationVgg16,
-)
 import nrtk_explorer.test_data
 
 import json
@@ -66,14 +61,12 @@ class TransformsApp(Applet):
         if self.context["image_objects"] is None:
             self.context["image_objects"] = {}
 
-        self.models = {
-            "ClassificationResNet50": ClassificationResNet50(server),
-            "ClassificationAlexNet": ClassificationAlexNet(server),
-            "ClassificationVgg16": ClassificationVgg16(server),
-        }
-
         self._on_transform_fn = None
-        self.state.models = [k for k in self.models.keys()]
+        self.state.models = [
+            "ClassificationResNet50",
+            "ClassificationAlexNet",
+            "ClassificationVgg16",
+        ]
         self.state.feature_extraction_model = self.state.models[0]
 
         self._transforms: Dict[str, trans.ImageTransform] = {

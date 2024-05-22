@@ -191,10 +191,7 @@ class TransformsApp(Applet):
         ids = [img["id"] for img in dataset["images"]]
         return self.set_source_images(ids[:current_num_elements])
 
-    async def _set_source_images(self, selected_ids):
-        # We need to yield twice for the loading_images=True to commit to the trame state
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+    def _update_images(self, selected_ids):
         source_image_ids = []
 
         current_dir = os.path.dirname(self.state.current_dataset)
@@ -234,6 +231,12 @@ class TransformsApp(Applet):
         self.update_model_result(self.state.source_image_ids, self.state.feature_extraction_model)
         self.on_apply_transform()
 
+    async def _set_source_images(self, selected_ids):
+        # We need to yield twice for the self.state.loading_images=True to
+        # commit to the trame state to show a spinner
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        self._update_images(selected_ids)
         with self.state:
             self.state.loading_images = False
 

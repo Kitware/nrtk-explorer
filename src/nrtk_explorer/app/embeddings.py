@@ -207,12 +207,13 @@ class EmbeddingsApp(Applet):
             self._on_hover_fn(image_id)
 
     def on_image_hovered(self, id_):
-        if id_ == "":
-            self.state.highlighted_point = -1
-            return
         # If the point is in the list of selected points, we set it as the highlighted point
         is_transformation = id_.startswith("transformed_img_")
-        dataset_id = int(id_.split("_")[-1])  # img_123 or transformed_img_123 -> 123
+        try:
+            dataset_id = int(id_.split("_")[-1])  # img_123 or transformed_img_123 -> 123
+        except ValueError:
+            # id_ probably is an empty string
+            dataset_id = id_
         if dataset_id in self.state.images_ids:
             index = self.state.images_ids.index(dataset_id)
             if is_transformation:

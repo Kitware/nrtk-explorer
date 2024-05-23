@@ -71,18 +71,19 @@ class ImageTable(html.Div):
                         { name: 'id', label: 'ID', field: 'id', sortable: true },
                         { name: 'original', label: 'Original Image', field: 'original' },
                         { name: 'transformed', label: 'Transformed Image', field: 'transformed' },
+                        { name: 'distance', label: 'Transformed Embedding Distance', field: 'distance', sortable: true },
                         { name: 'width', label: 'Width', field: 'width', sortable: true },
                         { name: 'height', label: 'Height', field: 'height', sortable: true },
                     ]""",
                 ),
                 rows=(
-                    r"""get(image_kinds[0].image_ids_list).value.map((id) => 
+                    r"""get(image_kinds[0].image_ids_list).value.map((id) =>
                             {
-                                const datasetId = id.split('_').at(-1) 
+                                const datasetId = id.split('_').at(-1)
                                 const meta = get(`${datasetId}_meta`).value
-                                return {  
-                                    id: datasetId, 
-                                    original: id, 
+                                return {
+                                    id: datasetId,
+                                    original: id,
                                     transformed: `transformed_${id}`,
                                     originalAnnotations: get(`${id}_result`).value,
                                     transformedAnnotations: get(`transformed_${id}_result`).value,

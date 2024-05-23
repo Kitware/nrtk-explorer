@@ -76,11 +76,12 @@ class ImageTable(html.Div):
                     ]""",
                 ),
                 rows=(
-                    r"""get(image_kinds[0].image_ids_list).value.map(id => 
+                    r"""get(image_kinds[0].image_ids_list).value.map((id) => 
                             {
-                                const meta = get(`${id}_meta`).value
+                                const datasetId = id.split('_').at(-1) 
+                                const meta = get(`${datasetId}_meta`).value
                                 return {  
-                                    id: id.split('_').at(-1), 
+                                    id: datasetId, 
                                     original: id, 
                                     transformed: `transformed_${id}`,
                                     originalAnnotations: get(`${id}_result`).value,

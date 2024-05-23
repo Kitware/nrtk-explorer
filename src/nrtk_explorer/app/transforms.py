@@ -5,6 +5,7 @@ Define your classes and create the instances that you need to expose
 import logging
 from typing import Dict
 import asyncio
+import functools
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
@@ -17,6 +18,7 @@ from nrtk_explorer.library import images_manager, object_detector
 from nrtk_explorer.app import ui
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
+from nrtk_explorer.app.image_meta import update_image_meta, delete_image_meta
 import nrtk_explorer.test_data
 
 import json
@@ -25,10 +27,6 @@ import os
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def image_id_to_meta(image_id):
-    return f"{image_id}_meta"
 
 
 def image_id_to_result(image_id):
@@ -46,6 +44,8 @@ DATASET_DIRS = [
 class TransformsApp(Applet):
     def __init__(self, server):
         super().__init__(server)
+
+        self.update_image_meta = functools.partial(update_image_meta, self.server.state)
 
         self._parameters_app = ParametersApp(
             server=server,
@@ -129,8 +129,6 @@ class TransformsApp(Applet):
             image = self.context["image_objects"][image_id]
 
             transformed_image_id = f"transformed_{image_id}"
-            meta_id = image_id_to_meta(image_id)
-            transformed_meta_id = image_id_to_meta(transformed_image_id)
 
             transformed_img = transform.execute(image)
 
@@ -139,7 +137,6 @@ class TransformsApp(Applet):
             transformed_image_ids.append(transformed_image_id)
 
             self.state[transformed_image_id] = images_manager.convert_to_base64(transformed_img)
-            self.state[transformed_meta_id] = self.state[meta_id]
 
         if len(self.state.source_image_ids) > 0:
             self.state.hovered_id = ""
@@ -207,7 +204,6 @@ class TransformsApp(Applet):
             image_metadata = dataset["images"][image_index]
 
             image_id = f"img_{image_metadata['id']}"
-            meta_id = image_id_to_meta(image_id)
 
             source_image_ids.append(image_id)
 
@@ -216,10 +212,10 @@ class TransformsApp(Applet):
             img = self.context.images_manager.load_image(image_filename)
 
             self.state[image_id] = images_manager.convert_to_base64(img)
-            self.state[meta_id] = {
-                "width": image_metadata["width"],
-                "height": image_metadata["height"],
-            }
+            self.update_image_meta(
+                image_metadata["id"],
+                {"width": image_metadata["width"], "height": image_metadata["height"]},
+            )
 
             self.context.image_objects[image_id] = img
 
@@ -259,23 +255,18 @@ class TransformsApp(Applet):
 
         for image_id in source_image_ids:
             result_id = image_id_to_result(image_id)
-            meta_id = image_id_to_meta(image_id)
 
             if self.state.has(image_id) and self.state[image_id] is not None:
                 self.state[image_id] = None
 
             if self.state.has(result_id) and self.state[result_id] is not None:
                 self.state[result_id] = None
-
-            if self.state.has(meta_id) and self.state[meta_id] is not None:
-                self.state[meta_id] = None
 
             if image_id in self.context["image_objects"]:
                 del self.context["image_objects"][image_id]
 
         for image_id in transformed_image_ids:
             result_id = image_id_to_result(image_id)
-            meta_id = image_id_to_meta(image_id)
 
             if self.state.has(image_id) and self.state[image_id] is not None:
                 self.state[image_id] = None
@@ -283,11 +274,12 @@ class TransformsApp(Applet):
             if self.state.has(result_id) and self.state[result_id] is not None:
                 self.state[result_id] = None
 
-            if self.state.has(meta_id) and self.state[meta_id] is not None:
-                self.state[meta_id] = None
-
             if image_id in self.context["image_objects"]:
                 del self.context["image_objects"][image_id]
+
+        for image_id in source_image_ids:
+            dataset_id = image_id.split("_")[-1]
+            delete_image_meta(self.server.state, dataset_id)
 
     def on_current_dataset_change(self, current_dataset, **kwargs):
         logger.debug(f"on_current_dataset_change change {self.state}")

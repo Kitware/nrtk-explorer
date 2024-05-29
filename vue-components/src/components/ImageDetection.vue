@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed } from 'vue'
+import { ref, watchEffect, computed, onMounted } from 'vue'
 
 import { Quadtree, Rectangle } from '@timohausmann/quadtree-ts'
 
@@ -13,6 +13,9 @@ const CATEGORY_COLORS: Vector3<number>[] = [
   [255, 0, 255],
   [0, 255, 255]
 ]
+
+const TOOLTIP_OFFSET = [8, 8]
+const SCROLLBAR_WIDTH = 16
 
 interface Props {
   identifier: string
@@ -39,10 +42,12 @@ function doRectanglesOverlap(recA: Rectangle<any>, recB: Rectangle<any>) {
 const props = defineProps<Props>()
 
 const visibleCanvas = ref<HTMLCanvasElement>()
+const visibleCtx = computed(() => visibleCanvas.value?.getContext('2d', { alpha: true }))
 const pickingCanvas = ref<HTMLCanvasElement>()
+const pickingCtx = computed(() =>
+  pickingCanvas.value?.getContext('2d', { willReadFrequently: true })
+)
 const labelContainer = ref<HTMLDivElement>()
-
-const showLabelContainer = ref(false)
 
 const imageSize = ref({ width: 0, height: 0 })
 const img = ref<HTMLImageElement>()
@@ -52,15 +57,11 @@ const onImageLoad = () => {
 
 // draw visible annotations
 watchEffect(() => {
+  if (!visibleCanvas.value || !visibleCtx.value) {
+    return
+  }
   const canvas = visibleCanvas.value
-  if (!canvas) {
-    return
-  }
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    console.error('Could not get 2d context')
-    return
-  }
+  const ctx = visibleCtx.value
 
   canvas.width = imageSize.value.width
   canvas.height = imageSize.value.height
@@ -76,15 +77,11 @@ watchEffect(() => {
 
 // draw picking annotations
 watchEffect(() => {
+  if (!pickingCtx.value || !pickingCanvas.value) {
+    return
+  }
   const canvas = pickingCanvas.value
-  if (!canvas) {
-    return
-  }
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    console.error('Could not get 2d context')
-    return
-  }
+  const ctx = pickingCtx.value
 
   canvas.width = imageSize.value.width
   canvas.height = imageSize.value.height
@@ -121,13 +118,18 @@ type Events = {
 
 const emit = defineEmits<Events>()
 
+function hideLabel() {
+  if (labelContainer.value) labelContainer.value.style.visibility = 'hidden'
+}
+
+onMounted(hideLabel)
+
 function mouseEnter() {
   emit('hover', { id: props.identifier })
 }
-
 function mouseLeave() {
-  showLabelContainer.value = false
   emit('hover', { id: '' })
+  hideLabel()
 }
 
 function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement): [number, number] {
@@ -150,26 +152,14 @@ function mouseMove(e: MouseEvent) {
   ) {
     return
   }
-
-  const [pixelX, pixelY] = displayToPixel(e.clientX, e.clientY, pickingCanvas.value)
-
-  const ctx = pickingCanvas.value.getContext('2d')
-
+  const ctx = pickingCtx.value
   if (!ctx) {
     return
   }
 
+  const [pixelX, pixelY] = displayToPixel(e.clientX, e.clientY, pickingCanvas.value)
   const pixelValue = ctx.getImageData(pixelX, pixelY, 1, 1).data[0]
-
   const pickedSomething = pixelValue > 0
-
-  if (pickedSomething) {
-    labelContainer.value.style.left = `${e.offsetX + 8}px`
-    labelContainer.value.style.top = `${e.offsetY + 8}px`
-    showLabelContainer.value = true
-  } else {
-    showLabelContainer.value = false
-  }
 
   if (pickedSomething) {
     const pixelRectangle = new Rectangle<number>({ x: pixelX, y: pixelY, width: 2, height: 2 })
@@ -177,24 +167,42 @@ function mouseMove(e: MouseEvent) {
     const hits = annotationsTree
       .retrieve(pixelRectangle)
       .filter((rect: any) => doRectanglesOverlap(rect, pixelRectangle))
-
-    let list = document.createElement('ul')
-    list.style.padding = '0'
-    list.style.margin = '0'
-
-    hits.forEach((hit) => {
-      const item = document.createElement('li')
-      if (hit.data != undefined) {
-        const annotation = props.annotations[hit.data]
-        const { name } = props.categories[annotation.category_id] ?? { name: 'Unknown' }
-        item.textContent = `(${annotation.id}): ${name}`
+      .filter((hit) => hit.data != undefined)
+      .map((hit) => {
+        const annotation = props.annotations[hit.data!]
+        const name = props.categories[annotation.category_id]?.name ?? 'Unknown'
         const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
-        item.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
-        list.appendChild(item)
-      }
-    })
+        const category = document.createElement('li')
+        category.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
+        category.textContent = `${annotation.id}: ${name}`
+        return category
+      })
 
-    labelContainer.value.replaceChildren(list)
+    labelContainer.value.replaceChildren(...hits)
+
+    const [x, y] = [e.offsetX, e.offsetY]
+    let posX = x + TOOLTIP_OFFSET[0]
+    let posY = y + TOOLTIP_OFFSET[1]
+
+    // if text goes off the edge, move up and/or left
+    const viewport = {
+      width: window.innerWidth - SCROLLBAR_WIDTH, // fudge for scrollbar
+      height: window.innerHeight
+    }
+    labelContainer.value.style.visibility = 'visible' // turn on visibility to get bounding rect
+    const tooltipBox = labelContainer.value.getBoundingClientRect()
+    const parentRect = pickingCanvas.value.getBoundingClientRect()
+    if (parentRect.left + posX + tooltipBox.width > viewport.width) {
+      posX = x - tooltipBox.width - TOOLTIP_OFFSET[0]
+    }
+    if (parentRect.top + posY + tooltipBox.height > viewport.height) {
+      posY = y - tooltipBox.height - TOOLTIP_OFFSET[1]
+    }
+
+    labelContainer.value.style.left = `${posX}px`
+    labelContainer.value.style.top = `${posY}px`
+  } else {
+    labelContainer.value.style.visibility = 'hidden'
   }
 }
 
@@ -202,37 +210,15 @@ const borderSize = computed(() => (props.selected ? '4' : '0'))
 </script>
 
 <template>
-  <div style="width: 100%; position: relative; white-space: pre; font-size: small">
+  <div style="position: relative">
     <img
       :src="src"
       ref="img"
       @load="onImageLoad"
       :style="{ outlineWidth: borderSize + 'px' }"
-      style="
-        width: 100%;
-        position: relative;
-        left: 0;
-        top: 0;
-        outline-style: dotted;
-        outline-color: red;
-      "
+      style="width: 100%; outline-style: dotted; outline-color: red"
     />
     <canvas ref="visibleCanvas" style="width: 100%; position: absolute; left: 0; top: 0"></canvas>
-    <div
-      v-show="showLabelContainer"
-      ref="labelContainer"
-      style="
-        position: absolute;
-        background-color: #efefef;
-        z-index: 10;
-        list-style-position: inside;
-        padding: 0.4rem;
-        border-radius: 0.2rem;
-        border-color: rgba(127, 127, 127, 0.75);
-        border-style: solid;
-        border-width: thin;
-      "
-    ></div>
     <canvas
       ref="pickingCanvas"
       style="opacity: 0; width: 100%; position: absolute; left: 0; top: 0"
@@ -240,5 +226,21 @@ const borderSize = computed(() => (props.selected ? '4' : '0'))
       @mousemove="mouseMove"
       @mouseleave="mouseLeave"
     ></canvas>
+    <ul
+      ref="labelContainer"
+      style="
+        position: absolute;
+        z-index: 10;
+        padding: 0.4rem;
+        white-space: pre;
+        font-size: small;
+        border-radius: 0.2rem;
+        border-color: rgba(127, 127, 127, 0.75);
+        border-style: solid;
+        border-width: thin;
+        background-color: #efefef;
+        list-style-type: none;
+      "
+    ></ul>
   </div>
 </template>

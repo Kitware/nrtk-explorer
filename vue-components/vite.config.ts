@@ -6,29 +6,28 @@ import vue from '@vitejs/plugin-vue'
 // https://vitejs.dev/config/
 export default defineConfig({
   build: {
+    sourcemap: true,
     lib: {
-      entry: "./src/main.js",
-      name: "nrtk_explorer",
-      formats: ["umd"],
-      fileName: "nrtk_explorer",
+      entry: './src/main.js',
+      name: 'nrtk_explorer',
+      formats: ['umd'],
+      fileName: 'nrtk_explorer'
     },
     rollupOptions: {
-      external: ["vue"],
+      external: ['vue'],
       output: {
         globals: {
-          vue: "Vue",
-        },
-      },
+          vue: 'Vue'
+        }
+      }
     },
-    outDir: "../src/nrtk_explorer/module/serve",
-    assetsDir: ".",
+    outDir: '../src/nrtk_explorer/module/serve',
+    assetsDir: '.'
   },
-  plugins: [
-    vue(),
-  ],
+  plugins: [vue()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
-  },
+  }
 })

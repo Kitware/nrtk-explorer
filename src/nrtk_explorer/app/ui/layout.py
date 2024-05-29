@@ -112,8 +112,6 @@ def dataset_view(
         limits=("[0,100]",),
         horizontal=True,
         classes="inherit-height zero-height",
-        before_class="q-pa-md",
-        after_class="q-pa-md",
     ):
         with html.Template(v_slot_before=True):
             embeddings_app.visualization_widget()

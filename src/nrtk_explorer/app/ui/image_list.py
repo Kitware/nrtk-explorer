@@ -16,7 +16,9 @@ class ImageList(html.Div):
                 v_model=("image_list_tab", "grid"),
                 animated=True,
             ):
-                with quasar.QTabPanel(name="grid"):
+                with quasar.QTabPanel(
+                    name="grid", classes="no-scroll"
+                ):  # no-scroll keeps tooltip from adding extra scroll bars
                     ImageGrid(hover_fn=hover_fn)
                 with quasar.QTabPanel(name="table"):
                     ImageTable(hover_fn=hover_fn)
@@ -66,6 +68,7 @@ class ImageTable(html.Div):
         with self:
             with quasar.QTable(
                 flat=True,
+                table_class="no-scroll",
                 columns=(
                     """[
                         { name: 'id', label: 'ID', field: 'id', sortable: true },

@@ -10,18 +10,9 @@ class ImageList(html.Div):
             with quasar.QTabs(classes="row", v_model=("image_list_tab", "grid"), align="left"):
                 quasar.QTab(name="grid", label="Grid")
                 quasar.QTab(name="table", label="Table")
-
-            with quasar.QTabPanels(
-                v_if="get(image_kinds[0].image_ids_list).value.length > 0",
-                v_model=("image_list_tab", "grid"),
-                animated=True,
-            ):
-                with quasar.QTabPanel(
-                    name="grid", classes="no-scroll"
-                ):  # no-scroll keeps tooltip from adding extra scroll bars
-                    ImageGrid(hover_fn=hover_fn)
-                with quasar.QTabPanel(name="table"):
-                    ImageTable(hover_fn=hover_fn)
+            ImageTable(
+                v_if="get(image_kinds[0].image_ids_list).value.length > 0", hover_fn=hover_fn
+            )
             html.Div(
                 "No images selected",
                 v_if="get(image_kinds[0].image_ids_list).value.length === 0 && !loading_images",
@@ -33,41 +24,13 @@ class ImageList(html.Div):
             )
 
 
-class ImageGrid(html.Div):
-    def __init__(self, hover_fn=None):
-        super().__init__(classes="row")
-        with self:
-            with html.Div(
-                # For each original image, show all kinds of images.
-                # Assume equal number of images in each image kind array.
-                v_for=("id, idx in get(image_kinds[0].image_ids_list).value",),
-                key="id",
-                classes="col-xs-12 col-sm-6 col-md-4 col-xl-3 q-pa-xs",
-            ):
-                with quasar.QCard(flat=True, bordered=True):
-                    with html.Div(classes="row"):
-                        with html.Div(v_for=("kind in image_kinds",), classes="col-6 q-pa-sm"):
-                            with client.Getter(
-                                key_name="image_id",
-                                name=("get(kind.image_ids_list).value[idx]",),
-                            ):
-                                html.Div("{{kind.readable}}", classes="text-caption text-center")
-                                ImageDetection(
-                                    identifier=("image_id",),
-                                    src=("get(image_id).value",),
-                                    annotations=(r"get(`${image_id}_result`).value",),
-                                    categories=("annotation_categories",),
-                                    selected=("(image_id == hovered_id)",),
-                                    hover=(hover_fn, "[$event]"),
-                                )
-
-
 class ImageTable(html.Div):
-    def __init__(self, hover_fn=None):
-        super().__init__()
+    def __init__(self, hover_fn=None, **kwargs):
+        super().__init__(**kwargs)
         with self:
             with quasar.QTable(
                 flat=True,
+                grid=("image_list_tab === 'grid'", False),
                 table_class="no-scroll",
                 columns=(
                     """[
@@ -85,12 +48,13 @@ class ImageTable(html.Div):
                                 const datasetId = id.split('_').at(-1)
                                 const meta = get(`${datasetId}_meta`).value
                                 return {
+                                    ...meta,
+                                    distance: meta.distance.toFixed(2),
                                     id: datasetId,
                                     original: id,
                                     transformed: `transformed_${id}`,
                                     originalAnnotations: get(`${id}_result`).value,
                                     transformedAnnotations: get(`transformed_${id}_result`).value,
-                                    ...meta,
                                 }
                             })
                         """,
@@ -98,6 +62,7 @@ class ImageTable(html.Div):
                 row_key="id",
                 rows_per_page_options=("[0]",),  # [0] means show all rows
             ):
+                # Custom rows for image kinds
                 with html.Template(
                     v_slot_body_cell_original=True,
                     __properties=[
@@ -130,3 +95,48 @@ class ImageTable(html.Div):
                             selected=("(props.row.transformed == hovered_id)",),
                             hover=(hover_fn, "[$event]"),
                         )
+                # Grid View.  Template for each row/grid-item.
+                with html.Template(
+                    v_slot_item=True,
+                    __properties=[("v_slot_item", "v-slot:item='props'")],
+                ):
+                    with html.Div(classes="q-pa-xs col-xs-12 col-sm-6 col-md-4 col-lg-3"):
+                        with quasar.QCard(flat=True, bordered=True):
+                            with html.Div(classes="row"):
+                                with html.Div(classes="col-6 q-pa-sm"):
+                                    html.Div("Original", classes="text-center")
+                                    ImageDetection(
+                                        identifier=("props.row.original",),
+                                        src=("get(props.row.original).value",),
+                                        annotations=("props.row.originalAnnotations",),
+                                        categories=("annotation_categories",),
+                                        selected=("(props.row.original == hovered_id)",),
+                                        hover=(hover_fn, "[$event]"),
+                                    )
+                                with html.Div(classes="col-6 q-pa-sm"):
+                                    html.Div("Transformed", classes="text-center")
+                                    ImageDetection(
+                                        identifier=("props.row.transformed",),
+                                        src=("get(props.row.transformed).value",),
+                                        annotations=("props.row.transformedAnnotations",),
+                                        categories=("annotation_categories",),
+                                        selected=("(props.row.transformed == hovered_id)",),
+                                        hover=(hover_fn, "[$event]"),
+                                    )
+                            with quasar.QList(
+                                dense=True,
+                            ):
+                                with quasar.QItem(
+                                    v_for=(
+                                        "col in props.cols.filter(col => !(['original', 'transformed'].includes(col.name)))",
+                                    ),
+                                    key=("col.name",),
+                                ):
+                                    with quasar.QItemSection():
+                                        with quasar.QItemLabel():
+                                            html.Div("{{col.label}}")
+                                    with quasar.QItemSection(side=True):
+                                        with quasar.QItemLabel(
+                                            caption=True,
+                                        ):
+                                            html.Div("{{col.value}}")

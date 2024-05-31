@@ -1,4 +1,4 @@
-from trame.widgets import html, quasar, client
+from trame.widgets import html, quasar
 
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 
@@ -7,9 +7,6 @@ class ImageList(html.Div):
     def __init__(self, hover_fn=None):
         super().__init__(classes="col")
         with self:
-            with quasar.QTabs(classes="row", v_model=("image_list_tab", "grid"), align="left"):
-                quasar.QTab(name="grid", label="Grid")
-                quasar.QTab(name="table", label="Table")
             ImageTable(
                 v_if="get(image_kinds[0].image_ids_list).value.length > 0", hover_fn=hover_fn
             )
@@ -30,7 +27,9 @@ class ImageTable(html.Div):
         with self:
             with quasar.QTable(
                 flat=True,
-                grid=("image_list_tab === 'grid'", False),
+                title="Selected Images",
+                grid=("image_list_grid", False),
+                filter=("image_list_search", ""),
                 table_class="no-scroll",
                 columns=(
                     """[
@@ -62,7 +61,7 @@ class ImageTable(html.Div):
                 row_key="id",
                 rows_per_page_options=("[0]",),  # [0] means show all rows
             ):
-                # Custom rows for image kinds
+                # Put ImageDetection component for image columns
                 with html.Template(
                     v_slot_body_cell_original=True,
                     __properties=[
@@ -95,7 +94,7 @@ class ImageTable(html.Div):
                             selected=("(props.row.transformed == hovered_id)",),
                             hover=(hover_fn, "[$event]"),
                         )
-                # Grid View.  Template for each row/grid-item.
+                # Grid Mode template for each row/grid-item
                 with html.Template(
                     v_slot_item=True,
                     __properties=[("v_slot_item", "v-slot:item='props'")],
@@ -140,3 +139,28 @@ class ImageTable(html.Div):
                                             caption=True,
                                         ):
                                             html.Div("{{col.value}}")
+                # Top control bar for search, grid switch, full screen
+                with html.Template(
+                    v_slot_top=True,
+                    __properties=[("v_slot_top", "v-slot:top='props'")],
+                ):
+                    html.Span("Selected Images", classes="col q-table__title")
+                    quasar.QBtn(
+                        icon="fullscreen",
+                        dense=True,
+                        flat=True,
+                        click="props.toggleFullscreen",
+                        classes="q-mx-md",
+                    )
+                    quasar.QToggle(
+                        v_model=("image_list_grid", False),
+                        label="Grid",
+                        left_label=True,
+                        classes="col-1 q-mx-md",
+                    )
+                    quasar.QInput(
+                        v_model=("image_list_search", ""),
+                        label="Search",
+                        dense=True,
+                        classes="col-3",
+                    )

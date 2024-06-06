@@ -109,6 +109,7 @@ class TransformsApp(Applet):
         self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_num_elements")(self.on_current_num_elements_change)
+        self.state.change("selected_dataset_ids")(self.on_selected_dataset_ids_change)
 
         self.on_current_dataset_change(self.state.current_dataset)
 
@@ -244,6 +245,9 @@ class TransformsApp(Applet):
         self._set_source_images_task = asynchronous.create_task(
             self._set_source_images(selected_ids)
         )
+
+    def on_selected_dataset_ids_change(self, **kwargs):
+        self.set_source_images(self.state.selected_dataset_ids)
 
     def reset_data(self):
         source_image_ids = self.state.source_image_ids

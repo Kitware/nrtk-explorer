@@ -3,6 +3,7 @@ from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
 from nrtk_explorer.app import ui
+from nrtk_explorer.app import dataset
 
 
 def toolbar(reload=None):
@@ -114,7 +115,8 @@ def dataset_view(
         classes="inherit-height zero-height",
     ):
         with html.Template(v_slot_before=True):
-            embeddings_app.visualization_widget()
+            # embeddings_app.visualization_widget()
+            dataset.ImageBrowser()
 
         with html.Template(v_slot_after=True):
             transforms_app.dataset_widget()

@@ -162,16 +162,16 @@ class EmbeddingsApp(Applet):
                 **args,
             )
 
-        for index, image_id in enumerate(transformed_image_ids):
-            transform_point = self.state.points_transformations[index]
-            original_image_point_index = self.state.user_selected_points_indices[index]
-            original_point = self.state.points_sources[original_image_point_index]
-            distance = sum(
-                (transform_point[i] - original_point[i]) ** 2 for i in range(len(original_point))
-            )
-            distance = distance**0.5
-            dataset_id = image_id.split("_")[-1]
-            update_image_meta(self.state, dataset_id, {"distance": distance})
+        # for index, image_id in enumerate(transformed_image_ids):
+        #     transform_point = self.state.points_transformations[index]
+        #     original_image_point_index = self.state.user_selected_points_indices[index]
+        #     original_point = self.state.points_sources[original_image_point_index]
+        #     distance = sum(
+        #         (transform_point[i] - original_point[i]) ** 2 for i in range(len(original_point))
+        #     )
+        #     distance = distance**0.5
+        #     dataset_id = image_id.split("_")[-1]
+        #     update_image_meta(self.state, dataset_id, {"distance": distance})
 
     def set_on_select(self, fn):
         self._on_select_fn = fn

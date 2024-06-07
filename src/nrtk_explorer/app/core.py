@@ -1,5 +1,6 @@
 import logging
 from typing import Iterable
+from pathlib import Path
 
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
@@ -11,8 +12,8 @@ from nrtk_explorer.app.transforms import TransformsApp
 from nrtk_explorer.app.filtering import FilteringApp
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app import ui
+from nrtk_explorer.app import dataset
 import nrtk_explorer.test_data
-from pathlib import Path
 
 import os
 
@@ -114,6 +115,8 @@ class Engine(Applet):
         self.state.random_sampling_disabled = True
         self.state.images_id = []
 
+        dataset.init(self.state)
+
         self._build_ui()
 
         self.context.images_manager = images_manager.ImagesManager()
@@ -123,8 +126,11 @@ class Engine(Applet):
         self.state.change("current_dataset")(self.on_dataset_change)
         self.state.change("num_images")(self.on_num_images_change)
         self.state.change("random_sampling")(self.on_random_sampling_change)
-
         self.on_dataset_change()
+
+        load_dataset_with_state = lambda: dataset.load_dataset(self.state.current_dataset)
+        self.state.change("current_dataset")(load_dataset_with_state)
+        load_dataset_with_state()
 
     def on_dataset_change(self, **kwargs):
         # Reset cache

@@ -32,6 +32,9 @@ from nrtk_explorer.library.coco_utils import (
     convert_from_predictions_to_first_arg,
 )
 import nrtk_explorer.test_data
+from nrtk_explorer.app.trame_utils import delete_state
+from nrtk_explorer.app.image_ids import image_id_to_dataset_id, image_id_to_result_id
+
 
 import json
 import os
@@ -39,10 +42,6 @@ import os
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def image_id_to_result(image_id):
-    return f"{image_id}_result"
 
 
 DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
@@ -332,40 +331,21 @@ class TransformsApp(Applet):
         )
 
     def reset_data(self):
-        source_image_ids = self.state.source_image_ids
-        transformed_image_ids = self.state.transformed_image_ids
+        source_and_transformed = self.state.source_image_ids + self.state.transformed_image_ids
+        for image_id in source_and_transformed:
+            delete_state(self.state, image_id)
+            if image_id in self.context["image_objects"]:
+                del self.context["image_objects"][image_id]
+            result_id = image_id_to_result_id(image_id)
+            delete_state(self.state, result_id)
+
+        for image_id in self.state.source_image_ids:
+            dataset_id = image_id_to_dataset_id(image_id)
+            delete_image_meta(self.server.state, dataset_id)
 
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
         self.state.annotation_categories = {}
-
-        for image_id in source_image_ids:
-            result_id = image_id_to_result(image_id)
-
-            if self.state.has(image_id) and self.state[image_id] is not None:
-                self.state[image_id] = None
-
-            if self.state.has(result_id) and self.state[result_id] is not None:
-                self.state[result_id] = None
-
-            if image_id in self.context["image_objects"]:
-                del self.context["image_objects"][image_id]
-
-        for image_id in transformed_image_ids:
-            result_id = image_id_to_result(image_id)
-
-            if self.state.has(image_id) and self.state[image_id] is not None:
-                self.state[image_id] = None
-
-            if self.state.has(result_id) and self.state[result_id] is not None:
-                self.state[result_id] = None
-
-            if image_id in self.context["image_objects"]:
-                del self.context["image_objects"][image_id]
-
-        for image_id in source_image_ids:
-            dataset_id = image_id.split("_")[-1]
-            delete_image_meta(self.server.state, dataset_id)
 
     def on_current_dataset_change(self, current_dataset, **kwargs):
         logger.debug(f"on_current_dataset_change change {self.state}")
@@ -403,7 +383,7 @@ class TransformsApp(Applet):
 
     def update_model_result(self, image_ids):
         for image_id in image_ids:
-            result_id = image_id_to_result(image_id)
+            result_id = image_id_to_result_id(image_id)
             self.state[result_id] = self.context["annotations"].get(image_id, [])
 
     def on_image_hovered(self, id):

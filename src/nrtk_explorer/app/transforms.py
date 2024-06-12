@@ -17,7 +17,9 @@ import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import images_manager, object_detector
 from nrtk_explorer.app import ui
 from nrtk_explorer.app.applet import Applet
-from nrtk.impls.score_detections.coco_scorer import COCOScorer
+from nrtk.impls.score_detections.class_agnostic_pixelwise_iou_scorer import (
+    ClassAgnosticPixelwiseIoUScorer,
+)
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.image_meta import (
     update_image_meta,
@@ -197,8 +199,8 @@ class TransformsApp(Applet):
             self.on_transform(transformed_image_ids)
 
     def compute_score(self, ids, predictions_source_images, predictions_trans_images):
-        """Compute the score for the given image ids using the COCO scorer."""
-        score_output = COCOScorer(self.state.current_dataset).score(
+        """Compute score for image ids."""
+        score_output = ClassAgnosticPixelwiseIoUScorer().score(
             predictions_source_images, predictions_trans_images
         )
 

@@ -15,7 +15,7 @@ const CATEGORY_COLORS: Vector3<number>[] = [
 ]
 
 const TOOLTIP_OFFSET = [8, 8]
-const SCROLLBAR_WIDTH = 16
+const TOOLTIP_HEIGHT_PADDING = 12 // fudge to keep bottom border from clipping. In pixels
 
 interface Props {
   identifier: string
@@ -23,6 +23,7 @@ interface Props {
   annotations: Annotation[]
   categories: { [key: number]: Category }
   selected: boolean
+  containerSelector?: string
 }
 
 let annotationsTree: Quadtree<Rectangle<number>> | undefined = undefined
@@ -141,6 +142,15 @@ function displayToPixel(x: number, y: number, canvas: HTMLCanvasElement): [numbe
   return [pixelX, pixelY]
 }
 
+const mounted = ref(false)
+onMounted(() => {
+  mounted.value = true
+})
+const container = computed(() => {
+  if (!mounted.value || !props.containerSelector) return null
+  return document.querySelector(props.containerSelector)
+})
+
 function mouseMove(e: MouseEvent) {
   if (
     !pickingCanvas.value ||
@@ -161,50 +171,62 @@ function mouseMove(e: MouseEvent) {
   const pixelValue = ctx.getImageData(pixelX, pixelY, 1, 1).data[0]
   const pickedSomething = pixelValue > 0
 
-  if (pickedSomething) {
-    const pixelRectangle = new Rectangle<number>({ x: pixelX, y: pixelY, width: 2, height: 2 })
-
-    const hits = annotationsTree
-      .retrieve(pixelRectangle)
-      .filter((rect: any) => doRectanglesOverlap(rect, pixelRectangle))
-      .filter((hit) => hit.data != undefined)
-      .map((hit) => {
-        const annotation = props.annotations[hit.data!]
-        const name = props.categories[annotation.category_id]?.name ?? 'Unknown'
-        const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
-        const category = document.createElement('li')
-        category.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
-        const annotationId = annotation.id ? ` : ${annotation.id}` : ''
-        category.textContent = `${name}${annotationId}`
-        return category
-      })
-
-    labelContainer.value.replaceChildren(...hits)
-
-    const [x, y] = [e.offsetX, e.offsetY]
-    let posX = x + TOOLTIP_OFFSET[0]
-    let posY = y + TOOLTIP_OFFSET[1]
-
-    // if text goes off the edge, move up and/or left
-    const viewport = {
-      width: window.innerWidth - SCROLLBAR_WIDTH, // fudge for scrollbar
-      height: window.innerHeight
-    }
-    labelContainer.value.style.visibility = 'visible' // turn on visibility to get bounding rect
-    const tooltipBox = labelContainer.value.getBoundingClientRect()
-    const parentRect = pickingCanvas.value.getBoundingClientRect()
-    if (parentRect.left + posX + tooltipBox.width > viewport.width) {
-      posX = x - tooltipBox.width - TOOLTIP_OFFSET[0]
-    }
-    if (parentRect.top + posY + tooltipBox.height > viewport.height) {
-      posY = y - tooltipBox.height - TOOLTIP_OFFSET[1]
-    }
-
-    labelContainer.value.style.left = `${posX}px`
-    labelContainer.value.style.top = `${posY}px`
-  } else {
+  if (!pickedSomething) {
     labelContainer.value.style.visibility = 'hidden'
+    return
   }
+
+  labelContainer.value.style.visibility = 'visible'
+
+  const pixelRectangle = new Rectangle<number>({ x: pixelX, y: pixelY, width: 2, height: 2 })
+  const hits = annotationsTree
+    .retrieve(pixelRectangle)
+    .filter((rect: any) => doRectanglesOverlap(rect, pixelRectangle))
+    .filter((hit) => hit.data != undefined)
+    .map((hit) => {
+      const annotation = props.annotations[hit.data!]
+      const name = props.categories[annotation.category_id]?.name ?? 'Unknown'
+      const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
+      const category = document.createElement('li')
+      category.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
+      const annotationId = annotation.id ? ` : ${annotation.id}` : ''
+      category.textContent = `${name}${annotationId}`
+      return category
+    })
+
+  labelContainer.value.replaceChildren(...hits)
+
+  // Position the tooltip
+  const [x, y] = [e.offsetX, e.offsetY]
+  let posX = x + TOOLTIP_OFFSET[0]
+  let posY = y + TOOLTIP_OFFSET[1]
+
+  const tooltipRect = labelContainer.value.getBoundingClientRect()
+  const parentRect = pickingCanvas.value.getBoundingClientRect()
+  const containerRect = container.value?.getBoundingClientRect() ?? {
+    left: 0,
+    top: 0,
+    width: window.innerWidth,
+    height: window.innerHeight
+  }
+
+  const toolTipInContainer = {
+    left: parentRect.left + posX - containerRect.left,
+    top: parentRect.top + posY - containerRect.top,
+    width: tooltipRect.width,
+    height: tooltipRect.height + TOOLTIP_HEIGHT_PADDING
+  }
+
+  // if text goes off the edge, move up and/or left
+  if (toolTipInContainer.left + toolTipInContainer.width > containerRect.width) {
+    posX = x - tooltipRect.width - TOOLTIP_OFFSET[0]
+  }
+  if (toolTipInContainer.top + toolTipInContainer.height > containerRect.height) {
+    posY = y - tooltipRect.height - TOOLTIP_OFFSET[1]
+  }
+
+  labelContainer.value.style.left = `${posX}px`
+  labelContainer.value.style.top = `${posY}px`
 }
 
 const borderSize = computed(() => (props.selected ? '4' : '0'))

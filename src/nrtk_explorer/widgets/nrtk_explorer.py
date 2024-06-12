@@ -21,7 +21,7 @@ class ImageDetection(HtmlElement):
             "annotations",
             "categories",
             "selected",
-            "isTransformation",
+            "containerSelector",
         ]
         self._event_names += [
             "hover",

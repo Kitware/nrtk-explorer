@@ -28,7 +28,7 @@ class ImageTable(html.Div):
             with quasar.QTable(
                 flat=True,
                 title="Selected Images",
-                grid=("image_list_grid", False),
+                grid=("image_list_view_mode === 'grid'", False),
                 filter=("image_list_search", ""),
                 table_class="no-scroll",
                 id="image-list",
@@ -155,15 +155,16 @@ class ImageTable(html.Div):
                         click="props.toggleFullscreen",
                         classes="q-mx-md",
                     )
-                    quasar.QToggle(
-                        v_model=("image_list_grid", False),
-                        label="Grid",
-                        left_label=True,
-                        classes="col-1 q-mx-md",
+                    quasar.QBtnToggle(
+                        v_model=("image_list_view_mode", "table"),
+                        # classes="col-2",
+                        raw_attrs=[
+                            ":options=\"[{label: 'Table', value: 'table'}, {label: 'Grid', value: 'grid'}]\"",
+                        ],
                     )
                     quasar.QInput(
                         v_model=("image_list_search", ""),
                         label="Search",
                         dense=True,
-                        classes="col-3",
+                        classes="col-3 q-pl-md",
                     )

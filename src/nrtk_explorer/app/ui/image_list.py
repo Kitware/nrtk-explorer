@@ -45,15 +45,15 @@ class ImageTable(html.Div):
                     r"""get(image_kinds[0].image_ids_list).value.map((id) =>
                             {
                                 const datasetId = id.split('_').at(-1)
-                                const meta = get(`${datasetId}_meta`).value
+                                const meta = get(`meta_${datasetId}`).value
                                 return {
                                     ...meta,
                                     distance: meta.distance.toFixed(2),
                                     id: datasetId,
                                     original: id,
                                     transformed: `transformed_${id}`,
-                                    originalAnnotations: get(`${id}_result`).value,
-                                    transformedAnnotations: get(`transformed_${id}_result`).value,
+                                    originalAnnotations: get(`result_${id}`).value,
+                                    transformedAnnotations: get(`result_transformed_${id}`).value,
                                 }
                             })
                         """,

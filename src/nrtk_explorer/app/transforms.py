@@ -141,15 +141,13 @@ class TransformsApp(Applet):
         transform = self._transforms[current_transform]
         for image_id in self.state.source_image_ids:
             image = self.context["image_objects"][image_id]
-
             transformed_image_id = f"transformed_{image_id}"
-
             transformed_img = transform.execute(image)
-
+            if image.size != transformed_img.size:
+                # Resize so pixel-wise annotation similarity score works
+                transformed_img = transformed_img.resize(image.size)
             self.context["image_objects"][transformed_image_id] = transformed_img
-
             transformed_image_ids.append(transformed_image_id)
-
             self.state[transformed_image_id] = images_manager.convert_to_base64(transformed_img)
 
         self.state.transformed_image_ids = transformed_image_ids

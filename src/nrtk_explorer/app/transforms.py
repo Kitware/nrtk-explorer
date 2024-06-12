@@ -158,7 +158,7 @@ class TransformsApp(Applet):
                 dataset = json.load(f)
 
                 # Erase current annotations
-                ids = [int(id_.split("_")[-1]) for id_ in self.state.source_image_ids]
+                ids = [int(image_id_to_dataset_id(id)) for id in self.state.source_image_ids]
                 for ann in dataset["annotations"]:
                     if ann["image_id"] in ids:
                         transformed_id = f"transformed_img_{ann['image_id']}"
@@ -223,7 +223,7 @@ class TransformsApp(Applet):
                 image_annotations.append(
                     {
                         "category_id": category_id,
-                        "id": category_id,
+                        "id": None,
                         "bbox": [
                             bbox["xmin"],
                             bbox["ymin"],

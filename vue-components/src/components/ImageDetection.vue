@@ -174,7 +174,8 @@ function mouseMove(e: MouseEvent) {
         const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
         const category = document.createElement('li')
         category.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
-        category.textContent = `${annotation.id}: ${name}`
+        const annotationId = annotation.id ? ` : ${annotation.id}` : ''
+        category.textContent = `${name}${annotationId}`
         return category
       })
 

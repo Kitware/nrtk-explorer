@@ -7,12 +7,10 @@ class ImageList(html.Div):
     def __init__(self, hover_fn=None):
         super().__init__(classes="col")
         with self:
-            ImageTable(
-                v_if="get(image_kinds[0].image_ids_list).value.length > 0", hover_fn=hover_fn
-            )
+            ImageTable(v_if="source_image_ids.length > 0", hover_fn=hover_fn)
             html.Div(
                 "No images selected",
-                v_if="get(image_kinds[0].image_ids_list).value.length === 0 && !loading_images",
+                v_if="source_image_ids.length === 0 && !loading_images",
                 classes="text-h5 row flex-center q-my-md",
             )
             quasar.QInnerLoading(
@@ -43,7 +41,7 @@ class ImageTable(html.Div):
                     ]""",
                 ),
                 rows=(
-                    r"""get(image_kinds[0].image_ids_list).value.map((id) =>
+                    r"""source_image_ids.map((id) =>
                             {
                                 const datasetId = id.split('_').at(-1)
                                 const meta = get(`meta_${datasetId}`).value

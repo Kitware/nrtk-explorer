@@ -31,6 +31,7 @@ class ImageTable(html.Div):
                 grid=("image_list_grid", False),
                 filter=("image_list_search", ""),
                 table_class="no-scroll",
+                id="image-list",
                 columns=(
                     """[
                         { name: 'id', label: 'ID', field: 'id', sortable: true },
@@ -77,6 +78,7 @@ class ImageTable(html.Div):
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
                             hover=(hover_fn, "[$event]"),
+                            containerSelector="#image-list .q-table__middle",
                         )
                 with html.Template(
                     v_slot_body_cell_transformed=True,
@@ -93,6 +95,7 @@ class ImageTable(html.Div):
                             categories=("annotation_categories",),
                             selected=("(props.row.transformed == hovered_id)",),
                             hover=(hover_fn, "[$event]"),
+                            containerSelector="#image-list .q-table__middle",
                         )
                 # Grid Mode template for each row/grid-item
                 with html.Template(

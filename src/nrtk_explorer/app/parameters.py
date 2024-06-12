@@ -44,13 +44,11 @@ class ParametersApp(Applet):
         self.state.change("current_transform")(self.on_current_transform_change)
 
     def on_current_transform_change(self, **kwargs):
-        print("current transform changed", self.state.current_transform)
         transform = self._transforms[self.state.current_transform]
         self.state.params_values = transform.get_parameters()
         self.state.params_descriptions = transform.get_parameters_description()
 
     def on_transform_parameters_changed(self, parameters, **kwargs):
-        print("on_transform_parameters_changed", parameters, kwargs)
         transform = self._transforms[self.state.current_transform]
         transform.set_parameters(parameters)
         self.state.params_values = transform.get_parameters()

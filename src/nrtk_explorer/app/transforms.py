@@ -204,7 +204,7 @@ class TransformsApp(Applet):
         if len(ids) == 0:
             return
 
-        predictions = self.detector.eval(paths=ids, content=self.context.image_objects)
+        predictions = self.detector.eval(image_ids=ids, content=self.context.image_objects)
 
         for id_, annotations in predictions:
             image_annotations = self.context["annotations"].setdefault(id_, [])

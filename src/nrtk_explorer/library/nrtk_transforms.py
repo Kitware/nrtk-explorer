@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import numpy as np
 import logging
@@ -25,7 +25,7 @@ def nrtk_transforms_available():
 
 
 class NrtkGaussianBlurTransform(ImageTransform):
-    def __init__(self, perturber=None):
+    def __init__(self, perturber: Union[GaussianBlurPerturber, None] = None):
         if perturber is None:
             perturber = GaussianBlurPerturber()
 
@@ -155,7 +155,7 @@ def createSampleSensorAndScenario():
 
 
 class NrtkPybsmTransform(ImageTransform):
-    def __init__(self, perturber=None):
+    def __init__(self, perturber: Union[PybsmPerturber, None] = None):
         if perturber is None:
             sensor, scenario = createSampleSensorAndScenario()
             perturber = PybsmPerturber(sensor=sensor, scenario=scenario)

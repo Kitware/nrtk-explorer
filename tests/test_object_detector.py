@@ -18,7 +18,7 @@ def test_detector_small():
     ds = json.load(open(DATASET))
     sample = [f"{DATASET_PATH}/{img['file_name']}" for img in ds["images"]][:15]
     detector = object_detector.ObjectDetector(model_name="hustvl/yolos-tiny")
-    img = detector.eval(paths=sample)
+    img = detector.eval(image_ids=sample)
     assert len(img) == 15
 
 
@@ -26,7 +26,7 @@ def test_nrkt_scorer():
     ds = json.load(open(DATASET))
     sample = [f"{DATASET_PATH}/{img['file_name']}" for img in ds["images"]]
     detector = object_detector.ObjectDetector(model_name="facebook/detr-resnet-50")
-    predictions = detector.eval(paths=sample)
+    predictions = detector.eval(image_ids=sample)
 
     dataset_annotations = dict()
     for annotation in ds["annotations"]:

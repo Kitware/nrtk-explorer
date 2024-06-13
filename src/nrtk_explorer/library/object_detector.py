@@ -8,7 +8,11 @@ from typing import Optional
 
 from nrtk_explorer.library import images_manager
 
-Annotations = list[list[tuple[str, dict]]]
+Annotation = dict  # in COCO format
+Annotations = list[Annotation]
+ImageId = str
+AnnotatedImage = tuple[ImageId, Annotations]
+AnnotatedImages = list[AnnotatedImage]
 
 
 class ObjectDetector:
@@ -59,19 +63,16 @@ class ObjectDetector:
 
     def eval(
         self,
-        paths: list[str],
+        image_ids: list[str],
         content: Optional[dict] = None,
         batch_size: int = 32,
-    ) -> Annotations:
-        """Compute object recognition, return it in a list of tuples in the form of [(path, annotations dict in COCO Format)]"""
-        if len(paths) == 0:
-            return []
-
+    ) -> AnnotatedImages:
+        """Compute object recognition. Returns Annotations grouped by input image paths."""
         images: dict = {}
 
         # Some models require all the images in a batch to be the same size,
         # otherwise crash or UB.
-        for path in paths:
+        for path in image_ids:
             img = None
             if content and path in content:
                 img = content[path]
@@ -93,12 +94,12 @@ class ObjectDetector:
             for group in images.values()
         ]
         # Flatten the list of predictions
-        predictions = reduce(operator.iadd, predictions)  # type: ignore
+        predictions = reduce(operator.iadd, predictions, [])
 
-        output = list()
-        for path in paths:
-            for prediction in predictions:
-                if prediction[0] == path:
-                    output.append(prediction)
-
-        return output
+        # order output by paths order
+        find_prediction = lambda id: next(
+            prediction for prediction in predictions if prediction[0] == id
+        )
+        output = [find_prediction(id) for id in image_ids]
+        # mypy wrongly thinks output's type is list[list[tuple[str, dict]]]
+        return output  # type: ignore

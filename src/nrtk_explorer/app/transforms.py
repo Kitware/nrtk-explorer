@@ -3,9 +3,11 @@ Define your classes and create the instances that you need to expose
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Sequence
 import asyncio
 import functools
+import json
+import os
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
@@ -33,11 +35,8 @@ from nrtk_explorer.library.coco_utils import (
 )
 import nrtk_explorer.test_data
 from nrtk_explorer.app.trame_utils import delete_state
-from nrtk_explorer.app.image_ids import image_id_to_dataset_id, image_id_to_result_id
-
-
-import json
-import os
+from nrtk_explorer.app.image_ids import image_id_to_dataset_id, image_id_to_result_id, DatasetId
+from nrtk_explorer.library.dataset import getDataset
 
 
 logger = logging.getLogger(__name__)
@@ -57,6 +56,7 @@ class TransformsApp(Applet):
         super().__init__(server)
 
         self.update_image_meta = functools.partial(update_image_meta, self.server.state)
+        self.getDataset = functools.partial(getDataset, self.server.state.current_dataset)
 
         self._parameters_app = ParametersApp(
             server=server,
@@ -116,7 +116,6 @@ class TransformsApp(Applet):
         self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_num_elements")(self.on_current_num_elements_change)
-        self.state.change("enabled_model_images")(self.on_detection_model_change)
 
         self.on_current_dataset_change(self.state.current_dataset)
 
@@ -148,56 +147,48 @@ class TransformsApp(Applet):
         if len(self.state.source_image_ids) > 0:
             self.state.hovered_id = ""
 
-        if len(transformed_image_ids) > 0:
-            with open(self.state.current_dataset) as f:
-                dataset = json.load(f)
+        if len(transformed_image_ids) == 0:
+            return
 
-                # Erase current annotations
-                ids = [int(image_id_to_dataset_id(id)) for id in self.state.source_image_ids]
-                for ann in dataset["annotations"]:
-                    if ann["image_id"] in ids:
-                        transformed_id = f"transformed_img_{ann['image_id']}"
-                        if transformed_id in self.context["annotations"]:
-                            del self.context["annotations"][transformed_id]
+        dataset = self.getDataset()
 
-                # Compute new annotations
-                if "transformation" in self.state.enabled_model_images:
-                    predictions = convert_from_predictions_to_second_arg(
-                        self.compute_annotations(transformed_image_ids)
-                    )
-                else:
-                    for ann in dataset["annotations"]:
-                        if ann["image_id"] in ids:
-                            image_annotations = self.context["annotations"].setdefault(
-                                f"transformed_img_{ann['image_id']}", []
-                            )
-                            image_annotations.append(ann)
+        # Erase current annotations
+        dataset_ids = [image_id_to_dataset_id(id) for id in self.state.source_image_ids]
+        for ann in dataset["annotations"]:
+            if str(ann["image_id"]) in dataset_ids:
+                transformed_id = f"transformed_img_{ann['image_id']}"
+                if transformed_id in self.context["annotations"]:
+                    del self.context["annotations"][transformed_id]
 
-                    predictions = convert_from_ground_truth_to_second_arg(
-                        [
-                            self.context["annotations"][id_]
-                            for id_ in self.state.transformed_image_ids
-                        ],
-                        dataset,
-                    )
+        annotations = self.compute_annotations(transformed_image_ids)
 
-                self.compute_score(
-                    self.state.source_image_ids, self.predictions_source_images, predictions
-                )
-
-            self.update_model_result(transformed_image_ids)
-
-            # Only invoke callbacks when we transform images
-            self.on_transform(transformed_image_ids)
-
-    def compute_score(self, ids, predictions_source_images, predictions_trans_images):
-        """Compute score for image ids."""
-        score_output = ClassAgnosticPixelwiseIoUScorer().score(
-            predictions_source_images, predictions_trans_images
+        predictions = convert_from_predictions_to_second_arg(annotations)
+        self.compute_score(
+            "original_detection_to_transformed_detection_score",
+            dataset_ids,
+            self.predictions_source_images,
+            predictions,
         )
 
-        for image_id, score in zip(ids, score_output):
-            update_image_meta(self.state, image_id.split("_")[-1], {"distance": score})
+        ground_truth_annotations = [self.context["annotations"][id] for id in dataset_ids]
+        ground_truth_predictions = convert_from_ground_truth_to_second_arg(
+            ground_truth_annotations, dataset
+        )
+        self.compute_score(
+            "ground_truth_to_transformed_detection_score",
+            dataset_ids,
+            self.predictions_source_images,
+            ground_truth_predictions,
+        )
+
+        # Only invoke callbacks when we transform images
+        self.on_transform(transformed_image_ids)
+
+    def compute_score(self, meta_key: str, dataset_ids: Sequence[DatasetId], actual, predicted):
+        """Compute score for image ids."""
+        score_output = ClassAgnosticPixelwiseIoUScorer().score(actual, predicted)
+        for dataset_id, score in zip(dataset_ids, score_output):
+            update_image_meta(self.state, dataset_id, {meta_key: score})
 
     def compute_annotations(self, ids):
         """Compute annotations for the given image ids using the object detector model."""
@@ -228,43 +219,60 @@ class TransformsApp(Applet):
                     }
                 )
 
+        self.sync_annotations_to_state(ids)
         return predictions
 
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
+        dataset = self.getDataset()
         ids = [img["id"] for img in dataset["images"]]
         return self.set_source_images(ids[:current_num_elements])
 
-    def on_detection_model_change(self, enabled_model_images, **kwargs):
-        """Update the model result when the detection model changes."""
-        self.compute_predictions_source_images(self.state.source_image_ids)
-        self.update_model_result(self.state.source_image_ids)
-        self.on_apply_transform()
-
-    def compute_predictions_source_images(self, ids):
+    def compute_predictions_source_images(self, old_ids, ids):
         """Compute the predictions for the source images."""
-        if len(ids) > 0:
-            with open(self.state.current_dataset) as f:
-                dataset = json.load(f)
-                for id_ in ids:
-                    del self.context["annotations"][id_]
+        dataset_ids = [image_id_to_dataset_id(id) for id in ids]
+        to_delete = set(old_ids) | set(ids) | set(dataset_ids)
+        for id in to_delete:
+            if id in self.context["annotations"]:
+                del self.context["annotations"][id]
 
-                if "source" in self.state.enabled_model_images:
-                    self.predictions_source_images = convert_from_predictions_to_first_arg(
-                        self.compute_annotations(ids),
-                        dataset,
-                        ids,
-                    )
-                else:
-                    for annotation in dataset["annotations"]:
-                        image_id = f"img_{annotation['image_id']}"
-                        image_annotations = self.context["annotations"].setdefault(image_id, [])
-                        image_annotations.append(annotation)
+        if len(ids) == 0:
+            return
 
-                    self.predictions_source_images = convert_from_ground_truth_to_first_arg(
-                        [self.context["annotations"][id_] for id_ in ids]
-                    )
+        dataset = self.getDataset()
+
+        annotations = self.compute_annotations(ids)
+        self.predictions_source_images = convert_from_predictions_to_first_arg(
+            annotations,
+            dataset,
+            ids,
+        )
+
+        # load ground truth annotations
+        dataset_annotations = dataset["annotations"]
+        # collect annotations for each dataset_id
+        annotations = {
+            dataset_id: [
+                annotation
+                for annotation in dataset_annotations
+                if str(annotation["image_id"]) == dataset_id
+            ]
+            for dataset_id in dataset_ids
+        }
+        for dataset_id, dataset_annotations in annotations.items():
+            self.context["annotations"][dataset_id] = dataset_annotations
+
+        self.sync_annotations_to_state(dataset_ids)
+
+        ground_truth_annotations = annotations.values()
+        ground_truth_predictions = convert_from_ground_truth_to_second_arg(
+            ground_truth_annotations, dataset
+        )
+        self.compute_score(
+            "original_ground_to_original_detection_score",
+            dataset_ids,
+            self.predictions_source_images,  # FIXME: prediction could be 0 for actual, then scorer errors
+            ground_truth_predictions,
+        )
 
     def _update_images(self, selected_ids):
         source_image_ids = []
@@ -281,30 +289,24 @@ class TransformsApp(Applet):
                 continue
 
             image_metadata = dataset["images"][image_index]
-
             image_id = f"img_{image_metadata['id']}"
-
             source_image_ids.append(image_id)
-
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
-
             img = self.context.images_manager.load_image(image_filename)
-
             self.state[image_id] = images_manager.convert_to_base64(img)
             self.update_image_meta(
                 image_metadata["id"],
                 {"width": image_metadata["width"], "height": image_metadata["height"]},
             )
-
             self.context.image_objects[image_id] = img
 
         if len(selected_ids) > 0:
             self.state.hovered_id = ""
 
+        old_source_image_ids = self.state.source_image_ids
         self.state.source_image_ids = source_image_ids
-        self.compute_predictions_source_images(self.state.source_image_ids)
+        self.compute_predictions_source_images(old_source_image_ids, self.state.source_image_ids)
 
-        self.update_model_result(source_image_ids)
         self.on_apply_transform()
 
     async def _set_source_images(self, selected_ids):
@@ -357,12 +359,6 @@ class TransformsApp(Applet):
 
         self.state.annotation_categories = categories
 
-        if "source" not in self.state.enabled_model_images:
-            for annotation in dataset["annotations"]:
-                image_id = f"img_{annotation['image_id']}"
-                image_annotations = self.context["annotations"].setdefault(image_id, [])
-                image_annotations.append(annotation)
-
         self.context.image_id_to_index = {}
         for i, image in enumerate(dataset["images"]):
             self.context.image_id_to_index[image["id"]] = i
@@ -373,10 +369,10 @@ class TransformsApp(Applet):
     def on_feature_extraction_model_change(self, **kwargs):
         logger.debug(f">>> on_feature_extraction_model_change change {self.state}")
 
-        self.update_model_result(self.state.source_image_ids)
-        self.update_model_result(self.state.transformed_image_ids)
+        self.sync_annotations_to_state(self.state.source_image_ids)
+        self.sync_annotations_to_state(self.state.transformed_image_ids)
 
-    def update_model_result(self, image_ids):
+    def sync_annotations_to_state(self, image_ids):
         for image_id in image_ids:
             result_id = image_id_to_result_id(image_id)
             self.state[result_id] = self.context["annotations"].get(image_id, [])

@@ -96,22 +96,6 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
                 emit_value=True,
                 map_options=True,
             )
-            quasar.QOptionGroup(
-                v_model=("enabled_model_images", ["transformation"]),
-                options=(
-                    [
-                        {
-                            "label": "Source images",
-                            "value": "source",
-                        },
-                        {
-                            "label": "Transformation images",
-                            "value": "transformation",
-                        },
-                    ],
-                ),
-                type="toggle",
-            )
 
         filter_title_slot, filter_content_slot, filter_actions_slot = ui.card("collapse_filter")
 

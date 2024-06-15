@@ -5,9 +5,11 @@ from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 
 class ImageList(html.Div):
     def __init__(self, hover_fn=None):
-        super().__init__(classes="col")
+        super().__init__(classes="col full-height")
         with self:
-            ImageTable(v_if="source_image_ids.length > 0", hover_fn=hover_fn)
+            ImageTable(
+                v_if="source_image_ids.length > 0", hover_fn=hover_fn, classes="full-height"
+            )
             html.Div(
                 "No images selected",
                 v_if="source_image_ids.length === 0 && !loading_images",
@@ -24,20 +26,21 @@ class ImageTable(html.Div):
         super().__init__(**kwargs)
         with self:
             with quasar.QTable(
+                classes="full-height",
                 flat=True,
                 title="Selected Images",
                 grid=("image_list_view_mode === 'grid'", False),
                 filter=("image_list_search", ""),
-                table_class="no-scroll",
                 id="image-list",
                 columns=(
                     """[
                         { name: 'id', label: 'ID', field: 'id', sortable: true },
-                        { name: 'original', label: 'Original Image', field: 'original' },
-                        { name: 'transformed', label: 'Transformed Image', field: 'transformed' },
-                        { name: 'distance', label: 'Annotations similarity score', field: 'distance', sortable: true },
-                        { name: 'width', label: 'Width', field: 'width', sortable: true },
-                        { name: 'height', label: 'Height', field: 'height', sortable: true },
+                        { name: 'truth', label: 'Original Image - Ground Truth Annotations', field: 'truth' },
+                        { name: 'original', label: 'Original Image - Detection Annotations', field: 'original' },
+                        { name: 'transformed', label: 'Transformed Image - Detection Annotations ', field: 'transformed' },
+                        { name: 'original_ground_to_original_detection_score', label: 'Ground Truth to Original Detection Annotations Similarity', field: 'original_ground_to_original_detection_score', sortable: true },
+                        { name: 'ground_truth_to_transformed_detection_score', label: 'Ground Truth to Transformed Detection Annotations Similarity', field: 'ground_truth_to_transformed_detection_score', sortable: true },
+                        { name: 'original_detection_to_transformed_detection_score', label: 'Original Detection to Transformed Detection Annotations Similarity', field: 'original_detection_to_transformed_detection_score', sortable: true },
                     ]""",
                 ),
                 rows=(
@@ -47,10 +50,13 @@ class ImageTable(html.Div):
                                 const meta = get(`meta_${datasetId}`).value
                                 return {
                                     ...meta,
-                                    distance: meta.distance.toFixed(2),
+                                    original_ground_to_original_detection_score: meta.original_ground_to_original_detection_score.toFixed(2),
+                                    ground_truth_to_transformed_detection_score: meta.ground_truth_to_transformed_detection_score.toFixed(2),
+                                    original_detection_to_transformed_detection_score: meta.original_detection_to_transformed_detection_score.toFixed(2),
                                     id: datasetId,
                                     original: id,
                                     transformed: `transformed_${id}`,
+                                    groundTruthAnnotations: get(`result_${datasetId}`).value,
                                     originalAnnotations: get(`result_${id}`).value,
                                     transformedAnnotations: get(`result_transformed_${id}`).value,
                                 }
@@ -60,7 +66,22 @@ class ImageTable(html.Div):
                 row_key="id",
                 rows_per_page_options=("[0]",),  # [0] means show all rows
             ):
-                # Put ImageDetection component for image columns
+                # ImageDetection component for image columns
+                with html.Template(
+                    v_slot_body_cell_truth=True,
+                    __properties=[("v_slot_body_cell_truth", "v-slot:body-cell-truth='props'")],
+                ):
+                    with quasar.QTd():
+                        ImageDetection(
+                            style="max-width: 10rem; float: inline-end;",
+                            identifier=("props.row.original",),
+                            src=("get(props.row.original).value",),
+                            annotations=("props.row.groundTruthAnnotations",),
+                            categories=("annotation_categories",),
+                            selected=("(props.row.original == hovered_id)",),
+                            hover=(hover_fn, "[$event]"),
+                            containerSelector="#image-list .q-table__middle",
+                        )
                 with html.Template(
                     v_slot_body_cell_original=True,
                     __properties=[
@@ -100,11 +121,27 @@ class ImageTable(html.Div):
                     v_slot_item=True,
                     __properties=[("v_slot_item", "v-slot:item='props'")],
                 ):
-                    with html.Div(classes="q-pa-xs col-xs-12 col-sm-6 col-md-4 col-lg-3"):
+                    with html.Div(classes="q-pa-xs col-xs-12 col-sm-6 col-md-4"):
                         with quasar.QCard(flat=True, bordered=True):
                             with html.Div(classes="row"):
-                                with html.Div(classes="col-6 q-pa-sm"):
-                                    html.Div("Original", classes="text-center")
+                                with html.Div(classes="col-4 q-pa-sm"):
+                                    html.Div(
+                                        "Original Image - Ground Truth Annotations",
+                                        classes="text-center",
+                                    )
+                                    ImageDetection(
+                                        identifier=("props.row.original",),
+                                        src=("get(props.row.original).value",),
+                                        annotations=("props.row.groundTruthAnnotations",),
+                                        categories=("annotation_categories",),
+                                        selected=("(props.row.original == hovered_id)",),
+                                        hover=(hover_fn, "[$event]"),
+                                    )
+                                with html.Div(classes="col-4 q-pa-sm"):
+                                    html.Div(
+                                        "Original Image - Detection Annotations",
+                                        classes="text-center",
+                                    )
                                     ImageDetection(
                                         identifier=("props.row.original",),
                                         src=("get(props.row.original).value",),
@@ -113,8 +150,11 @@ class ImageTable(html.Div):
                                         selected=("(props.row.original == hovered_id)",),
                                         hover=(hover_fn, "[$event]"),
                                     )
-                                with html.Div(classes="col-6 q-pa-sm"):
-                                    html.Div("Transformed", classes="text-center")
+                                with html.Div(classes="col-4 q-pa-sm"):
+                                    html.Div(
+                                        "Transformed Image - Detection Annotations",
+                                        classes="text-center",
+                                    )
                                     ImageDetection(
                                         identifier=("props.row.transformed",),
                                         src=("get(props.row.transformed).value",),
@@ -128,7 +168,7 @@ class ImageTable(html.Div):
                             ):
                                 with quasar.QItem(
                                     v_for=(
-                                        "col in props.cols.filter(col => !(['original', 'transformed'].includes(col.name)))",
+                                        "col in props.cols.filter(col => !(['truth', 'original', 'transformed'].includes(col.name)))",
                                     ),
                                     key=("col.name",),
                                 ):

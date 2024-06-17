@@ -92,3 +92,20 @@ def convert_from_predictions_to_second_arg(predictions):
         annotations_predictions.append(current_annotations)
 
     return annotations_predictions
+
+
+# Example usage:
+# def is_odd(x):
+#     return x % 2 == 1
+# partition(is_odd, [1, 2, 3, 4])
+def partition(pred, iterable):
+    "Use a predicate to partition entries into false entries and true entries"
+    # partition(is_odd, [1, 2, 3, 4]) --> ([2, 4], [1, 3])
+    it = iter(iterable)
+    true_result, false_result = [], []
+    for elem in it:
+        if pred(elem):
+            true_result.append(elem)
+        else:
+            false_result.append(elem)
+    return true_result, false_result

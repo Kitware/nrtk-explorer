@@ -28,6 +28,7 @@ class ImageTable(html.Div):
             with quasar.QTable(
                 classes="full-height",
                 flat=True,
+                hide_bottom=True,
                 title="Selected Images",
                 grid=("image_list_view_mode === 'grid'", False),
                 filter=("image_list_search", ""),
@@ -35,12 +36,12 @@ class ImageTable(html.Div):
                 columns=(
                     """[
                         { name: 'id', label: 'ID', field: 'id', sortable: true },
-                        { name: 'truth', label: 'Original Image - Ground Truth Annotations', field: 'truth' },
-                        { name: 'original', label: 'Original Image - Detection Annotations', field: 'original' },
-                        { name: 'transformed', label: 'Transformed Image - Detection Annotations ', field: 'transformed' },
-                        { name: 'original_ground_to_original_detection_score', label: 'Ground Truth to Original Detection Annotations Similarity', field: 'original_ground_to_original_detection_score', sortable: true },
-                        { name: 'ground_truth_to_transformed_detection_score', label: 'Ground Truth to Transformed Detection Annotations Similarity', field: 'ground_truth_to_transformed_detection_score', sortable: true },
-                        { name: 'original_detection_to_transformed_detection_score', label: 'Original Detection to Transformed Detection Annotations Similarity', field: 'original_detection_to_transformed_detection_score', sortable: true },
+                        { name: 'truth', label: 'Original: Ground Truth Annotations', field: 'truth' },
+                        { name: 'original', label: 'Original: Detection Annotations', field: 'original' },
+                        { name: 'transformed', label: 'Transformed: Detection Annotations', field: 'transformed' },
+                        { name: 'original_ground_to_original_detection_score', label: 'Ground Truth : Original Detection | Annotations Similarity', field: 'original_ground_to_original_detection_score', sortable: true },
+                        { name: 'ground_truth_to_transformed_detection_score', label: 'Ground Truth : Transformed Detection | Annotations Similarity', field: 'ground_truth_to_transformed_detection_score', sortable: true },
+                        { name: 'original_detection_to_transformed_detection_score', label: 'Original Detection : Transformed Detection | Annotations Similarity', field: 'original_detection_to_transformed_detection_score', sortable: true },
                     ]""",
                 ),
                 rows=(
@@ -126,7 +127,7 @@ class ImageTable(html.Div):
                             with html.Div(classes="row"):
                                 with html.Div(classes="col-4 q-pa-sm"):
                                     html.Div(
-                                        "Original Image - Ground Truth Annotations",
+                                        "Original: Ground Truth Annotations",
                                         classes="text-center",
                                     )
                                     ImageDetection(
@@ -139,7 +140,7 @@ class ImageTable(html.Div):
                                     )
                                 with html.Div(classes="col-4 q-pa-sm"):
                                     html.Div(
-                                        "Original Image - Detection Annotations",
+                                        "Original: Detection Annotations",
                                         classes="text-center",
                                     )
                                     ImageDetection(
@@ -152,7 +153,7 @@ class ImageTable(html.Div):
                                     )
                                 with html.Div(classes="col-4 q-pa-sm"):
                                     html.Div(
-                                        "Transformed Image - Detection Annotations",
+                                        "Transformed: Detection Annotations",
                                         classes="text-center",
                                     )
                                     ImageDetection(

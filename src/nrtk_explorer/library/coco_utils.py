@@ -132,9 +132,9 @@ def compute_score(dataset_ids: Sequence[DatasetId], actual, predicted):
     )
     scores = []
     for _, __, dataset_id in both_images_no_prediction:
-        scores.append((dataset_id, 1))
+        scores.append((dataset_id, 1.0))
     for _, __, dataset_id in one_has_prediction:
-        scores.append((dataset_id, 0))
+        scores.append((dataset_id, 0.0))
 
     if len(has_predictions) == 0:
         return scores

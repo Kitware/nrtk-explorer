@@ -56,6 +56,14 @@ const onImageLoad = () => {
   imageSize.value = { width: img.value?.naturalWidth ?? 0, height: img.value?.naturalHeight ?? 0 }
 }
 
+const annotationsWithColor = computed(() => {
+  return props.annotations.map((annotation, index) => {
+    const mutex = annotation.category_id ?? index
+    const color = CATEGORY_COLORS[mutex % CATEGORY_COLORS.length]
+    return { ...annotation, color }
+  })
+})
+
 // draw visible annotations
 watchEffect(() => {
   if (!visibleCanvas.value || !visibleCtx.value) {
@@ -69,10 +77,9 @@ watchEffect(() => {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   const opacity = 0.5
-  props.annotations.forEach((annotation) => {
-    const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
+  annotationsWithColor.value.forEach(({ color, bbox }) => {
     ctx.fillStyle = `rgba(${[...color, opacity].join(',')})`
-    ctx.fillRect(annotation.bbox[0], annotation.bbox[1], annotation.bbox[2], annotation.bbox[3])
+    ctx.fillRect(bbox[0], bbox[1], bbox[2], bbox[3])
   })
 })
 
@@ -184,9 +191,9 @@ function mouseMove(e: MouseEvent) {
     .filter((rect: any) => doRectanglesOverlap(rect, pixelRectangle))
     .filter((hit) => hit.data != undefined)
     .map((hit) => {
-      const annotation = props.annotations[hit.data!]
-      const name = props.categories[annotation.category_id]?.name ?? 'Unknown'
-      const color = CATEGORY_COLORS[annotation.category_id % CATEGORY_COLORS.length]
+      const annotation = annotationsWithColor.value[hit.data!]
+      const name = props.categories[annotation.category_id]?.name ?? annotation.label
+      const color = annotation.color
       const category = document.createElement('li')
       category.style.textShadow = `rgba(${color.join(',')},0.6) 1px 1px 3px`
       const annotationId = annotation.id ? ` : ${annotation.id}` : ''

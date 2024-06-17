@@ -196,7 +196,8 @@ class TransformsApp(Applet):
         for id_, annotations in predictions:
             image_annotations = []
             for prediction in annotations:
-                category_id = 0
+                category_id = None
+                # if no matching category in dataset JSON, category_id will be None
                 for cat_id, cat in self.state.annotation_categories.items():
                     if cat["name"] == prediction["label"]:
                         category_id = cat_id
@@ -205,6 +206,7 @@ class TransformsApp(Applet):
                 image_annotations.append(
                     {
                         "category_id": category_id,
+                        "label": prediction["label"],
                         "bbox": [
                             bbox["xmin"],
                             bbox["ymin"],

@@ -10,16 +10,20 @@ def image_id_to_meta(image_id: DatasetId) -> ImageMetaId:
 
 
 class DatasetImageMeta(TypedDict):
-    distance: int  # Transformed Embedding Distance
-    width: int
-    height: int
+    original_ground_to_original_detection_score: float
+    original_detection_to_transformed_detection_score: float
+    ground_truth_to_transformed_detection_score: float
 
 
 PartialDatasetImageMeta = TypedDict(
     "PartialDatasetImageMeta", {**DatasetImageMeta.__annotations__}, total=False
 )
 
-IMAGE_META_DEFAULTS: DatasetImageMeta = {"distance": 0, "width": 0, "height": 0}
+IMAGE_META_DEFAULTS: DatasetImageMeta = {
+    "original_ground_to_original_detection_score": 0,
+    "original_detection_to_transformed_detection_score": 0,
+    "ground_truth_to_transformed_detection_score": 0,
+}
 
 
 def update_image_meta(state, dataset_id: DatasetId, meta_patch: PartialDatasetImageMeta):

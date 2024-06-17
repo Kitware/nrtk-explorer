@@ -5,8 +5,7 @@ Define your classes and create the instances that you need to expose
 import logging
 from typing import Dict, Sequence
 import asyncio
-import functools
-import json
+from functools import partial
 import os
 
 from trame.ui.quasar import QLayout
@@ -28,10 +27,10 @@ from nrtk_explorer.app.image_meta import (
     delete_image_meta,
 )
 from nrtk_explorer.library.coco_utils import (
-    convert_from_ground_truth_to_first_arg,
     convert_from_ground_truth_to_second_arg,
     convert_from_predictions_to_second_arg,
     convert_from_predictions_to_first_arg,
+    partition,
 )
 import nrtk_explorer.test_data
 from nrtk_explorer.app.trame_utils import delete_state
@@ -55,8 +54,7 @@ class TransformsApp(Applet):
     def __init__(self, server):
         super().__init__(server)
 
-        self.update_image_meta = functools.partial(update_image_meta, self.server.state)
-        self.getDataset = functools.partial(getDataset, self.server.state.current_dataset)
+        self.update_image_meta = partial(update_image_meta, self.server.state)
 
         self._parameters_app = ParametersApp(
             server=server,
@@ -150,7 +148,7 @@ class TransformsApp(Applet):
         if len(transformed_image_ids) == 0:
             return
 
-        dataset = self.getDataset()
+        dataset = getDataset(self.state.current_dataset)
 
         # Erase current annotations
         dataset_ids = [image_id_to_dataset_id(id) for id in self.state.source_image_ids]
@@ -186,6 +184,27 @@ class TransformsApp(Applet):
 
     def compute_score(self, meta_key: str, dataset_ids: Sequence[DatasetId], actual, predicted):
         """Compute score for image ids."""
+
+        # separate images with no predictions in actual/first-arg
+        # as score function expects at least one prediction
+        def is_empty(prediction_pair):
+            actual_predictions = prediction_pair[0]
+            return len(actual_predictions) == 0
+
+        no_predictions, has_predictions = partition(is_empty, zip(actual, predicted, dataset_ids))
+
+        both_images_no_prediction, one_has_prediction = partition(
+            lambda pair: len(pair[1]) == 0, no_predictions
+        )
+        for _, __, dataset_id in both_images_no_prediction:
+            update_image_meta(self.state, dataset_id, {meta_key: 1})
+        for _, __, dataset_id in one_has_prediction:
+            update_image_meta(self.state, dataset_id, {meta_key: 0})
+
+        if len(has_predictions) == 0:
+            return
+
+        actual, predicted, dataset_ids = zip(*has_predictions)
         score_output = ClassAgnosticPixelwiseIoUScorer().score(actual, predicted)
         for dataset_id, score in zip(dataset_ids, score_output):
             update_image_meta(self.state, dataset_id, {meta_key: score})
@@ -223,7 +242,7 @@ class TransformsApp(Applet):
         return predictions
 
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
-        dataset = self.getDataset()
+        dataset = getDataset(self.state.current_dataset)
         ids = [img["id"] for img in dataset["images"]]
         return self.set_source_images(ids[:current_num_elements])
 
@@ -238,7 +257,7 @@ class TransformsApp(Applet):
         if len(ids) == 0:
             return
 
-        dataset = self.getDataset()
+        dataset = getDataset(self.state.current_dataset)
 
         annotations = self.compute_annotations(ids)
         self.predictions_source_images = convert_from_predictions_to_first_arg(
@@ -270,7 +289,7 @@ class TransformsApp(Applet):
         self.compute_score(
             "original_ground_to_original_detection_score",
             dataset_ids,
-            self.predictions_source_images,  # FIXME: prediction could be 0 for actual, then scorer errors
+            self.predictions_source_images,
             ground_truth_predictions,
         )
 
@@ -279,9 +298,7 @@ class TransformsApp(Applet):
 
         current_dir = os.path.dirname(self.state.current_dataset)
 
-        dataset = None
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
+        dataset = getDataset(self.state.current_dataset)
 
         for selected_id in selected_ids:
             image_index = self.context.image_id_to_index[selected_id]
@@ -294,10 +311,6 @@ class TransformsApp(Applet):
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
             img = self.context.images_manager.load_image(image_filename)
             self.state[image_id] = images_manager.convert_to_base64(img)
-            self.update_image_meta(
-                image_metadata["id"],
-                {"width": image_metadata["width"], "height": image_metadata["height"]},
-            )
             self.context.image_objects[image_id] = img
 
         if len(selected_ids) > 0:
@@ -305,6 +318,7 @@ class TransformsApp(Applet):
 
         old_source_image_ids = self.state.source_image_ids
         self.state.source_image_ids = source_image_ids
+
         self.compute_predictions_source_images(old_source_image_ids, self.state.source_image_ids)
 
         self.on_apply_transform()
@@ -349,9 +363,7 @@ class TransformsApp(Applet):
 
         self.reset_data()
 
-        with open(current_dataset) as f:
-            dataset = json.load(f)
-
+        dataset = getDataset(current_dataset)
         categories = {}
 
         for category in dataset["categories"]:

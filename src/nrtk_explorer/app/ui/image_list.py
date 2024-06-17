@@ -39,9 +39,9 @@ class ImageTable(html.Div):
                         { name: 'truth', label: 'Original: Ground Truth Annotations', field: 'truth' },
                         { name: 'original', label: 'Original: Detection Annotations', field: 'original' },
                         { name: 'transformed', label: 'Transformed: Detection Annotations', field: 'transformed' },
-                        { name: 'original_ground_to_original_detection_score', label: 'Ground Truth : Original Detection | Annotations Similarity', field: 'original_ground_to_original_detection_score', sortable: true },
-                        { name: 'ground_truth_to_transformed_detection_score', label: 'Ground Truth : Transformed Detection | Annotations Similarity', field: 'ground_truth_to_transformed_detection_score', sortable: true },
-                        { name: 'original_detection_to_transformed_detection_score', label: 'Original Detection : Transformed Detection | Annotations Similarity', field: 'original_detection_to_transformed_detection_score', sortable: true },
+                        { name: 'original_ground_to_original_detection_score', label: 'Ground Truth - Original Detection | Annotations Similarity', field: 'original_ground_to_original_detection_score', sortable: true },
+                        { name: 'ground_truth_to_transformed_detection_score', label: 'Ground Truth - Transformed Detection | Annotations Similarity', field: 'ground_truth_to_transformed_detection_score', sortable: true },
+                        { name: 'original_detection_to_transformed_detection_score', label: 'Original Detection - Transformed Detection | Annotations Similarity', field: 'original_detection_to_transformed_detection_score', sortable: true },
                     ]""",
                 ),
                 rows=(
@@ -196,7 +196,6 @@ class ImageTable(html.Div):
                     )
                     quasar.QBtnToggle(
                         v_model=("image_list_view_mode", "table"),
-                        # classes="col-2",
                         raw_attrs=[
                             ":options=\"[{label: 'Table', value: 'table'}, {label: 'Grid', value: 'grid'}]\"",
                         ],

@@ -1,4 +1,9 @@
 from smqtk_image_io.bbox import AxisAlignedBoundingBox
+from nrtk.impls.score_detections.class_agnostic_pixelwise_iou_scorer import (
+    ClassAgnosticPixelwiseIoUScorer,
+)
+from typing import Sequence
+from nrtk_explorer.app.image_ids import DatasetId
 
 # This module contains functions to convert ground truth annotations and predictions to COCOScorer format
 # COCOScorer is a library that computes the COCO metrics for object detection tasks.
@@ -109,3 +114,34 @@ def partition(pred, iterable):
         else:
             false_result.append(elem)
     return true_result, false_result
+
+
+def compute_score(dataset_ids: Sequence[DatasetId], actual, predicted):
+    """Compute score for image ids."""
+
+    # separate images with no predictions in actual argument
+    # as score function expects at least one prediction
+    def is_empty(prediction_pair):
+        actual_predictions = prediction_pair[0]
+        return len(actual_predictions) == 0
+
+    no_predictions, has_predictions = partition(is_empty, zip(actual, predicted, dataset_ids))
+
+    both_images_no_prediction, one_has_prediction = partition(
+        lambda pair: len(pair[1]) == 0, no_predictions
+    )
+    scores = []
+    for _, __, dataset_id in both_images_no_prediction:
+        scores.append((dataset_id, 1))
+    for _, __, dataset_id in one_has_prediction:
+        scores.append((dataset_id, 0))
+
+    if len(has_predictions) == 0:
+        return scores
+
+    actual, predicted, dataset_ids = zip(*has_predictions)
+    score_output = ClassAgnosticPixelwiseIoUScorer().score(actual, predicted)
+    for dataset_id, score in zip(dataset_ids, score_output):
+        scores.append((dataset_id, score))
+
+    return scores

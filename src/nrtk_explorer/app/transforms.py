@@ -18,19 +18,17 @@ import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import images_manager, object_detector
 from nrtk_explorer.app import ui
 from nrtk_explorer.app.applet import Applet
-from nrtk.impls.score_detections.class_agnostic_pixelwise_iou_scorer import (
-    ClassAgnosticPixelwiseIoUScorer,
-)
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.image_meta import (
     update_image_meta,
     delete_image_meta,
 )
 from nrtk_explorer.library.coco_utils import (
+    convert_from_ground_truth_to_first_arg,
     convert_from_ground_truth_to_second_arg,
     convert_from_predictions_to_second_arg,
     convert_from_predictions_to_first_arg,
-    partition,
+    compute_score,
 )
 import nrtk_explorer.test_data
 from nrtk_explorer.app.trame_utils import delete_state
@@ -161,53 +159,32 @@ class TransformsApp(Applet):
         annotations = self.compute_annotations(transformed_image_ids)
 
         predictions = convert_from_predictions_to_second_arg(annotations)
-        self.compute_score(
-            "original_detection_to_transformed_detection_score",
+        scores = compute_score(
             dataset_ids,
             self.predictions_source_images,
             predictions,
         )
+        for dataset_id, score in scores:
+            update_image_meta(
+                self.state,
+                dataset_id,
+                {"original_detection_to_transformed_detection_score": score},
+            )
 
         ground_truth_annotations = [self.context["annotations"][id] for id in dataset_ids]
-        ground_truth_predictions = convert_from_ground_truth_to_second_arg(
-            ground_truth_annotations, dataset
-        )
-        self.compute_score(
-            "ground_truth_to_transformed_detection_score",
+        ground_truth_predictions = convert_from_ground_truth_to_first_arg(ground_truth_annotations)
+        scores = compute_score(
             dataset_ids,
-            self.predictions_source_images,
             ground_truth_predictions,
+            predictions,
         )
+        for dataset_id, score in scores:
+            update_image_meta(
+                self.state, dataset_id, {"ground_truth_to_transformed_detection_score": score}
+            )
 
         # Only invoke callbacks when we transform images
         self.on_transform(transformed_image_ids)
-
-    def compute_score(self, meta_key: str, dataset_ids: Sequence[DatasetId], actual, predicted):
-        """Compute score for image ids."""
-
-        # separate images with no predictions in actual/first-arg
-        # as score function expects at least one prediction
-        def is_empty(prediction_pair):
-            actual_predictions = prediction_pair[0]
-            return len(actual_predictions) == 0
-
-        no_predictions, has_predictions = partition(is_empty, zip(actual, predicted, dataset_ids))
-
-        both_images_no_prediction, one_has_prediction = partition(
-            lambda pair: len(pair[1]) == 0, no_predictions
-        )
-        for _, __, dataset_id in both_images_no_prediction:
-            update_image_meta(self.state, dataset_id, {meta_key: 1})
-        for _, __, dataset_id in one_has_prediction:
-            update_image_meta(self.state, dataset_id, {meta_key: 0})
-
-        if len(has_predictions) == 0:
-            return
-
-        actual, predicted, dataset_ids = zip(*has_predictions)
-        score_output = ClassAgnosticPixelwiseIoUScorer().score(actual, predicted)
-        for dataset_id, score in zip(dataset_ids, score_output):
-            update_image_meta(self.state, dataset_id, {meta_key: score})
 
     def compute_annotations(self, ids):
         """Compute annotations for the given image ids using the object detector model."""
@@ -217,7 +194,7 @@ class TransformsApp(Applet):
         predictions = self.detector.eval(image_ids=ids, content=self.context.image_objects)
 
         for id_, annotations in predictions:
-            image_annotations = self.context["annotations"].setdefault(id_, [])
+            image_annotations = []
             for prediction in annotations:
                 category_id = 0
                 for cat_id, cat in self.state.annotation_categories.items():
@@ -228,7 +205,6 @@ class TransformsApp(Applet):
                 image_annotations.append(
                     {
                         "category_id": category_id,
-                        "id": None,
                         "bbox": [
                             bbox["xmin"],
                             bbox["ymin"],
@@ -237,6 +213,7 @@ class TransformsApp(Applet):
                         ],
                     }
                 )
+            self.context["annotations"][id_] = image_annotations
 
         self.sync_annotations_to_state(ids)
         return predictions
@@ -277,8 +254,8 @@ class TransformsApp(Applet):
             ]
             for dataset_id in dataset_ids
         }
-        for dataset_id, dataset_annotations in annotations.items():
-            self.context["annotations"][dataset_id] = dataset_annotations
+        for dataset_id, ground_truth_annotations in annotations.items():
+            self.context["annotations"][dataset_id] = ground_truth_annotations
 
         self.sync_annotations_to_state(dataset_ids)
 
@@ -286,12 +263,15 @@ class TransformsApp(Applet):
         ground_truth_predictions = convert_from_ground_truth_to_second_arg(
             ground_truth_annotations, dataset
         )
-        self.compute_score(
-            "original_ground_to_original_detection_score",
+        scores = compute_score(
             dataset_ids,
             self.predictions_source_images,
             ground_truth_predictions,
         )
+        for dataset_id, score in scores:
+            update_image_meta(
+                self.state, dataset_id, {"original_ground_to_original_detection_score": score}
+            )
 
     def _update_images(self, selected_ids):
         source_image_ids = []

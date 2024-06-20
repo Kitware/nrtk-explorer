@@ -27,18 +27,18 @@ class Dataset(TypedDict):
     annotations: List[DatasetAnnotation]
 
 
-def loadDataset(path: str) -> Dataset:
+def load_dataset(path: str) -> Dataset:
     with open(path) as f:
         return json.load(f)
 
 
-datasetJson: Dataset = {"categories": [], "images": [], "annotations": []}
-_datasetPath: str = ""
+dataset_json: Dataset = {"categories": [], "images": [], "annotations": []}
+dataset_path: str = ""
 
 
-def getDataset(path: str) -> Dataset:
-    global datasetJson, _datasetPath
-    if _datasetPath != path:
-        _datasetPath = path
-        datasetJson = loadDataset(_datasetPath)
-    return datasetJson
+def get_dataset(path: str) -> Dataset:
+    global dataset_json, dataset_path
+    if dataset_path != path:
+        dataset_path = path
+        dataset_json = load_dataset(dataset_path)
+    return dataset_json

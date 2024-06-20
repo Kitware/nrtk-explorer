@@ -80,9 +80,9 @@ def convert_from_predictions_to_first_arg(predictions, dataset, ids):
 def convert_from_predictions_to_second_arg(predictions):
     """Convert predictions to COCOScorer format"""
     annotations_predictions = list()
-    for img_predictions in predictions:
+    for img_predictions in predictions.values():
         current_annotations = list()
-        for prediction in img_predictions[1]:
+        for prediction in img_predictions:
             if prediction:
                 current_annotations.append(
                     (

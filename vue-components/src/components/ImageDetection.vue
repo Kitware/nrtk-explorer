@@ -57,8 +57,8 @@ const onImageLoad = () => {
 }
 
 const annotationsWithColor = computed(() => {
-  return props.annotations.map((annotation, index) => {
-    const mutex = annotation.category_id ?? index
+  return props.annotations.map((annotation) => {
+    const mutex = annotation.category_id ?? 0
     const color = CATEGORY_COLORS[mutex % CATEGORY_COLORS.length]
     return { ...annotation, color }
   })

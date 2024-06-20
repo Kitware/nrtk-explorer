@@ -8,12 +8,6 @@ from typing import Optional
 
 from nrtk_explorer.library import images_manager
 
-Annotation = dict  # in COCO format
-Annotations = list[Annotation]
-ImageId = str
-AnnotatedImage = tuple[ImageId, Annotations]
-AnnotatedImages = list[AnnotatedImage]
-
 
 class ObjectDetector:
     """Object detection using Hugging Face's transformers library"""
@@ -66,12 +60,12 @@ class ObjectDetector:
         image_ids: list[str],
         content: Optional[dict] = None,
         batch_size: int = 32,
-    ) -> AnnotatedImages:
+    ):
         """Compute object recognition. Returns Annotations grouped by input image paths."""
-        images: dict = {}
 
         # Some models require all the images in a batch to be the same size,
         # otherwise crash or UB.
+        batches: dict = {}
         for path in image_ids:
             img = None
             if content and path in content:
@@ -79,27 +73,21 @@ class ObjectDetector:
             else:
                 img = self.manager.load_image(path)
 
-            images.setdefault(img.size, [[], []])
-            images[img.size][0].append(path)
-            images[img.size][1].append(img)
+            batches.setdefault(img.size, [[], []])
+            batches[img.size][0].append(path)
+            batches[img.size][1].append(img)
 
-        # Call by each group
-        predictions = [
-            list(
-                zip(
-                    group[0],
-                    self.pipeline(group[1], batch_size=batch_size),
-                )
+        predictions_in_baches = [
+            zip(
+                image_ids,
+                self.pipeline(images, batch_size=batch_size),
             )
-            for group in images.values()
+            for image_ids, images in batches.values()
         ]
-        # Flatten the list of predictions
-        predictions = reduce(operator.iadd, predictions, [])
 
-        # order output by paths order
-        find_prediction = lambda id: next(
-            prediction for prediction in predictions if prediction[0] == id
-        )
-        output = [find_prediction(id) for id in image_ids]
-        # mypy wrongly thinks output's type is list[list[tuple[str, dict]]]
-        return output  # type: ignore
+        predictions_by_image_id = {
+            image_id: predictions
+            for batch in predictions_in_baches
+            for image_id, predictions in batch
+        }
+        return predictions_by_image_id

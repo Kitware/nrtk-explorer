@@ -193,7 +193,7 @@ class TransformsApp(Applet):
 
         predictions = self.detector.eval(image_ids=ids, content=self.context.image_objects)
 
-        for id_, annotations in predictions:
+        for id_, annotations in predictions.items():
             image_annotations = []
             for prediction in annotations:
                 category_id = None

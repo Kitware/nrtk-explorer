@@ -3,7 +3,7 @@ Define your classes and create the instances that you need to expose
 """
 
 import logging
-from typing import Dict, Sequence
+from typing import Dict
 import asyncio
 from functools import partial
 import os
@@ -32,8 +32,8 @@ from nrtk_explorer.library.coco_utils import (
 )
 import nrtk_explorer.test_data
 from nrtk_explorer.app.trame_utils import delete_state
-from nrtk_explorer.app.image_ids import image_id_to_dataset_id, image_id_to_result_id, DatasetId
-from nrtk_explorer.library.dataset import getDataset
+from nrtk_explorer.app.image_ids import image_id_to_dataset_id, image_id_to_result_id
+from nrtk_explorer.library.dataset import get_dataset
 
 
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ class TransformsApp(Applet):
         if len(transformed_image_ids) == 0:
             return
 
-        dataset = getDataset(self.state.current_dataset)
+        dataset = get_dataset(self.state.current_dataset)
 
         # Erase current annotations
         dataset_ids = [image_id_to_dataset_id(id) for id in self.state.source_image_ids]
@@ -221,7 +221,7 @@ class TransformsApp(Applet):
         return predictions
 
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
-        dataset = getDataset(self.state.current_dataset)
+        dataset = get_dataset(self.state.current_dataset)
         ids = [img["id"] for img in dataset["images"]]
         return self.set_source_images(ids[:current_num_elements])
 
@@ -236,7 +236,7 @@ class TransformsApp(Applet):
         if len(ids) == 0:
             return
 
-        dataset = getDataset(self.state.current_dataset)
+        dataset = get_dataset(self.state.current_dataset)
 
         annotations = self.compute_annotations(ids)
         self.predictions_source_images = convert_from_predictions_to_first_arg(
@@ -280,7 +280,7 @@ class TransformsApp(Applet):
 
         current_dir = os.path.dirname(self.state.current_dataset)
 
-        dataset = getDataset(self.state.current_dataset)
+        dataset = get_dataset(self.state.current_dataset)
 
         for selected_id in selected_ids:
             image_index = self.context.image_id_to_index[selected_id]
@@ -345,7 +345,7 @@ class TransformsApp(Applet):
 
         self.reset_data()
 
-        dataset = getDataset(current_dataset)
+        dataset = get_dataset(current_dataset)
         categories = {}
 
         for category in dataset["categories"]:

@@ -1,9 +1,7 @@
 import logging
-import operator
 import torch
 import transformers
 
-from functools import reduce
 from typing import Optional
 
 from nrtk_explorer.library import images_manager

@@ -5,6 +5,7 @@ from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.library.filtering import FilterProtocol
+from nrtk_explorer.library.dataset import get_dataset
 
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
@@ -130,8 +131,7 @@ class Engine(Applet):
         # Reset cache
         self.context.images_manager = images_manager.ImagesManager()
 
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
+        dataset = get_dataset(self.state.current_dataset, force_reload=True)
 
         self.state.num_images_max = len(dataset["images"])
         self.state.random_sampling_disabled = False

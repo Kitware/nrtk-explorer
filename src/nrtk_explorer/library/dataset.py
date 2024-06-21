@@ -36,9 +36,9 @@ dataset_json: Dataset = {"categories": [], "images": [], "annotations": []}
 dataset_path: str = ""
 
 
-def get_dataset(path: str) -> Dataset:
+def get_dataset(path: str, force_reload=False) -> Dataset:
     global dataset_json, dataset_path
-    if dataset_path != path:
+    if dataset_path != path or force_reload:
         dataset_path = path
         dataset_json = load_dataset(dataset_path)
     return dataset_json

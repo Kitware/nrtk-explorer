@@ -1,13 +1,13 @@
 from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library import images_manager
+from nrtk_explorer.library.dataset import get_dataset
 import nrtk_explorer.test_data
 
 from tabulate import tabulate
 from itertools import product
 from pathlib import Path
 
-import json
 import os
 import pytest
 import timeit
@@ -17,9 +17,8 @@ inc_ds_path = Path(f"{CURRENT_DIR_NAME}/coco-od-2017/test_val2017.json")
 
 
 def image_paths_impl(file_name):
-    with open(file_name) as f:
-        dataset = json.load(f)
-    images = dataset["images"]
+    dataset = get_dataset(file_name)
+    images = dataset.imgs.values()
 
     paths = list()
     for image_metadata in images:

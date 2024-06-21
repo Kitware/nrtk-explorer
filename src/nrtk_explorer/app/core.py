@@ -17,9 +17,7 @@ from pathlib import Path
 
 import os
 
-import json
 import random
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -130,10 +128,8 @@ class Engine(Applet):
     def on_dataset_change(self, **kwargs):
         # Reset cache
         self.context.images_manager = images_manager.ImagesManager()
-
-        dataset = get_dataset(self.state.current_dataset, force_reload=True)
-
-        self.state.num_images_max = len(dataset["images"])
+        self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
+        self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.random_sampling_disabled = False
         self.state.num_images_disabled = False
 
@@ -162,14 +158,11 @@ class Engine(Applet):
         self.reload_images()
 
     def reload_images(self):
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
-
         categories = {}
-        for category in dataset["categories"]:
+        for category in self.context.dataset.cats.values():
             categories[category["id"]] = category
 
-        images = dataset["images"]
+        images = list(self.context.dataset.imgs.values())
 
         selected_images = []
         if self.state.num_images:

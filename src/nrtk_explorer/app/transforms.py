@@ -146,11 +146,9 @@ class TransformsApp(Applet):
         if len(transformed_image_ids) == 0:
             return
 
-        dataset = get_dataset(self.state.current_dataset)
-
         # Erase current annotations
         dataset_ids = [image_id_to_dataset_id(id) for id in self.state.source_image_ids]
-        for ann in dataset["annotations"]:
+        for ann in self.context.dataset.anns.values():
             if str(ann["image_id"]) in dataset_ids:
                 transformed_id = f"transformed_img_{ann['image_id']}"
                 if transformed_id in self.context["annotations"]:
@@ -221,8 +219,7 @@ class TransformsApp(Applet):
         return predictions
 
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
-        dataset = get_dataset(self.state.current_dataset)
-        ids = [img["id"] for img in dataset["images"]]
+        ids = [img["id"] for img in self.context.dataset.imgs.values()]
         return self.set_source_images(ids[:current_num_elements])
 
     def compute_predictions_source_images(self, old_ids, ids):
@@ -236,22 +233,18 @@ class TransformsApp(Applet):
         if len(ids) == 0:
             return
 
-        dataset = get_dataset(self.state.current_dataset)
-
         annotations = self.compute_annotations(ids)
         self.predictions_source_images = convert_from_predictions_to_first_arg(
             annotations,
-            dataset,
+            self.context.dataset,
             ids,
         )
 
-        # load ground truth annotations
-        dataset_annotations = dataset["annotations"]
         # collect annotations for each dataset_id
         annotations = {
             dataset_id: [
                 annotation
-                for annotation in dataset_annotations
+                for annotation in self.context.dataset.anns.values()
                 if str(annotation["image_id"]) == dataset_id
             ]
             for dataset_id in dataset_ids
@@ -263,7 +256,7 @@ class TransformsApp(Applet):
 
         ground_truth_annotations = annotations.values()
         ground_truth_predictions = convert_from_ground_truth_to_second_arg(
-            ground_truth_annotations, dataset
+            ground_truth_annotations, self.context.dataset
         )
         scores = compute_score(
             dataset_ids,
@@ -280,14 +273,8 @@ class TransformsApp(Applet):
 
         current_dir = os.path.dirname(self.state.current_dataset)
 
-        dataset = get_dataset(self.state.current_dataset)
-
         for selected_id in selected_ids:
-            image_index = self.context.image_id_to_index[selected_id]
-            if image_index >= len(dataset["images"]):
-                continue
-
-            image_metadata = dataset["images"][image_index]
+            image_metadata = self.context.dataset.imgs[selected_id]
             image_id = f"img_{image_metadata['id']}"
             source_image_ids.append(image_id)
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
@@ -342,20 +329,16 @@ class TransformsApp(Applet):
 
     def on_current_dataset_change(self, current_dataset, **kwargs):
         logger.debug(f"on_current_dataset_change change {self.state}")
-
         self.reset_data()
 
-        dataset = get_dataset(current_dataset)
         categories = {}
+        if self.context.dataset is None:
+            self.context.dataset = get_dataset(current_dataset, force_reload=True)
 
-        for category in dataset["categories"]:
+        for category in self.context.dataset.cats.values():
             categories[category["id"]] = category
 
         self.state.annotation_categories = categories
-
-        self.context.image_id_to_index = {}
-        for i, image in enumerate(dataset["images"]):
-            self.context.image_id_to_index[image["id"]] = i
 
         if self.is_standalone_app:
             self.context.images_manager = images_manager.ImagesManager()

@@ -2,9 +2,11 @@ import logging
 import torch
 import transformers
 
-from typing import Optional
+from typing import Optional, Sequence
 
 from nrtk_explorer.library import images_manager
+
+ImageIdToAnnotations = dict[str, Sequence[dict]]
 
 
 class ObjectDetector:
@@ -58,7 +60,7 @@ class ObjectDetector:
         image_ids: list[str],
         content: Optional[dict] = None,
         batch_size: int = 32,
-    ):
+    ) -> ImageIdToAnnotations:
         """Compute object recognition. Returns Annotations grouped by input image paths."""
 
         # Some models require all the images in a batch to be the same size,

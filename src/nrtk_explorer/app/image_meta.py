@@ -1,11 +1,10 @@
 from typing import TypedDict
 from nrtk_explorer.app.trame_utils import delete_state
-from nrtk_explorer.app.image_ids import DatasetId
 
 ImageMetaId = str
 
 
-def image_id_to_meta(image_id: DatasetId) -> ImageMetaId:
+def image_id_to_meta(image_id: str) -> ImageMetaId:
     return f"meta_{image_id}"
 
 
@@ -26,7 +25,7 @@ IMAGE_META_DEFAULTS: DatasetImageMeta = {
 }
 
 
-def update_image_meta(state, dataset_id: DatasetId, meta_patch: PartialDatasetImageMeta):
+def update_image_meta(state, dataset_id: str, meta_patch: PartialDatasetImageMeta):
     meta_key = image_id_to_meta(dataset_id)
     current_meta = {}
     if state.has(meta_key) and state[meta_key] is not None:
@@ -34,6 +33,6 @@ def update_image_meta(state, dataset_id: DatasetId, meta_patch: PartialDatasetIm
     state[meta_key] = {**IMAGE_META_DEFAULTS, **current_meta, **meta_patch}
 
 
-def delete_image_meta(state, dataset_id: DatasetId):
+def delete_image_meta(state, dataset_id: str):
     meta_key = image_id_to_meta(dataset_id)
     delete_state(state, meta_key)

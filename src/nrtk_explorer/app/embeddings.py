@@ -6,8 +6,8 @@ from nrtk_explorer.app.applet import Applet
 import nrtk_explorer.test_data
 
 import asyncio
-import json
 import os
+import kwcoco
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
@@ -60,10 +60,11 @@ class EmbeddingsApp(Applet):
 
     def on_current_dataset_change(self, **kwargs):
         self.state.num_elements_disabled = True
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
-            self.images = dataset["images"]
-            self.state.num_elements_max = len(self.images)
+        if self.context.dataset is None:
+            self.context.dataset = kwcoco.CocoDataset(self.state.current_dataset)
+
+        self.images = list(self.context.dataset.imgs.values())
+        self.state.num_elements_max = len(self.images)
         self.state.num_elements_disabled = False
 
         if self.is_standalone_app:

@@ -1,5 +1,5 @@
 from typing import TypedDict, List
-import json
+import kwcoco
 
 
 class DatasetCategory(TypedDict):
@@ -28,8 +28,7 @@ class Dataset(TypedDict):
 
 
 def load_dataset(path: str) -> Dataset:
-    with open(path) as f:
-        return json.load(f)
+    return kwcoco.CocoDataset(path)
 
 
 dataset_json: Dataset = {"categories": [], "images": [], "annotations": []}

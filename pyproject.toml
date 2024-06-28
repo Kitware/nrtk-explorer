@@ -28,6 +28,7 @@ classifiers = [
 
 dependencies = [
     "accelerate",
+    "kwcoco",
     "nrtk>=0.4.2",
     "numpy",
     "Pillow",

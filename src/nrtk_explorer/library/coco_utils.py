@@ -35,7 +35,7 @@ def convert_from_ground_truth_to_first_arg(dataset_annotations):
 
 def convert_from_ground_truth_to_second_arg(dataset_annotations, dataset):
     """Convert ground truth annotations to COCOScorer format"""
-    categories = {cat["id"]: cat["name"] for cat in dataset["categories"]}
+    categories = {cat["id"]: cat["name"] for cat in dataset.cats.values()}
     annotations = list()
     for dataset_image_annotations in dataset_annotations:
         image_annotations = list()
@@ -59,7 +59,7 @@ def convert_from_ground_truth_to_second_arg(dataset_annotations, dataset):
 def convert_from_predictions_to_first_arg(predictions, dataset, ids):
     """Convert predictions to COCOScorer format"""
     predictions = convert_from_predictions_to_second_arg(predictions)
-    categories = {cat["name"]: cat["id"] for cat in dataset["categories"]}
+    categories = {cat["name"]: cat["id"] for cat in dataset.cats.values()}
     real_ids = [id_.split("_")[-1] for id_ in ids]
 
     for id_, img_predictions in zip(real_ids, predictions):

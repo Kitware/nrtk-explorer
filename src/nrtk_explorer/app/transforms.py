@@ -4,7 +4,6 @@ Define your classes and create the instances that you need to expose
 
 import logging
 from typing import Dict
-import asyncio
 from functools import partial
 import os
 
@@ -31,7 +30,7 @@ from nrtk_explorer.library.coco_utils import (
     compute_score,
 )
 import nrtk_explorer.test_data
-from nrtk_explorer.app.trame_utils import delete_state
+from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync
 from nrtk_explorer.app.image_ids import image_id_to_dataset_id, image_id_to_result_id
 from nrtk_explorer.library.dataset import get_dataset
 
@@ -46,6 +45,8 @@ DATASET_DIRS = [
     f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
     f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
 ]
+
+server = get_server()
 
 
 class TransformsApp(Applet):
@@ -234,6 +235,7 @@ class TransformsApp(Applet):
             return
 
         annotations = self.compute_annotations(ids)
+        dataset = get_dataset(self.state.current_dataset)
         self.predictions_source_images = convert_from_predictions_to_first_arg(
             annotations,
             self.context.dataset,
@@ -268,9 +270,13 @@ class TransformsApp(Applet):
                 self.state, dataset_id, {"original_ground_to_original_detection_score": score}
             )
 
-    def _update_images(self, selected_ids):
-        source_image_ids = []
+    async def _update_images(self):
+        async with SetStateAsync(self.state) as state:
+            state.loading_images = True
+            self.state.hovered_id = ""
 
+        selected_ids = self.context.selected_dataset_ids
+        source_image_ids = []
         current_dir = os.path.dirname(self.state.current_dataset)
 
         for selected_id in selected_ids:
@@ -282,33 +288,26 @@ class TransformsApp(Applet):
             self.state[image_id] = images_manager.convert_to_base64(img)
             self.context.image_objects[image_id] = img
 
-        if len(selected_ids) > 0:
-            self.state.hovered_id = ""
-
         old_source_image_ids = self.state.source_image_ids
-        self.state.source_image_ids = source_image_ids
 
-        self.compute_predictions_source_images(old_source_image_ids, self.state.source_image_ids)
+        async with SetStateAsync(self.state) as state:
+            state.source_image_ids = source_image_ids
+            state.loading_images = False
 
-        self.on_apply_transform()
+        async with SetStateAsync(self.state) as state:
+            self.compute_predictions_source_images(
+                old_source_image_ids, self.state.source_image_ids
+            )
+            self.on_apply_transform()
 
-    async def _set_source_images(self, selected_ids):
-        # We need to yield twice for the self.state.loading_images=True to
-        # commit to the trame state to show a spinner
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
-        self._update_images(selected_ids)
-        with self.state:
-            self.state.loading_images = False
+    def _start_update_images(self):
+        if hasattr(self, "_update_images_task"):
+            self._update_images_task.cancel()
+        self._update_images_task = asynchronous.create_task(self._update_images())
 
-    def set_source_images(self, selected_ids):
-        if len(selected_ids):
-            self.state.loading_images = True
-        if hasattr(self, "_set_source_images_task"):
-            self._set_source_images_task.cancel()
-        self._set_source_images_task = asynchronous.create_task(
-            self._set_source_images(selected_ids)
-        )
+    def set_selected_dataset_ids(self, selected_dataset_ids):
+        self.context.selected_dataset_ids = selected_dataset_ids
+        self._start_update_images()
 
     def reset_data(self):
         source_and_transformed = self.state.source_image_ids + self.state.transformed_image_ids

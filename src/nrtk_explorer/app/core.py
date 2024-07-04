@@ -94,7 +94,7 @@ class Engine(Applet):
             server=self.server.create_child_server(translator=filtering_translator),
         )
 
-        self._embeddings_app.set_on_select(self._transforms_app.set_source_images)
+        self._embeddings_app.set_on_select(self._transforms_app.set_selected_dataset_ids)
         self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
         self._embeddings_app.set_on_hover(self._transforms_app.on_image_hovered)
         self._transforms_app.set_on_hover(self._embeddings_app.on_image_hovered)

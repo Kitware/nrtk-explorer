@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect, computed, onMounted } from 'vue'
+import { ref, watchEffect, computed, onMounted, type MaybeRef, unref } from 'vue'
 
 import { Quadtree, Rectangle } from '@timohausmann/quadtree-ts'
 
@@ -17,30 +17,28 @@ const CATEGORY_COLORS: Vector3<number>[] = [
 const TOOLTIP_OFFSET = [8, 8]
 const TOOLTIP_HEIGHT_PADDING = 12 // fudge to keep bottom border from clipping. In pixels
 
-interface Props {
-  identifier: string
-  src: string
-  annotations: Annotation[]
-  categories: { [key: number]: Category }
-  selected: boolean
-  containerSelector?: string
-}
-
 let annotationsTree: Quadtree<Rectangle<number>> | undefined = undefined
 
 function doRectanglesOverlap(recA: Rectangle<any>, recB: Rectangle<any>) {
-  const noHOverlap: boolean = recB.x >= recA.x + recA.width || recA.x >= recB.x + recB.width
+  const noHOverlap = recB.x >= recA.x + recA.width || recA.x >= recB.x + recB.width
 
   if (noHOverlap) {
     return false
   }
 
-  const noVOverlap: boolean = recB.y >= recA.y + recA.height || recA.y >= recB.y + recB.height
+  const noVOverlap = recB.y >= recA.y + recA.height || recA.y >= recB.y + recB.height
 
   return !noVOverlap
 }
 
-const props = defineProps<Props>()
+const props = defineProps<{
+  identifier: string
+  src: MaybeRef<string>
+  annotations?: MaybeRef<Annotation[]>
+  categories: { [key: number]: Category }
+  selected: boolean
+  containerSelector?: string
+}>()
 
 const visibleCanvas = ref<HTMLCanvasElement>()
 const visibleCtx = computed(() => visibleCanvas.value?.getContext('2d', { alpha: true }))
@@ -56,8 +54,10 @@ const onImageLoad = () => {
   imageSize.value = { width: img.value?.naturalWidth ?? 0, height: img.value?.naturalHeight ?? 0 }
 }
 
+const annotations = computed(() => unref(props.annotations) ?? [])
+
 const annotationsWithColor = computed(() => {
-  return props.annotations.map((annotation) => {
+  return annotations.value.map((annotation) => {
     const mutex = annotation.category_id ?? 0
     const color = CATEGORY_COLORS[mutex % CATEGORY_COLORS.length]
     return { ...annotation, color }
@@ -102,7 +102,7 @@ watchEffect(() => {
     maxObjects: 10
   })
 
-  props.annotations.forEach((annotation, i) => {
+  annotations.value.forEach((annotation, i) => {
     const treeNode = new Rectangle<number>({
       x: annotation.bbox[0],
       y: annotation.bbox[1],
@@ -237,6 +237,8 @@ function mouseMove(e: MouseEvent) {
 }
 
 const borderSize = computed(() => (props.selected ? '4' : '0'))
+
+const src = computed(() => unref(props.src))
 </script>
 
 <template>

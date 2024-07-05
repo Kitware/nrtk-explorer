@@ -3,7 +3,7 @@ Define your classes and create the instances that you need to expose
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Sequence
 from functools import partial
 import os
 
@@ -31,7 +31,12 @@ from nrtk_explorer.library.coco_utils import (
 )
 import nrtk_explorer.test_data
 from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync
-from nrtk_explorer.app.image_ids import image_id_to_dataset_id, image_id_to_result_id
+from nrtk_explorer.app.image_ids import (
+    image_id_to_dataset_id,
+    image_id_to_result_id,
+    dataset_id_to_image_id,
+    dataset_id_to_transformed_image_id,
+)
 from nrtk_explorer.library.dataset import get_dataset
 
 
@@ -45,8 +50,6 @@ DATASET_DIRS = [
     f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
     f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
 ]
-
-server = get_server()
 
 
 class TransformsApp(Applet):
@@ -93,6 +96,7 @@ class TransformsApp(Applet):
 
         self.state.annotation_categories = {}
 
+        self.context.selected_dataset_ids = []
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
 
@@ -223,25 +227,12 @@ class TransformsApp(Applet):
         ids = [img["id"] for img in self.context.dataset.imgs.values()]
         return self.set_source_images(ids[:current_num_elements])
 
-    def compute_predictions_source_images(self, old_ids, ids):
-        """Compute the predictions for the source images."""
-        dataset_ids = [image_id_to_dataset_id(id) for id in ids]
-        to_delete = set(old_ids) | set(ids) | set(dataset_ids)
-        for id in to_delete:
+    def delete_annotations(self, ids):
+        for id in ids:
             if id in self.context["annotations"]:
                 del self.context["annotations"][id]
 
-        if len(ids) == 0:
-            return
-
-        annotations = self.compute_annotations(ids)
-        dataset = get_dataset(self.state.current_dataset)
-        self.predictions_source_images = convert_from_predictions_to_first_arg(
-            annotations,
-            self.context.dataset,
-            ids,
-        )
-
+    def load_ground_truth_annotations(self, dataset_ids):
         # collect annotations for each dataset_id
         annotations = {
             dataset_id: [
@@ -256,7 +247,22 @@ class TransformsApp(Applet):
 
         self.sync_annotations_to_state(dataset_ids)
 
-        ground_truth_annotations = annotations.values()
+    def compute_predictions_source_images(self, ids):
+        """Compute the predictions for the source images."""
+        dataset_ids = [image_id_to_dataset_id(id) for id in ids]
+
+        if len(ids) == 0:
+            return
+
+        annotations = self.compute_annotations(ids)
+        dataset = get_dataset(self.state.current_dataset)
+        self.predictions_source_images = convert_from_predictions_to_first_arg(
+            annotations,
+            dataset,
+            ids,
+        )
+
+        ground_truth_annotations = [self.context["annotations"][id] for id in dataset_ids]
         ground_truth_predictions = convert_from_ground_truth_to_second_arg(
             ground_truth_annotations, self.context.dataset
         )
@@ -271,33 +277,40 @@ class TransformsApp(Applet):
             )
 
     async def _update_images(self):
-        async with SetStateAsync(self.state) as state:
-            state.loading_images = True
+        loading = len(self.context.selected_dataset_ids) > 0
+        async with SetStateAsync(self.state):
+            self.state.loading_images = loading
             self.state.hovered_id = ""
 
         selected_ids = self.context.selected_dataset_ids
-        source_image_ids = []
         current_dir = os.path.dirname(self.state.current_dataset)
 
         for selected_id in selected_ids:
-            image_metadata = self.context.dataset.imgs[selected_id]
-            image_id = f"img_{image_metadata['id']}"
-            source_image_ids.append(image_id)
+            image_metadata = self.context.dataset.imgs[int(selected_id)]
             image_filename = os.path.join(current_dir, image_metadata["file_name"])
             img = self.context.images_manager.load_image(image_filename)
+            image_id = dataset_id_to_image_id(selected_id)
             self.state[image_id] = images_manager.convert_to_base64(img)
             self.context.image_objects[image_id] = img
 
-        old_source_image_ids = self.state.source_image_ids
+        async with SetStateAsync(self.state):
+            # create reactive annotation variables so ImageDetection component has live Ref<Annotation[]>
+            for id in selected_ids:
+                self.state[image_id_to_result_id(id)] = None
+                self.state[image_id_to_result_id(dataset_id_to_image_id(id))] = None
+                self.state[image_id_to_result_id(dataset_id_to_transformed_image_id(id))] = None
 
-        async with SetStateAsync(self.state) as state:
-            state.source_image_ids = source_image_ids
-            state.loading_images = False
+        async with SetStateAsync(self.state):
+            self.state.source_image_ids = [dataset_id_to_image_id(id) for id in selected_ids]
+            self.state.loading_images = False
 
-        async with SetStateAsync(self.state) as state:
-            self.compute_predictions_source_images(
-                old_source_image_ids, self.state.source_image_ids
-            )
+        async with SetStateAsync(self.state):
+            self.load_ground_truth_annotations(selected_ids)
+
+        async with SetStateAsync(self.state):
+            self.compute_predictions_source_images(self.state.source_image_ids)
+
+        async with SetStateAsync(self.state):
             self.on_apply_transform()
 
     def _start_update_images(self):
@@ -305,25 +318,35 @@ class TransformsApp(Applet):
             self._update_images_task.cancel()
         self._update_images_task = asynchronous.create_task(self._update_images())
 
-    def set_selected_dataset_ids(self, selected_dataset_ids):
-        self.context.selected_dataset_ids = selected_dataset_ids
+    def set_selected_dataset_ids(self, selected_dataset_ids: Sequence[int]):
+        self.delete_computed_image_data()
+        self.context.selected_dataset_ids = [str(id) for id in selected_dataset_ids]
         self._start_update_images()
 
-    def reset_data(self):
-        source_and_transformed = self.state.source_image_ids + self.state.transformed_image_ids
-        for image_id in source_and_transformed:
+    def delete_computed_image_data(self):
+        image_ids = self.state.source_image_ids + self.state.transformed_image_ids
+        for image_id in image_ids:
             delete_state(self.state, image_id)
             if image_id in self.context["image_objects"]:
                 del self.context["image_objects"][image_id]
             result_id = image_id_to_result_id(image_id)
             delete_state(self.state, result_id)
 
-        for image_id in self.state.source_image_ids:
-            dataset_id = image_id_to_dataset_id(image_id)
+        for dataset_id in self.context.selected_dataset_ids:
             delete_image_meta(self.server.state, dataset_id)
+
+        ids_with_annotations = (
+            self.context.selected_dataset_ids
+            + self.state.source_image_ids
+            + self.state.transformed_image_ids
+        )
+        self.delete_annotations(ids_with_annotations)
 
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
+
+    def reset_data(self):
+        self.delete_computed_image_data()
         self.state.annotation_categories = {}
 
     def on_current_dataset_change(self, current_dataset, **kwargs):

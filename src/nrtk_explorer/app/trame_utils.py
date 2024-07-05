@@ -17,4 +17,6 @@ class SetStateAsync:
 
     async def __aexit__(self, exc_type, exc, tb):
         self.state.flush()
+        await asyncio.sleep(0)
         await asyncio.sleep(0.1)
+        await asyncio.sleep(0)

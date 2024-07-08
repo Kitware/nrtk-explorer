@@ -31,7 +31,7 @@ dependencies = [
     "nrtk>=0.4.2",
     "numpy",
     "Pillow",
-    "scikit-learn==1.5.0",
+    "scikit-learn==1.5.1",
     "smqtk_image_io",
     "tabulate",
     "timm>=1.0.3",

@@ -1,5 +1,6 @@
 import logging
 from typing import Iterable
+from pathlib import Path
 
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
@@ -13,7 +14,7 @@ from nrtk_explorer.app.filtering import FilteringApp
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app import ui
 import nrtk_explorer.test_data
-from pathlib import Path
+from nrtk_explorer.app.image_ids import image_id_to_result_id
 
 import os
 
@@ -56,7 +57,6 @@ class Engine(Applet):
 
         self.context["image_objects"] = {}
         self.context["images_manager"] = images_manager.ImagesManager()
-        self.context["annotations"] = {}
 
         self.state.collapse_dataset = False
         self.state.collapse_embeddings = False
@@ -141,7 +141,7 @@ class Engine(Applet):
         for index, image_id in enumerate(self.state.images_ids):
             image_annotations_categories = map(
                 lambda annotation: annotation["category_id"],
-                self.context["annotations"].get(f"img_{image_id}", []),
+                self.state.get(image_id_to_result_id(image_id), []),
             )
 
             include = filter.evaluate(image_annotations_categories)

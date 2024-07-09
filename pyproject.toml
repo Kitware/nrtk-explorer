@@ -76,7 +76,7 @@ build-backend = "hatchling.build"
 [project.scripts]
 nrtk-explorer = "nrtk_explorer.app:main"
 nrtk-explorer-embeddings = "nrtk_explorer.app.embeddings:embeddings"
-nrtk-explorer-tranforms = "nrtk_explorer.app.transforms:transforms"
+nrtk-explorer-transforms = "nrtk_explorer.app.transforms:transforms"
 nrtk-explorer-filtering = "nrtk_explorer.app.filtering:filtering"
 
 [tool.black]

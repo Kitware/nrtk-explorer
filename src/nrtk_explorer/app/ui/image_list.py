@@ -55,7 +55,7 @@ class ImageTable(html.Div):
                                     ground_truth_to_transformed_detection_score: meta.ground_truth_to_transformed_detection_score.toFixed(2),
                                     original_detection_to_transformed_detection_score: meta.original_detection_to_transformed_detection_score.toFixed(2),
                                     id: datasetId,
-                                    original: id,
+                                    original: `original-image/${datasetId}`,
                                     transformed: `transformed_${id}`,
                                     groundTruthAnnotations: get(`result_${datasetId}`),
                                     originalAnnotations: get(`result_${id}`),
@@ -66,6 +66,10 @@ class ImageTable(html.Div):
                 ),
                 row_key="id",
                 rows_per_page_options=("[0]",),  # [0] means show all rows
+                virtual_scroll=True,
+                __properties=[
+                    ("virtual_scroll", "virtual-scroll"),
+                ],
             ):
                 # ImageDetection component for image columns
                 with html.Template(
@@ -76,7 +80,7 @@ class ImageTable(html.Div):
                         ImageDetection(
                             style="max-width: 10rem; float: inline-end;",
                             identifier=("props.row.original",),
-                            src=("get(props.row.original)",),
+                            src=("props.row.original",),
                             annotations=("props.row.groundTruthAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
@@ -93,7 +97,7 @@ class ImageTable(html.Div):
                         ImageDetection(
                             style="max-width: 10rem; float: inline-end;",
                             identifier=("props.row.original",),
-                            src=("get(props.row.original)",),
+                            src=("props.row.original",),
                             annotations=("props.row.originalAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
@@ -132,7 +136,7 @@ class ImageTable(html.Div):
                                     )
                                     ImageDetection(
                                         identifier=("props.row.original",),
-                                        src=("get(props.row.original)",),
+                                        src=("props.row.original",),
                                         annotations=("props.row.groundTruthAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.original == hovered_id)",),
@@ -145,7 +149,7 @@ class ImageTable(html.Div):
                                     )
                                     ImageDetection(
                                         identifier=("props.row.original",),
-                                        src=("get(props.row.original)",),
+                                        src=("props.row.original",),
                                         annotations=("props.row.originalAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.original == hovered_id)",),

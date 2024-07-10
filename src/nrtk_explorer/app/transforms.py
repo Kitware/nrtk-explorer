@@ -37,7 +37,8 @@ from nrtk_explorer.app.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
-from nrtk_explorer.library.dataset import get_dataset
+from nrtk_explorer.library.dataset import get_dataset, get_image_path
+import nrtk_explorer.app.image_server
 
 
 logger = logging.getLogger(__name__)
@@ -114,7 +115,6 @@ class TransformsApp(Applet):
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
-        # self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_num_elements")(self.on_current_num_elements_change)
 
@@ -265,20 +265,16 @@ class TransformsApp(Applet):
             )
 
     async def _update_images(self):
-        loading = len(self.context.selected_dataset_ids) > 0
+        selected_ids = self.context.selected_dataset_ids
+        loading = len(selected_ids) > 0
         async with SetStateAsync(self.state):
             self.state.loading_images = loading
             self.state.hovered_id = ""
 
-        selected_ids = self.context.selected_dataset_ids
-        current_dir = os.path.dirname(self.state.current_dataset)
-
         for selected_id in selected_ids:
-            image_metadata = self.context.dataset.imgs[int(selected_id)]
-            image_filename = os.path.join(current_dir, image_metadata["file_name"])
-            img = self.context.images_manager.load_image(image_filename)
+            filename = get_image_path(selected_id)
+            img = self.context.images_manager.load_image(filename)
             image_id = dataset_id_to_image_id(selected_id)
-            self.state[image_id] = images_manager.convert_to_base64(img)
             self.context.image_objects[image_id] = img
 
         async with SetStateAsync(self.state):
@@ -287,10 +283,8 @@ class TransformsApp(Applet):
                 self.state[image_id_to_result_id(id)] = None
                 self.state[image_id_to_result_id(dataset_id_to_image_id(id))] = None
                 self.state[image_id_to_result_id(dataset_id_to_transformed_image_id(id))] = None
-
-        async with SetStateAsync(self.state):
             self.state.source_image_ids = [dataset_id_to_image_id(id) for id in selected_ids]
-            self.state.loading_images = False
+            self.state.loading_images = False  # remove big spinner and show table
 
         async with SetStateAsync(self.state):
             self.load_ground_truth_annotations(selected_ids)
@@ -351,12 +345,6 @@ class TransformsApp(Applet):
 
         if self.is_standalone_app:
             self.context.images_manager = images_manager.ImagesManager()
-
-    # No GUI, not tested
-    # def on_feature_extraction_model_change(self, **kwargs):
-    #     logger.debug(f">>> on_feature_extraction_model_change change {self.state}")
-    #     self.delete_computed_image_data()
-    #     self._start_update_images()
 
     def on_image_hovered(self, id):
         self.state.hovered_id = id

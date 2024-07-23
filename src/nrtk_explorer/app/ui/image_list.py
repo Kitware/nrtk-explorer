@@ -2,9 +2,44 @@ from trame.widgets import html, quasar
 
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 
+COLUMNS = [
+    {"name": "id", "label": "Dataset ID", "field": "id", "sortable": True},
+    {"name": "truth", "label": "Original: Ground Truth Annotations", "field": "truth"},
+    {"name": "original", "label": "Original: Detection Annotations", "field": "original"},
+    {
+        "name": "transformed",
+        "label": "Transformed: Detection Annotations",
+        "field": "transformed",
+    },
+    {
+        "name": "original_ground_to_original_detection_score",
+        "label": "Ground Truth - Original Detection | Annotations Similarity",
+        "field": "original_ground_to_original_detection_score",
+        "sortable": True,
+    },
+    {
+        "name": "ground_truth_to_transformed_detection_score",
+        "label": "Ground Truth - Transformed Detection | Annotations Similarity",
+        "field": "ground_truth_to_transformed_detection_score",
+        "sortable": True,
+    },
+    {
+        "name": "original_detection_to_transformed_detection_score",
+        "label": "Original Detection - Transformed Detection | Annotations Similarity",
+        "field": "original_detection_to_transformed_detection_score",
+        "sortable": True,
+    },
+]
+
+
+def init_state(state):
+    state.client_only("columns", "visible_columns")
+    state.columns = COLUMNS
+    state.visible_columns = [col["name"] for col in COLUMNS]
+
 
 class ImageList(html.Div):
-    def __init__(self, hover_fn=None):
+    def __init__(self, state, hover_fn=None):
         super().__init__(classes="col full-height")
         with self:
             ImageTable(
@@ -32,18 +67,9 @@ class ImageTable(html.Div):
                 title="Selected Images",
                 grid=("image_list_view_mode === 'grid'", False),
                 filter=("image_list_search", ""),
-                id="image-list",
-                columns=(
-                    """[
-                        { name: 'id', label: 'ID', field: 'id', sortable: true },
-                        { name: 'truth', label: 'Original: Ground Truth Annotations', field: 'truth' },
-                        { name: 'original', label: 'Original: Detection Annotations', field: 'original' },
-                        { name: 'transformed', label: 'Transformed: Detection Annotations', field: 'transformed' },
-                        { name: 'original_ground_to_original_detection_score', label: 'Ground Truth - Original Detection | Annotations Similarity', field: 'original_ground_to_original_detection_score', sortable: true },
-                        { name: 'ground_truth_to_transformed_detection_score', label: 'Ground Truth - Transformed Detection | Annotations Similarity', field: 'ground_truth_to_transformed_detection_score', sortable: true },
-                        { name: 'original_detection_to_transformed_detection_score', label: 'Original Detection - Transformed Detection | Annotations Similarity', field: 'original_detection_to_transformed_detection_score', sortable: true },
-                    ]""",
-                ),
+                id="image-list",  # set id so that the ImageDetection component can select the container for tooltip positioning
+                visible_columns=("visible_columns",),
+                columns=("columns",),
                 rows=(
                     r"""source_image_ids.map((id) =>
                             {
@@ -66,10 +92,6 @@ class ImageTable(html.Div):
                 ),
                 row_key="id",
                 rows_per_page_options=("[0]",),  # [0] means show all rows
-                virtual_scroll=True,
-                __properties=[
-                    ("virtual_scroll", "virtual-scroll"),
-                ],
             ):
                 # ImageDetection component for image columns
                 with html.Template(
@@ -107,7 +129,10 @@ class ImageTable(html.Div):
                 with html.Template(
                     v_slot_body_cell_transformed=True,
                     __properties=[
-                        ("v_slot_body_cell_transformed", "v-slot:body-cell-transformed='props'")
+                        (
+                            "v_slot_body_cell_transformed",
+                            "v-slot:body-cell-transformed='props'",
+                        )
                     ],
                 ):
                     with quasar.QTd():
@@ -129,7 +154,10 @@ class ImageTable(html.Div):
                     with html.Div(classes="q-pa-xs col-xs-12 col-sm-6 col-md-4"):
                         with quasar.QCard(flat=True, bordered=True):
                             with html.Div(classes="row"):
-                                with html.Div(classes="col-4 q-pa-sm"):
+                                with html.Div(
+                                    classes="col-4 q-pa-sm",
+                                    v_if=("props.cols.map(c => c.name).includes('truth')", True),
+                                ):
                                     html.Div(
                                         "Original: Ground Truth Annotations",
                                         classes="text-center",
@@ -142,7 +170,13 @@ class ImageTable(html.Div):
                                         selected=("(props.row.original == hovered_id)",),
                                         hover=(hover_fn, "[$event]"),
                                     )
-                                with html.Div(classes="col-4 q-pa-sm"):
+                                with html.Div(
+                                    classes="col-4 q-pa-sm",
+                                    v_if=(
+                                        "props.cols.map(c => c.name).includes('original')",
+                                        True,
+                                    ),
+                                ):
                                     html.Div(
                                         "Original: Detection Annotations",
                                         classes="text-center",
@@ -155,7 +189,13 @@ class ImageTable(html.Div):
                                         selected=("(props.row.original == hovered_id)",),
                                         hover=(hover_fn, "[$event]"),
                                     )
-                                with html.Div(classes="col-4 q-pa-sm"):
+                                with html.Div(
+                                    classes="col-4 q-pa-sm",
+                                    v_if=(
+                                        "props.cols.map(c => c.name).includes('transformed')",
+                                        True,
+                                    ),
+                                ):
                                     html.Div(
                                         "Transformed: Detection Annotations",
                                         classes="text-center",
@@ -185,12 +225,27 @@ class ImageTable(html.Div):
                                             caption=True,
                                         ):
                                             html.Div("{{col.value}}")
-                # Top control bar for search, grid switch, full screen
+                # Top control bar for visible-columns, search, table-grid switch, full-screen
                 with html.Template(
                     v_slot_top=True,
                     __properties=[("v_slot_top", "v-slot:top='props'")],
                 ):
                     html.Span("Selected Images", classes="col q-table__title")
+                    quasar.QSelect(
+                        v_model=("visible_columns"),
+                        multiple=True,
+                        dense=True,
+                        options_dense=True,
+                        emit_value=True,
+                        map_options=True,
+                        options=("columns",),
+                        option_value="name",
+                        options_cover=True,
+                        raw_attrs=[
+                            ":display-value='$q.lang.table.columns'",
+                            ":options='columns'",
+                        ],
+                    )
                     quasar.QBtn(
                         icon="fullscreen",
                         dense=True,

@@ -15,7 +15,7 @@ from trame.app import get_server, asynchronous
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import images_manager, object_detector
-from nrtk_explorer.app import ui
+from nrtk_explorer.app.ui import ImageList, init_state as init_state_image_list
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.image_meta import (
@@ -111,6 +111,8 @@ class TransformsApp(Applet):
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self._on_hover_fn = None
+
+        init_state_image_list(self.state)
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
@@ -382,7 +384,7 @@ class TransformsApp(Applet):
             self._parameters_app.transform_apply_ui()
 
     def dataset_widget(self):
-        ui.ImageList(self.on_hover)
+        ImageList(self.state, self.on_hover)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

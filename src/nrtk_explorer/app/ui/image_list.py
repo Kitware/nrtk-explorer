@@ -33,13 +33,13 @@ COLUMNS = [
 
 
 def init_state(state):
-    state.client_only("columns", "visible_columns")
+    state.client_only("columns")
     state.columns = COLUMNS
     state.visible_columns = [col["name"] for col in COLUMNS]
 
 
 class ImageList(html.Div):
-    def __init__(self, state, hover_fn=None):
+    def __init__(self, hover_fn=None):
         super().__init__(classes="col full-height")
         with self:
             ImageTable(
@@ -243,7 +243,6 @@ class ImageTable(html.Div):
                         options_cover=True,
                         raw_attrs=[
                             ":display-value='$q.lang.table.columns'",
-                            ":options='columns'",
                         ],
                     )
                     quasar.QBtn(

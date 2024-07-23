@@ -30,7 +30,7 @@ from nrtk_explorer.library.coco_utils import (
     compute_score,
 )
 import nrtk_explorer.test_data
-from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync
+from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync, change_checker
 from nrtk_explorer.app.image_ids import (
     image_id_to_dataset_id,
     image_id_to_result_id,
@@ -109,10 +109,17 @@ class TransformsApp(Applet):
 
         self.state.current_num_elements = 15
 
+        init_state_image_list(self.state)
+
+        def tranformed_became_visible(old, new):
+            return "transformed" not in old and "transformed" in new
+
+        change_checker(
+            self.state, "visible_columns", self.on_apply_transform, tranformed_became_visible
+        )
+
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self._on_hover_fn = None
-
-        init_state_image_list(self.state)
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
@@ -135,10 +142,16 @@ class TransformsApp(Applet):
 
     def on_apply_transform(self, *args, **kwargs):
         logger.debug("on_apply_transform")
+        if self._updating_images():
+            return  # update_images will call update_transformed_images() at the end
+        self.update_transformed_images()
 
-        current_transform = self.state.current_transform
+    def update_transformed_images(self):
+        if not ("transformed" in self.state.visible_columns):
+            return
+
+        transform = self._transforms[self.state.current_transform]
         transformed_image_ids = []
-        transform = self._transforms[current_transform]
         for image_id in self.state.source_image_ids:
             image = self.context["image_objects"][image_id]
             transformed_image_id = f"transformed_{image_id}"
@@ -303,12 +316,15 @@ class TransformsApp(Applet):
             self.compute_predictions_source_images(self.state.source_image_ids)
 
         async with SetStateAsync(self.state):
-            self.on_apply_transform()
+            self.update_transformed_images()
 
     def _start_update_images(self):
         if hasattr(self, "_update_images_task"):
             self._update_images_task.cancel()
         self._update_images_task = asynchronous.create_task(self._update_images())
+
+    def _updating_images(self):
+        return hasattr(self, "_update_images_task") and not self._update_images_task.done()
 
     def set_selected_dataset_ids(self, selected_dataset_ids: Sequence[int]):
         self.delete_computed_image_data()
@@ -384,7 +400,7 @@ class TransformsApp(Applet):
             self._parameters_app.transform_apply_ui()
 
     def dataset_widget(self):
-        ImageList(self.state, self.on_hover)
+        ImageList(self.on_hover)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

@@ -21,3 +21,23 @@ class SetStateAsync:
         await asyncio.sleep(0)
         await asyncio.sleep(0)
         await asyncio.sleep(0)
+
+
+def diff(a, b):
+    return a != b
+
+
+def change_checker(state, key, callback, trigger_check=diff):
+    old_value = state[key]
+
+    def on_change():
+        nonlocal old_value
+        new_value = state[key]
+        if trigger_check(old_value, new_value):
+            callback()
+        old_value = new_value
+
+    def on_state(**kwargs):
+        on_change()
+
+    state.change(key)(on_state)

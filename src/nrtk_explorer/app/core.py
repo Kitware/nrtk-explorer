@@ -115,8 +115,6 @@ class Engine(Applet):
 
         self._build_ui()
 
-        self.context.images_manager = images_manager.ImagesManager()
-
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.state.change("current_dataset")(self.on_dataset_change)

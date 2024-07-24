@@ -189,7 +189,7 @@ class EmbeddingsApp(Applet):
     def set_on_hover(self, fn):
         self._on_hover_fn = fn
 
-    def on_hover(self, point_index):
+    def on_point_hover(self, point_index):
         self.state.highlighted_point = point_index
         image_id = ""
         if point_index is not None:
@@ -231,7 +231,7 @@ class EmbeddingsApp(Applet):
             cameraMove="camera_position=$event",
             cameraPosition=("camera_position",),
             highlightedPoint=("highlighted_point", -1),
-            hover=(self.on_hover, "[$event]"),
+            hover=(self.on_point_hover, "[$event]"),
             points=("points_sources", []),
             transformedPoints=("points_transformations", []),
             select=(self.on_select, "[$event]"),

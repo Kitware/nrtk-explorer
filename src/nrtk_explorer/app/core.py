@@ -14,7 +14,6 @@ from nrtk_explorer.app.filtering import FilteringApp
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app import ui
 import nrtk_explorer.test_data
-from nrtk_explorer.app.image_ids import image_id_to_result_id
 
 import os
 
@@ -135,15 +134,13 @@ class Engine(Applet):
 
     def on_filter_apply(self, filter: FilterProtocol[Iterable[int]], **kwargs):
         selected_indices = []
-
         for index, image_id in enumerate(self.state.images_ids):
-            image_annotations_categories = map(
-                lambda annotation: annotation["category_id"],
-                self.state.get(image_id_to_result_id(image_id), []),
-            )
-
+            image_annotations_categories = [
+                annotation["category_id"]
+                for annotation in self.context.dataset.anns.values()
+                if annotation["image_id"] == image_id
+            ]
             include = filter.evaluate(image_annotations_categories)
-
             if include:
                 selected_indices.append(index)
 

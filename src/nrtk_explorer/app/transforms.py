@@ -111,14 +111,18 @@ class TransformsApp(Applet):
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self._on_hover_fn = None
-        self.detector = object_detector.ObjectDetector(model_name="facebook/detr-resnet-50")
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_num_elements")(self.on_current_num_elements_change)
+        self.state.change("object_detection_model")(self.on_object_detection_model_change)
 
+        self.on_object_detection_model_change(self.state.object_detection_model)
         self.on_current_dataset_change(self.state.current_dataset)
+
+    def on_object_detection_model_change(self, model_name, **kwargs):
+        self.detector = object_detector.ObjectDetector(model_name=model_name)
 
     def set_on_transform(self, fn):
         self._on_transform_fn = fn
@@ -191,7 +195,11 @@ class TransformsApp(Applet):
         if len(ids) == 0:
             return
 
-        predictions = self.detector.eval(image_ids=ids, content=self.context.image_objects)
+        predictions = self.detector.eval(
+            image_ids=ids,
+            content=self.context.image_objects,
+            batch_size=int(self.state.object_detection_batch_size),
+        )
 
         for id_, annotations in predictions.items():
             image_annotations = []

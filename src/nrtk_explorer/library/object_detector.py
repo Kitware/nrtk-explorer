@@ -1,3 +1,4 @@
+import gc
 import logging
 import torch
 import transformers
@@ -6,7 +7,7 @@ from typing import Optional, Sequence
 
 from nrtk_explorer.library import images_manager
 
-ImageIdToAnnotations = dict[str, Sequence[dict]]
+ImageIdToAnnotations = Optional[dict[str, Sequence[dict]]]
 
 
 class ObjectDetector:
@@ -77,17 +78,38 @@ class ObjectDetector:
             batches[img.size][0].append(path)
             batches[img.size][1].append(img)
 
-        predictions_in_baches = [
-            zip(
-                image_ids,
-                self.pipeline(images, batch_size=batch_size),
-            )
-            for image_ids, images in batches.values()
-        ]
+        adjusted_batch_size = batch_size
+        while adjusted_batch_size > 0:
+            try:
+                predictions_in_baches = [
+                    zip(
+                        image_ids,
+                        self.pipeline(images, batch_size=adjusted_batch_size),
+                    )
+                    for image_ids, images in batches.values()
+                ]
 
-        predictions_by_image_id = {
-            image_id: predictions
-            for batch in predictions_in_baches
-            for image_id, predictions in batch
-        }
-        return predictions_by_image_id
+                predictions_by_image_id = {
+                    image_id: predictions
+                    for batch in predictions_in_baches
+                    for image_id, predictions in batch
+                }
+                return predictions_by_image_id
+
+            except RuntimeError as e:
+                if "out of memory" in str(e) and adjusted_batch_size > 1:
+                    previous_batch_size = adjusted_batch_size
+                    adjusted_batch_size = adjusted_batch_size // 2
+                    print(
+                        f"OOM (Pytorch exception {e}) due to batch_size={previous_batch_size}, setting batch_size={adjusted_batch_size}"
+                    )
+                else:
+                    raise
+
+            finally:
+                # Pytorch needs to freed its allocations outside of the exception context
+                gc.collect()
+                torch.cuda.empty_cache()
+
+        # We should never reach here
+        return None

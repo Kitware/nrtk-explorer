@@ -1,7 +1,8 @@
-import torch
+import gc
 import logging
 import numpy as np
 import timm
+import torch
 
 from nrtk_explorer.library import images_manager
 from torch.utils.data import DataLoader, Dataset
@@ -75,11 +76,33 @@ class EmbeddingsExtractor:
             transformed_images.append(self.transform_image(img))
 
         # Extract features from images
-        for batch in DataLoader(ImagesDataset(transformed_images), batch_size=batch_size):
-            # Copy image to device if using device
-            if self.device.type == "cuda":
-                batch = batch.cuda()
+        adjusted_batch_size = batch_size
+        while adjusted_batch_size > 0:
+            try:
+                for batch in DataLoader(
+                    ImagesDataset(transformed_images), batch_size=adjusted_batch_size
+                ):
+                    # Copy image to device if using device
+                    if self.device.type == "cuda":
+                        batch = batch.cuda()
 
-            features.append(self.model(batch).numpy(force=True))
+                    features.append(self.model(batch).numpy(force=True))
+                return np.vstack(features)
 
-        return np.vstack(features)
+            except RuntimeError as e:
+                if "out of memory" in str(e) and adjusted_batch_size > 1:
+                    previous_batch_size = adjusted_batch_size
+                    adjusted_batch_size = adjusted_batch_size // 2
+                    print(
+                        f"OOM (Pytorch exception {e}) due to batch_size={previous_batch_size}, setting batch_size={adjusted_batch_size}"
+                    )
+                else:
+                    raise
+
+            finally:
+                # Pytorch needs to freed its allocations outside of the exception context
+                gc.collect()
+                torch.cuda.empty_cache()
+
+        # We should never reach here
+        return None

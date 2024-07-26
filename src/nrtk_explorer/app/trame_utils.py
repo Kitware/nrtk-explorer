@@ -1,5 +1,5 @@
 import asyncio
-from typing import Hashable
+from typing import Hashable, Callable
 from trame_server.state import State
 
 
@@ -9,6 +9,12 @@ def delete_state(state: State, key: Hashable):
 
 
 class SetStateAsync:
+    """
+    Usage::
+        async with SetStateAsync(state):
+            state["key"] = value
+    """
+
     def __init__(self, state: State):
         self.state = state
 
@@ -23,11 +29,13 @@ class SetStateAsync:
         await asyncio.sleep(0)
 
 
-def diff(a, b):
-    return a != b
-
-
-def change_checker(state, key, callback, trigger_check=diff):
+def change_checker(state: State, key: str, callback: Callable, trigger_check=lambda a, b: a != b):
+    """
+    Usage::
+        change_checker(
+            self.state, "visible_columns", self.on_apply_transform, tranformed_became_visible
+        )
+    """
     old_value = state[key]
 
     def on_change():

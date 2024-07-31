@@ -110,7 +110,7 @@ class Engine(Applet):
         self.state.num_images_disabled = True
         self.state.random_sampling = False
         self.state.random_sampling_disabled = True
-        self.state.images_id = []
+        self.state.image_ids = []
 
         self._build_ui()
 
@@ -134,7 +134,7 @@ class Engine(Applet):
 
     def on_filter_apply(self, filter: FilterProtocol[Iterable[int]], **kwargs):
         selected_indices = []
-        for index, image_id in enumerate(self.state.images_ids):
+        for index, image_id in enumerate(self.state.image_ids):
             image_annotations_categories = [
                 annotation["category_id"]
                 for annotation in self.context.dataset.anns.values()
@@ -162,7 +162,7 @@ class Engine(Applet):
         selected_images = []
         if self.state.num_images:
             if self.state.random_sampling:
-                selected_images = random.sample(images, self.state.num_images)
+                selected_images = random.sample(images, min(len(images), self.state.num_images))
             else:
                 selected_images = images[: self.state.num_images]
         else:
@@ -179,7 +179,7 @@ class Engine(Applet):
 
         self.context.paths = paths
         self.state.annotation_categories = categories
-        self.state.images_ids = [img["id"] for img in selected_images]
+        self.state.image_ids = [img["id"] for img in selected_images]
 
     def _build_ui(self):
         extra_args = {}

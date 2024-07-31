@@ -14,8 +14,9 @@ from trame.app import get_server, asynchronous
 
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
-from nrtk_explorer.library import images_manager, object_detector
-from nrtk_explorer.app.ui import ImageList, init_state as init_state_image_list
+from nrtk_explorer.library import object_detector
+from nrtk_explorer.library.images_manager import ImageWithId, ImagesManager, convert_to_base64
+from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.image_meta import (
@@ -32,13 +33,14 @@ from nrtk_explorer.library.coco_utils import (
 import nrtk_explorer.test_data
 from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync, change_checker
 from nrtk_explorer.app.image_ids import (
+    dataset_id_to_image_id,
     image_id_to_dataset_id,
     image_id_to_result_id,
-    dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
-from nrtk_explorer.library.dataset import get_dataset, get_image_path
+from nrtk_explorer.library.dataset import get_dataset
 import nrtk_explorer.app.image_server
+from nrtk_explorer.app.images import get_image
 
 
 logger = logging.getLogger(__name__)
@@ -69,7 +71,7 @@ class TransformsApp(Applet):
 
         self.is_standalone_app = self.server.state.parent is None
         if self.is_standalone_app:
-            self.context.images_manager = images_manager.ImagesManager()
+            self.context.images_manager = ImagesManager()
 
         if self.context["image_objects"] is None:
             self.context["image_objects"] = {}
@@ -97,9 +99,7 @@ class TransformsApp(Applet):
 
         self.state.annotation_categories = {}
 
-        self.context.selected_dataset_ids = []
-        self.state.source_image_ids = []
-        self.state.transformed_image_ids = []
+        self.in_view_range = (0, 0)
 
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
@@ -108,8 +108,6 @@ class TransformsApp(Applet):
             self.state.current_dataset = DATASET_DIRS[0]
 
         self.state.current_num_elements = 15
-
-        init_state_image_list(self.state)
 
         def tranformed_became_visible(old, new):
             return "transformed" not in old and "transformed" in new
@@ -146,35 +144,27 @@ class TransformsApp(Applet):
             return  # update_images will call update_transformed_images() at the end
         self.update_transformed_images()
 
-    def update_transformed_images(self):
+    def update_transformed_images(self, dataset_ids):
         if not ("transformed" in self.state.visible_columns):
             return
 
         transform = self._transforms[self.state.current_transform]
         transformed_image_ids = []
-        for image_id in self.state.source_image_ids:
-            image = self.context["image_objects"][image_id]
-            transformed_image_id = f"transformed_{image_id}"
+        for id in dataset_ids:
+            transformed_image_id = dataset_id_to_transformed_image_id(id)
+            image = get_image(self.context.images_manager, id)
             transformed_img = transform.execute(image)
             if image.size != transformed_img.size:
                 # Resize so pixel-wise annotation similarity score works
                 transformed_img = transformed_img.resize(image.size)
             self.context["image_objects"][transformed_image_id] = transformed_img
             transformed_image_ids.append(transformed_image_id)
-            self.state[transformed_image_id] = images_manager.convert_to_base64(transformed_img)
+            self.state[transformed_image_id] = convert_to_base64(transformed_img)
 
-        self.state.transformed_image_ids = transformed_image_ids
-        if len(self.state.source_image_ids) > 0:
-            self.state.hovered_id = ""
-
-        if len(transformed_image_ids) == 0:
-            return
-
-        result_ids = [image_id_to_result_id(id) for id in transformed_image_ids]
-        for id in result_ids:
-            delete_state(self.state, id)
-
-        annotations = self.compute_annotations(transformed_image_ids)
+        images_with_ids = [
+            ImageWithId(id, self.context["image_objects"][id]) for id in transformed_image_ids
+        ]
+        annotations = self.compute_annotations(images_with_ids)
 
         dataset_ids = [image_id_to_dataset_id(id) for id in transformed_image_ids]
         predictions = convert_from_predictions_to_second_arg(annotations)
@@ -203,16 +193,12 @@ class TransformsApp(Applet):
             )
 
         # Only invoke callbacks when we transform images
-        self.on_transform(transformed_image_ids)
+        # self.on_transform(transformed_image_ids)
 
-    def compute_annotations(self, ids):
+    def compute_annotations(self, images_with_ids):
         """Compute annotations for the given image ids using the object detector model."""
-        if len(ids) == 0:
-            return
-
         predictions = self.detector.eval(
-            image_ids=ids,
-            content=self.context.image_objects,
+            images_with_ids,
             batch_size=int(self.state.object_detection_batch_size),
         )
 
@@ -259,12 +245,11 @@ class TransformsApp(Applet):
         self.state.update(annotations)
 
     def compute_predictions_source_images(self, ids):
-        """Compute the predictions for the source images."""
-
-        if len(ids) == 0:
-            return
-
-        annotations = self.compute_annotations(ids)
+        images_with_ids = [
+            ImageWithId(dataset_id_to_image_id(id), get_image(self.context.images_manager, id))
+            for id in ids
+        ]
+        annotations = self.compute_annotations(images_with_ids)
         dataset = get_dataset(self.state.current_dataset)
         self.predictions_source_images = convert_from_predictions_to_first_arg(
             annotations,
@@ -287,49 +272,31 @@ class TransformsApp(Applet):
                 self.state, dataset_id, {"original_ground_to_original_detection_score": score}
             )
 
-    async def _update_images(self):
-        selected_ids = self.context.selected_dataset_ids
-        loading = len(selected_ids) > 0
+    async def _update_images(self, ids):
         async with SetStateAsync(self.state):
-            self.state.loading_images = loading
-            self.state.hovered_id = ""
-
-        for selected_id in selected_ids:
-            filename = get_image_path(selected_id)
-            img = self.context.images_manager.load_image(filename)
-            image_id = dataset_id_to_image_id(selected_id)
-            self.context.image_objects[image_id] = img
+            self.load_ground_truth_annotations(ids)
 
         async with SetStateAsync(self.state):
-            # create reactive annotation variables so ImageDetection component has live Ref<Annotation[]>
-            for id in selected_ids:
-                self.state[image_id_to_result_id(id)] = None
-                self.state[image_id_to_result_id(dataset_id_to_image_id(id))] = None
-                self.state[image_id_to_result_id(dataset_id_to_transformed_image_id(id))] = None
-            self.state.source_image_ids = [dataset_id_to_image_id(id) for id in selected_ids]
-            self.state.loading_images = False  # remove big spinner and show table
+            self.compute_predictions_source_images(ids)
 
         async with SetStateAsync(self.state):
-            self.load_ground_truth_annotations(selected_ids)
+            self.update_transformed_images(ids)
 
-        async with SetStateAsync(self.state):
-            self.compute_predictions_source_images(self.state.source_image_ids)
-
-        async with SetStateAsync(self.state):
-            self.update_transformed_images()
-
-    def _start_update_images(self):
+    def _start_update_images(self, priority_ids):
         if hasattr(self, "_update_images_task"):
             self._update_images_task.cancel()
-        self._update_images_task = asynchronous.create_task(self._update_images())
+        self._update_images_task = asynchronous.create_task(self._update_images(priority_ids))
 
     def _updating_images(self):
         return hasattr(self, "_update_images_task") and not self._update_images_task.done()
 
-    def set_selected_dataset_ids(self, selected_dataset_ids: Sequence[int]):
-        self.delete_computed_image_data()
-        self.context.selected_dataset_ids = [str(id) for id in selected_dataset_ids]
-        self._start_update_images()
+    def set_selected_dataset_ids(self, selected_dataset_ids: Sequence[str]):
+        # todo: filter list
+        # print("set_selected_dataset_ids", selected_dataset_ids)
+        pass
+
+    def on_scroll(self, from_index, to_index):
+        self._start_update_images(self.state.dataset_ids[from_index : to_index + 1])
 
     def delete_computed_image_data(self):
         source_and_transformed = self.state.source_image_ids + self.state.transformed_image_ids
@@ -352,13 +319,8 @@ class TransformsApp(Applet):
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
 
-    def reset_data(self):
-        self.delete_computed_image_data()
-        self.state.annotation_categories = {}
-
     def on_current_dataset_change(self, current_dataset, **kwargs):
         logger.debug(f"on_current_dataset_change change {self.state}")
-        self.reset_data()
 
         categories = {}
         if self.context.dataset is None:
@@ -370,7 +332,7 @@ class TransformsApp(Applet):
         self.state.annotation_categories = categories
 
         if self.is_standalone_app:
-            self.context.images_manager = images_manager.ImagesManager()
+            self.context.images_manager = ImagesManager()
 
     def on_image_hovered(self, id):
         self.state.hovered_id = id
@@ -400,7 +362,7 @@ class TransformsApp(Applet):
             self._parameters_app.transform_apply_ui()
 
     def dataset_widget(self):
-        ImageList(self.on_hover)
+        ImageList(self.on_scroll, self.on_hover)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

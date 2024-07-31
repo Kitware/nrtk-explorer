@@ -179,7 +179,7 @@ class EmbeddingsApp(Applet):
 
         self.state.user_selected_points_indices = original_indices
         self.state.points_transformations = []
-        ids = [self.state.images_ids[i] for i in original_indices]
+        ids = [self.state.image_ids[i] for i in original_indices]
         if self._on_select_fn:
             self._on_select_fn(ids)
 
@@ -201,7 +201,7 @@ class EmbeddingsApp(Applet):
                 ]
             else:
                 image_kind = "img_"
-            dataset_id = self.state.images_ids[original_image_point_index]
+            dataset_id = self.state.image_ids[original_image_point_index]
             image_id = f"{image_kind}{dataset_id}"
 
         if self._on_hover_fn:
@@ -215,8 +215,8 @@ class EmbeddingsApp(Applet):
         except ValueError:
             # id_ probably is an empty string
             dataset_id = id_
-        if dataset_id in self.state.images_ids:
-            index = self.state.images_ids.index(dataset_id)
+        if dataset_id in self.state.image_ids:
+            index = self.state.image_ids.index(dataset_id)
             if is_transformation:
                 index_selected = self.state.user_selected_points_indices.index(index)
                 self.state.highlighted_point = len(self.state.points_sources) + index_selected

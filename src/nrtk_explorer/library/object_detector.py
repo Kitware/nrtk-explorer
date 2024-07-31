@@ -2,10 +2,9 @@ import gc
 import logging
 import torch
 import transformers
+from .images_manager import ImageWithId
 
 from typing import Optional, Sequence
-
-from nrtk_explorer.library import images_manager
 
 ImageIdToAnnotations = Optional[dict[str, Sequence[dict]]]
 
@@ -17,14 +16,9 @@ class ObjectDetector:
         self,
         model_name: str = "facebook/detr-resnet-50",
         task: Optional[str] = None,
-        manager: Optional[images_manager.ImagesManager] = None,
         force_cpu: bool = False,
     ):
-        if manager is None:
-            manager = images_manager.ImagesManager()
-
         self.task = task
-        self.manager = manager
         self.device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
         self.pipeline = model_name
 
@@ -58,8 +52,7 @@ class ObjectDetector:
 
     def eval(
         self,
-        image_ids: list[str],
-        content: Optional[dict] = None,
+        images: Sequence[ImageWithId],
         batch_size: int = 32,
     ) -> ImageIdToAnnotations:
         """Compute object recognition. Returns Annotations grouped by input image paths."""
@@ -67,26 +60,23 @@ class ObjectDetector:
         # Some models require all the images in a batch to be the same size,
         # otherwise crash or UB.
         batches: dict = {}
-        for path in image_ids:
-            img = None
-            if content and path in content:
-                img = content[path]
-            else:
-                img = self.manager.load_image(path)
-
-            batches.setdefault(img.size, [[], []])
-            batches[img.size][0].append(path)
-            batches[img.size][1].append(img)
+        for image in images:
+            size = image.image.size
+            batches.setdefault(size, [])
+            batches[size].append(image)
 
         adjusted_batch_size = batch_size
         while adjusted_batch_size > 0:
             try:
                 predictions_in_baches = [
                     zip(
-                        image_ids,
-                        self.pipeline(images, batch_size=adjusted_batch_size),
+                        [image.id for image in imagesInBatch],
+                        self.pipeline(
+                            [image.image for image in imagesInBatch],
+                            batch_size=adjusted_batch_size,
+                        ),
                     )
-                    for image_ids, images in batches.values()
+                    for imagesInBatch in batches.values()
                 ]
 
                 predictions_by_image_id = {

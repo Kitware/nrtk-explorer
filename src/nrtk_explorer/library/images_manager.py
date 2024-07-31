@@ -1,5 +1,6 @@
 from PIL.Image import Image
 from PIL import Image as ImageModule
+from typing import NamedTuple
 
 import base64
 import copy
@@ -8,6 +9,11 @@ import io
 # Resolution for images to be used in model
 IMAGE_MODEL_RESOLUTION = (224, 224)
 THUMBNAIL_RESOLUTION = (250, 250)
+
+
+class ImageWithId(NamedTuple):
+    id: str
+    image: Image
 
 
 def convert_to_base64(img: Image) -> str:

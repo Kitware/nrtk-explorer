@@ -1,5 +1,5 @@
 from trame.widgets import html, quasar
-
+from trame.app import get_server
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 
 COLUMNS = [
@@ -32,35 +32,52 @@ COLUMNS = [
 ]
 
 
-def init_state(state):
-    state.client_only("columns")
-    state.columns = COLUMNS
-    state.visible_columns = [col["name"] for col in COLUMNS]
+server = get_server()
+state = server.state
+
+state.client_only("columns")
+state.columns = COLUMNS
+state.visible_columns = [col["name"] for col in COLUMNS]
+
+
+@state.change("dataset_ids")
+def reset_virtual_scroll(**kwargs):
+    ImageTable.reset_view_range()
+    server.js_call(ref="image-list", method="resetVirtualScroll")
 
 
 class ImageList(html.Div):
-    def __init__(self, hover_fn=None):
+    def __init__(self, on_scroll, on_hover):
         super().__init__(classes="col full-height")
         with self:
             ImageTable(
-                v_if="source_image_ids.length > 0", hover_fn=hover_fn, classes="full-height"
-            )
-            html.Div(
-                "No images selected",
-                v_if="source_image_ids.length === 0 && !loading_images",
-                classes="text-h5 row flex-center q-my-md",
-            )
-            quasar.QInnerLoading(
-                showing=("loading_images", False),
-                label="Loading, transforming, and annotating images...",
+                on_scroll,
+                on_hover=on_hover,
+                classes="full-height",
             )
 
 
 class ImageTable(html.Div):
-    def __init__(self, hover_fn=None, **kwargs):
+    instances = []
+
+    @staticmethod
+    def reset_view_range():
+        for instance in ImageTable.instances:
+            instance.view_range = (0, -1)
+
+    def on_scroll(self, from_index, to_index):
+        if self.view_range[0] != from_index or self.view_range[1] != to_index:
+            self.view_range = (from_index, to_index)
+            self.scroll_callback(from_index, to_index)
+
+    def __init__(self, on_scroll, on_hover, **kwargs):
         super().__init__(**kwargs)
+        self.view_range = (0, -1)
+        ImageTable.instances.append(self)
+        self.scroll_callback = on_scroll
         with self:
             with quasar.QTable(
+                ref="image-list",
                 classes="full-height",
                 flat=True,
                 hide_bottom=True,
@@ -71,28 +88,33 @@ class ImageTable(html.Div):
                 visible_columns=("visible_columns",),
                 columns=("columns",),
                 rows=(
-                    r"""source_image_ids.map((id) =>
+                    r"""dataset_ids.map((id) =>
                             {
-                                const datasetId = id.split('_').at(-1)
-                                const meta = get(`meta_${datasetId}`)?.value ?? {original_ground_to_original_detection_score: 0, ground_truth_to_transformed_detection_score: 0, original_detection_to_transformed_detection_score: 0}
+                                const meta = get(`meta_${id}`)?.value ?? {original_ground_to_original_detection_score: 0, ground_truth_to_transformed_detection_score: 0, original_detection_to_transformed_detection_score: 0}
                                 return {
                                     ...meta,
                                     original_ground_to_original_detection_score: meta.original_ground_to_original_detection_score.toFixed(2),
                                     ground_truth_to_transformed_detection_score: meta.ground_truth_to_transformed_detection_score.toFixed(2),
                                     original_detection_to_transformed_detection_score: meta.original_detection_to_transformed_detection_score.toFixed(2),
-                                    id: datasetId,
-                                    original: id,
-                                    original_src: `original-image/${datasetId}`,
-                                    transformed: `transformed_${id}`,
-                                    groundTruthAnnotations: get(`result_${datasetId}`),
-                                    originalAnnotations: get(`result_${id}`),
-                                    transformedAnnotations: get(`result_transformed_${id}`),
+                                    id,
+                                    original: `img_${id}`,
+                                    original_src: `original-image/${id}`,
+                                    transformed: `transformed_img_${id}`,
+                                    groundTruthAnnotations: get(`result_${id}`),
+                                    originalAnnotations: get(`result_img_${id}`),
+                                    transformedAnnotations: get(`result_transformed_img_${id}`),
                                 }
                             })
                         """,
                 ),
                 row_key="id",
                 rows_per_page_options=("[0]",),  # [0] means show all rows
+                raw_attrs=[
+                    "virtual-scroll",
+                    "virtual-scroll-slice-size='2'",
+                    "virtual-scroll-item-size='200'",
+                    f'''@virtual-scroll="(e) => trigger('{ self.server.controller.trigger_name(self.on_scroll) }', [e.from, e.to])"''',
+                ],
             ):
                 # ImageDetection component for image columns
                 with html.Template(
@@ -107,7 +129,7 @@ class ImageTable(html.Div):
                             annotations=("props.row.groundTruthAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
-                            hover=(hover_fn, "[$event]"),
+                            hover=(on_hover, "[$event]"),
                             containerSelector="#image-list .q-table__middle",
                         )
                 with html.Template(
@@ -124,7 +146,7 @@ class ImageTable(html.Div):
                             annotations=("props.row.originalAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
-                            hover=(hover_fn, "[$event]"),
+                            hover=(on_hover, "[$event]"),
                             containerSelector="#image-list .q-table__middle",
                         )
                 with html.Template(
@@ -144,7 +166,7 @@ class ImageTable(html.Div):
                             annotations=("props.row.transformedAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.transformed == hovered_id)",),
-                            hover=(hover_fn, "[$event]"),
+                            hover=(on_hover, "[$event]"),
                             containerSelector="#image-list .q-table__middle",
                         )
                 # Grid Mode template for each row/grid-item
@@ -169,7 +191,7 @@ class ImageTable(html.Div):
                                         annotations=("props.row.groundTruthAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.original == hovered_id)",),
-                                        hover=(hover_fn, "[$event]"),
+                                        hover=(on_hover, "[$event]"),
                                     )
                                 with html.Div(
                                     classes="col-4 q-pa-sm",
@@ -188,7 +210,7 @@ class ImageTable(html.Div):
                                         annotations=("props.row.originalAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.original == hovered_id)",),
-                                        hover=(hover_fn, "[$event]"),
+                                        hover=(on_hover, "[$event]"),
                                     )
                                 with html.Div(
                                     classes="col-4 q-pa-sm",
@@ -207,7 +229,7 @@ class ImageTable(html.Div):
                                         annotations=("props.row.transformedAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.transformed == hovered_id)",),
-                                        hover=(hover_fn, "[$event]"),
+                                        hover=(on_hover, "[$event]"),
                                     )
                             with quasar.QList(
                                 dense=True,

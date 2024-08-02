@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
-import { ScatterGL, Dataset, type Sequence } from 'scatter-gl'
+import { ref, watch, onMounted, toRefs } from 'vue'
+import { ScatterGL, Dataset } from 'scatter-gl'
 
 import { createColorMap, linearScale } from '@colormap/core'
 import { viridis, cividis, magma, inferno } from '@colormap/presets'
@@ -9,26 +9,28 @@ import type { ColorMap } from '@colormap/core'
 import type { Vector3, Vector2 } from '../types'
 import { toRGB } from '../utilities/colors'
 
-interface Props<Vector extends Vector3<number> | Vector2<number>> {
+type IdToPoint = Record<string, Vector3<number> | Vector2<number>>
+
+interface Props {
   cameraPosition: number[]
-  highlightedPoint: number
-  points: Vector[]
-  transformedPoints: Vector[]
-  selectedPoints: number[]
+  highlightedImage: { id: string; is_transformed: boolean }
+  points: IdToPoint
+  transformedPoints: IdToPoint
+  selectedImages: string[]
 }
 
-const props = withDefaults(defineProps<Props<Vector3<number> | Vector2<number>>>(), {
+const props = withDefaults(defineProps<Props>(), {
   cameraPosition: () => [],
-  highlightedPoint: () => -1,
-  points: () => [],
-  transformedPoints: () => [],
-  selectedPoints: () => []
+  highlightedImage: () => ({ id: '', is_transformed: false }),
+  points: () => ({}),
+  transformedPoints: () => ({}),
+  selectedImages: () => []
 })
 
 type Events = {
   cameraMove: [camera_position: Vector3<number> | Vector2<number>]
-  hover: [point: number | null]
-  select: [indices: number[]]
+  hover: [{ id: string; is_transformed: boolean }]
+  select: [ids: string[]]
 }
 
 const emit = defineEmits<Events>()
@@ -43,9 +45,28 @@ const scale = linearScale(domain, range)
 const colorMapDomain = ref<Vector2<number>>(domain)
 const colorMap = ref<ColorMap>(createColorMap(colors.value[colorMapName.value], scale))
 
-let currenthighlightedPoint: number = -1
 let scatterPlot: ScatterGL | undefined
 let hideSourcePoints = ref(false)
+
+const isTransformed = (index: number) => index >= Object.keys(props.points).length
+
+const indexToId = (index: number) => {
+  const ids = Object.keys(props.points)
+  if (index < ids.length) {
+    return ids[index]
+  } else {
+    return Object.keys(props.transformedPoints)[index - ids.length]
+  }
+}
+
+const idToIndex = (id: string, isTransformed: boolean) => {
+  const ids = Object.keys(props.points)
+  if (isTransformed) {
+    return ids.indexOf(id)
+  } else {
+    return ids.length + Object.keys(props.transformedPoints).indexOf(id)
+  }
+}
 
 onMounted(() => {
   if (!plotContainer.value) {
@@ -56,16 +77,15 @@ onMounted(() => {
     rotateOnStart: false,
     selectEnabled: true,
     pointColorer(i) {
-      if (i == currenthighlightedPoint) {
+      const id = indexToId(i)
+      const isTrans = isTransformed(i)
+      if (id === props.highlightedImage.id && isTrans === props.highlightedImage.is_transformed) {
         return `rgba(255,0,0,255)`
       }
 
-      if (i >= props.points.length) {
-        const nPoints = props.points.length
-        const transformedPointIndex = i - nPoints
-        const pointIndex = props.selectedPoints[transformedPointIndex]
-        const p0 = props.points[pointIndex]
-        const p1 = props.transformedPoints[transformedPointIndex]
+      if (isTrans) {
+        const p0 = props.points[id]
+        const p1 = props.transformedPoints[id]
         const dx = Math.abs(p0[0] - p1[0])
         const dy = Math.abs(p0[1] - p1[1])
         const dz = p0.length == 3 && p1.length == 3 ? Math.abs(p0[2] - p1[2]) : 0
@@ -74,22 +94,24 @@ onMounted(() => {
         return `rgba(${toRGB(color)}, 255)`
       }
 
-      if (props.selectedPoints.indexOf(i) > -1) {
-        // Return silver for selected points
+      if (props.selectedImages.includes(id)) {
+        // silver for original points that are selected
         return `rgba(189,189,189,255)`
       }
 
-      // Return blue for unselected points
+      // blue for unselected points
       let alpha = hideSourcePoints.value ? 0 : 255
       return `rgba(25,118,210,${alpha})`
     },
     onHover(index: number | null) {
-      emit('hover', index)
+      const id = index == null ? '' : indexToId(index)
+      const is_transformed = index == null ? false : id in props.transformedPoints
+      emit('hover', { id, is_transformed })
     },
     onSelect(indices) {
       onPanModeClick()
-      scatterPlot!.setSequences([])
-      emit('select', indices)
+      const ids = Array.from(new Set(indices.map(indexToId)))
+      emit('select', ids)
     }
   })
   ;(window as any).scatterPlot = scatterPlot
@@ -115,14 +137,15 @@ function emitCameraPosition() {
 
 function drawPoints() {
   if (scatterPlot) {
+    const points = [...Object.values(props.points), ...Object.values(props.transformedPoints)]
     let ds: Dataset
-    if (props.points.length <= 0) {
+    if (points.length <= 0) {
       // If there are no points, we need to create a dataset with at least one point
       ds = new ScatterGL.Dataset([[0, 0, 0]])
       // Then we remove the point
       ds.points = []
     } else {
-      ds = new ScatterGL.Dataset([...props.points, ...props.transformedPoints])
+      ds = new ScatterGL.Dataset(points)
     }
     scatterPlot.render(ds)
     ;(scatterPlot as any).scatterPlot.render()
@@ -133,15 +156,11 @@ function drawLines() {
   if (scatterPlot) {
     // Due to a bug in scatter-gl we unselect all points before setting the sequences
     scatterPlot?.select([])
-    if (props.selectedPoints.length > 0) {
-      const originalLength = props.points.length
-      const sequences: Sequence[] = props.transformedPoints.map((_, i) => ({
-        indices: [props.selectedPoints[i], i + originalLength]
-      }))
-      scatterPlot.setSequences(sequences)
-    } else {
-      scatterPlot.setSequences([])
-    }
+
+    const sequences = Object.keys(props.transformedPoints).map((id) => ({
+      indices: [idToIndex(id, false), idToIndex(id, true)]
+    }))
+    scatterPlot.setSequences(sequences)
   }
 }
 
@@ -177,9 +196,10 @@ function updateColorMapDomain() {
     [Infinity, -Infinity]
   ]
 
-  for (let i = 0; i < props.points.length; ++i) {
+  const points = Object.values(props.points)
+  for (let i = 0; i < points.length; ++i) {
     for (let j = 0; j < 3; ++j) {
-      const v = props.points[i][j] || 0
+      const v = points[i][j] || 0
       if (v < bounds[j][0]) {
         bounds[j][0] = v
       }
@@ -198,43 +218,19 @@ function updateColorMapDomain() {
   colorMapDomain.value = [0, Math.max(...spans) / 3]
 }
 
-watch(() => props.cameraPosition, updateCameraPosition)
-watch(
-  () => props.points,
-  () => {
-    updateColorMapDomain()
-    drawPoints()
-  }
-)
-watch(
-  () => props.transformedPoints,
-  () => {
-    drawPoints()
-    drawLines()
-  }
-)
-watch(
-  () => props.selectedPoints,
-  () => {
-    drawPoints()
-    drawLines()
-  }
-)
+const { cameraPosition, points, transformedPoints, selectedImages, highlightedImage } =
+  toRefs(props)
 
-watch(
-  () => props.highlightedPoint,
-  (newValue) => {
-    if (scatterPlot) {
-      if (newValue == -1) {
-        currenthighlightedPoint = -1
-        scatterPlot.setHoverPointIndex(-1)
-      } else {
-        currenthighlightedPoint = newValue
-        scatterPlot.setHoverPointIndex(newValue)
-      }
-    }
-  }
-)
+watch(cameraPosition, updateCameraPosition)
+
+watch(points, () => {
+  updateColorMapDomain()
+})
+
+watch([points, transformedPoints, selectedImages, highlightedImage], () => {
+  drawPoints()
+  drawLines()
+})
 
 function onSelectModeClick() {
   if (!selectMode.value) {

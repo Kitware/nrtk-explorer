@@ -32,3 +32,8 @@ ctrl.add("on_server_ready")(on_dataset_ids)
 def get_image(images_manager, dataset_id: str):
     image_path = get_image_path(dataset_id)
     return images_manager.load_image(image_path)
+
+
+def get_transformed_image(images_manager, transform, dataset_id: str):
+    image = get_image(images_manager, dataset_id)
+    return transform.execute(image)

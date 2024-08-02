@@ -1,6 +1,9 @@
-from trame.widgets import html, quasar
+from pathlib import Path
+from trame.widgets import html, quasar, client
 from trame.app import get_server
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
+
+CSS_FILE = Path(__file__).with_name("image_list.css")
 
 COLUMNS = [
     {"name": "id", "label": "Dataset ID", "field": "id", "sortable": True},
@@ -40,45 +43,52 @@ state.columns = COLUMNS
 state.visible_columns = [col["name"] for col in COLUMNS]
 
 
-@state.change("dataset_ids")
+state.client_only("image_list_ids")
+
+
+@state.change("dataset_ids", "user_selected_points")
+def update_image_list_ids(**kwargs):
+    if len(state.user_selected_points) > 0:
+        state.image_list_ids = state.user_selected_points
+    else:
+        state.image_list_ids = state.dataset_ids
+
+
+@state.change("image_list_ids")
 def reset_virtual_scroll(**kwargs):
-    ImageTable.reset_view_range()
-    server.js_call(ref="image-list", method="resetVirtualScroll")
+    ImageList.reset_view_range()
 
 
 class ImageList(html.Div):
-    def __init__(self, on_scroll, on_hover):
-        super().__init__(classes="col full-height")
-        with self:
-            ImageTable(
-                on_scroll,
-                on_hover=on_hover,
-                classes="full-height",
-            )
-
-
-class ImageTable(html.Div):
     instances = []
+
+    def get_id(self):
+        return f"image-list-{self.instance_id}"
 
     @staticmethod
     def reset_view_range():
-        for instance in ImageTable.instances:
-            instance.view_range = (0, -1)
+        for instance in ImageList.instances:
+            instance.visible_ids = set()
+            server.js_call(ref=instance.get_id(), method="resetVirtualScroll")
 
     def on_scroll(self, from_index, to_index):
-        if self.view_range[0] != from_index or self.view_range[1] != to_index:
-            self.view_range = (from_index, to_index)
-            self.scroll_callback(from_index, to_index)
+        # TODO: fix sorted or filtered cases (with table.computedRows?)
+        visible = set(state.image_list_ids[from_index : to_index + 1])
+        if self.visible_ids != visible:
+            self.visible_ids = visible
+            self.scroll_callback(self.visible_ids)
 
     def __init__(self, on_scroll, on_hover, **kwargs):
-        super().__init__(**kwargs)
-        self.view_range = (0, -1)
-        ImageTable.instances.append(self)
+        super().__init__(classes="full-height", **kwargs)
+        self.instance_id = len(ImageList.instances)
+        ImageList.instances.append(self)
+        self.visible_ids = set()
         self.scroll_callback = on_scroll
         with self:
+            client.Style(CSS_FILE.read_text())
             with quasar.QTable(
-                ref="image-list",
-                classes="full-height",
+                ref=(self.get_id()),
+                classes="full-height sticky-header",
                 flat=True,
                 hide_bottom=True,
                 title="Selected Images",
@@ -88,7 +98,7 @@ class ImageTable(html.Div):
                 visible_columns=("visible_columns",),
                 columns=("columns",),
                 rows=(
-                    r"""dataset_ids.map((id) =>
+                    r"""image_list_ids.map((id) =>
                             {
                                 const meta = get(`meta_${id}`)?.value ?? {original_ground_to_original_detection_score: 0, ground_truth_to_transformed_detection_score: 0, original_detection_to_transformed_detection_score: 0}
                                 return {
@@ -114,6 +124,7 @@ class ImageTable(html.Div):
                     "virtual-scroll-slice-size='2'",
                     "virtual-scroll-item-size='200'",
                     f'''@virtual-scroll="(e) => trigger('{ self.server.controller.trigger_name(self.on_scroll) }', [e.from, e.to])"''',
+                    "virtual-scroll-sticky-size-start='48'",
                 ],
             ):
                 # ImageDetection component for image columns

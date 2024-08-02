@@ -1,0 +1,11 @@
+.sticky-header {
+  thead tr th {
+    position: sticky;
+    z-index: 1;
+    background-color: white;
+  }
+
+  thead tr:first-child th {
+    top: 0;
+  }
+}

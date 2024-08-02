@@ -3,11 +3,18 @@ from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.library.dataset import get_dataset
+from nrtk_explorer.app.trame_utils import SetStateAsync
 from nrtk_explorer.app.applet import Applet
 import nrtk_explorer.test_data
+from nrtk_explorer.app.image_ids import (
+    image_id_to_dataset_id,
+    dataset_id_to_transformed_image_id,
+    dataset_id_to_image_id,
+    is_transformed,
+)
 
-import asyncio
 import os
+from typing import Dict, List
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
@@ -29,7 +36,6 @@ class EmbeddingsApp(Applet):
         super().__init__(server)
 
         self._ui = None
-        self._on_select_fn = None
         self.reducer = dimension_reducers.DimReducerManager()
         self.is_standalone_app = self.server.state.parent is None
         if self.is_standalone_app:
@@ -44,6 +50,13 @@ class EmbeddingsApp(Applet):
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self.transformed_images_cache = {}
+        self.state.highlighted_image = {
+            "id": "",
+            "is_transformed": True,
+        }
+
+        self.state.highlighted_image_id = ""
+        self.state.highlighted_image_is_transformed = False
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
@@ -51,6 +64,8 @@ class EmbeddingsApp(Applet):
         self.on_feature_extraction_model_change()
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
+        self.update_points()
+        self.state.change("dataset_ids")(self.update_points)
 
     def on_feature_extraction_model_change(self, **kwargs):
         feature_extraction_model = self.state.feature_extraction_model
@@ -70,118 +85,83 @@ class EmbeddingsApp(Applet):
         if self.is_standalone_app:
             self.context.images_manager = images_manager.ImagesManager()
 
-    def on_run_clicked(self):
-        self.state.is_loading = True
-        asynchronous.create_task(self.compute(self.compute_source_points))
+    def compute_points(self, fit_features, features):
+        if self.state.tab == "PCA":
+            return self.reducer.reduce(
+                name="PCA",
+                fit_features=fit_features,
+                features=features,
+                dims=self.state.dimensionality,
+                whiten=self.state.pca_whiten,
+                solver=self.state.pca_solver,
+            )
 
-    async def compute(self, method):
-        # We need to yield twice for the is_loading=True to commit to the trame state
-        # before this routine ends
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
-        await method()
-        with self.state:
-            self.state.is_loading = False
+        # must be UMAP
+        args = {}
+        if self.state.umap_random_seed:
+            args["random_state"] = int(self.state.umap_random_seed_value)
+
+        if self.state.umap_n_neighbors:
+            args["n_neighbors"] = int(self.state.umap_n_neighbors_number)
+
+        return self.reducer.reduce(
+            name="UMAP",
+            fit_features=fit_features,
+            features=features,
+            dims=self.state.dimensionality,
+            **args,
+        )
 
     async def compute_source_points(self):
+        async with SetStateAsync(self.state):
+            self.state.is_loading = True
+
         self.features = self.extractor.extract(
             paths=self.context.paths,
             batch_size=int(self.state.model_batch_size),
         )
 
-        if self.state.tab == "PCA":
-            self.state.points_sources = self.reducer.reduce(
-                name="PCA",
-                fit_features=self.features,
-                features=self.features,
-                dims=self.state.dimensionality,
-                whiten=self.state.pca_whiten,
-                solver=self.state.pca_solver,
-            )
+        points = self.compute_points(self.features, self.features)
 
-        elif self.state.tab == "UMAP":
-            args = {}
-            if self.state.umap_random_seed:
-                args["random_state"] = int(self.state.umap_random_seed_value)
+        self.state.points_sources = {
+            id: point for id, point in zip(self.state.dataset_ids, points)
+        }
 
-            if self.state.umap_n_neighbors:
-                args["n_neighbors"] = int(self.state.umap_n_neighbors_number)
-
-            self.state.points_sources = self.reducer.reduce(
-                name="UMAP",
-                dims=self.state.dimensionality,
-                fit_features=self.features,
-                features=self.features,
-                **args,
-            )
-
-        # Unselect current selection of images
-        if self._on_select_fn:
-            self._on_select_fn([])
-
-        self.state.points_transformations = []
-        self.state.user_selected_points_indices = []
+        self.state.points_transformations = {}  # ID to points
+        self.state.user_selected_points = []
         self.state.camera_position = []
 
-    def on_run_transformations(self, transformed_image_ids):
-        # Fillup the cache with the transformed images
-        for img_id in transformed_image_ids:
-            img = self.context.image_objects[img_id]
-            img = self.context.images_manager.prepare_for_model(img)
-            self.transformed_images_cache[img_id] = img
+        async with SetStateAsync(self.state):
+            self.state.is_loading = False
 
+    def update_points(self, **kwargs):
+        if hasattr(self, "_update_task"):
+            self._update_task.cancel()
+        self._update_task = asynchronous.create_task(self.compute_source_points())
+
+    def on_run_clicked(self):
+        self.update_points()
+
+    def on_run_transformations(self, id_to_image):
+        extractor_prepped = {
+            id: self.context.images_manager.prepare_for_model(image)
+            for id, image in id_to_image.items()
+        }
+        ids = extractor_prepped.keys()
         transformation_features = self.extractor.extract(
-            paths=transformed_image_ids,
-            content=self.transformed_images_cache,
+            paths=ids,
+            content=extractor_prepped,
             batch_size=int(self.state.model_batch_size),
         )
 
-        if self.state.tab == "PCA":
-            self.state.points_transformations = self.reducer.reduce(
-                name="PCA",
-                fit_features=self.features,
-                features=transformation_features,
-                dims=self.state.dimensionality,
-                whiten=self.state.pca_whiten,
-                solver=self.state.pca_solver,
-            )
+        points = self.compute_points(self.features, transformation_features)
 
-        elif self.state.tab == "UMAP":
-            args = {}
-            if self.state.umap_random_seed:
-                args["random_state"] = int(self.state.umap_random_seed_value)
+        self.state.points_transformations = {
+            image_id_to_dataset_id(id): point for id, point in zip(ids, points)
+        }
 
-            if self.state.umap_n_neighbors:
-                args["n_neighbors"] = int(self.state.umap_n_neighbors_number)
-
-            self.state.points_transformations = self.reducer.reduce(
-                name="UMAP",
-                dims=self.state.dimensionality,
-                fit_features=self.features,
-                features=transformation_features,
-                **args,
-            )
-
-    def set_on_select(self, fn):
-        self._on_select_fn = fn
-
-    def on_select(self, indices):
-        # remap transformed indices to original indices
-        original_indices = set()
-        for point_index in indices:
-            original_image_point_index = point_index
-            if point_index >= len(self.state.points_sources):
-                original_image_point_index = self.state.user_selected_points_indices[
-                    point_index - len(self.state.points_sources)
-                ]
-            original_indices.add(original_image_point_index)
-        original_indices = list(original_indices)
-
-        self.state.user_selected_points_indices = original_indices
-        self.state.points_transformations = []
-        ids = [self.state.image_ids[i] for i in original_indices]
-        if self._on_select_fn:
-            self._on_select_fn(ids)
+    def on_select(self, image_ids):
+        self.state.user_selected_points = image_ids
 
     def on_move(self, camera_position):
         self.state.camera_position = camera_position
@@ -189,53 +169,37 @@ class EmbeddingsApp(Applet):
     def set_on_hover(self, fn):
         self._on_hover_fn = fn
 
-    def on_point_hover(self, point_index):
-        self.state.highlighted_point = point_index
-        image_id = ""
-        if point_index is not None:
-            original_image_point_index = point_index
-            if point_index >= len(self.state.points_sources):
-                image_kind = "transformed_img_"
-                original_image_point_index = self.state.user_selected_points_indices[
-                    point_index - len(self.state.points_sources)
-                ]
-            else:
-                image_kind = "img_"
-            dataset_id = self.state.image_ids[original_image_point_index]
-            image_id = f"{image_kind}{dataset_id}"
+    def get_dataset_id_index(self, point_index):
+        if point_index < len(self.state.dataset_ids):
+            return point_index
+        return point_index - len(self.state.dataset_ids)
 
-        if self._on_hover_fn:
-            self._on_hover_fn(image_id)
-
-    def on_image_hovered(self, id_):
-        # If the point is in the list of selected points, we set it as the highlighted point
-        is_transformation = id_.startswith("transformed_img_")
-        try:
-            dataset_id = int(id_.split("_")[-1])  # img_123 or transformed_img_123 -> 123
-        except ValueError:
-            # id_ probably is an empty string
-            dataset_id = id_
-        if dataset_id in self.state.image_ids:
-            index = self.state.image_ids.index(dataset_id)
-            if is_transformation:
-                index_selected = self.state.user_selected_points_indices.index(index)
-                self.state.highlighted_point = len(self.state.points_sources) + index_selected
-            else:
-                self.state.highlighted_point = index
+    def on_point_hover(self, event):
+        self.state.highlighted_image = event
+        if not self._on_hover_fn:
+            return
+        if event["is_transformed"]:
+            image_id = dataset_id_to_transformed_image_id(event["id"])
         else:
-            # If the point is not in the list of selected points, we set it to a negative point
-            self.state.highlighted_point = -1
+            image_id = dataset_id_to_image_id(event["id"])
+        self._on_hover_fn(image_id)
+
+    def on_image_hovered(self, image_id):
+        self.state.highlighted_image = {
+            "id": image_id_to_dataset_id(image_id),
+            "is_transformed": is_transformed(image_id),
+        }
 
     def visualization_widget(self):
         ScatterPlot(
             cameraMove="camera_position=$event",
             cameraPosition=("camera_position",),
-            highlightedPoint=("highlighted_point", -1),
+            highlightedImage=("highlighted_image",),
             hover=(self.on_point_hover, "[$event]"),
-            points=("points_sources", []),
-            transformedPoints=("points_transformations", []),
+            points=("points_sources", {}),
+            transformedPoints=("points_transformations", {}),
             select=(self.on_select, "[$event]"),
-            selectedPoints=("user_selected_points_indices", []),
+            selectedImages=("user_selected_points", []),
         )
 
     def settings_widget(self):

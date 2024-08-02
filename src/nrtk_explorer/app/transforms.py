@@ -3,7 +3,7 @@ Define your classes and create the instances that you need to expose
 """
 
 import logging
-from typing import Dict, Sequence
+from typing import Dict
 from functools import partial
 import os
 
@@ -40,7 +40,7 @@ from nrtk_explorer.app.image_ids import (
 )
 from nrtk_explorer.library.dataset import get_dataset
 import nrtk_explorer.app.image_server
-from nrtk_explorer.app.images import get_image
+from nrtk_explorer.app.images import get_image, get_transformed_image
 
 
 logger = logging.getLogger(__name__)
@@ -142,41 +142,42 @@ class TransformsApp(Applet):
         logger.debug("on_apply_transform")
         if self._updating_images():
             return  # update_images will call update_transformed_images() at the end
-        self.update_transformed_images()
+        self.update_transformed_images(self.visible_ids)
 
     def update_transformed_images(self, dataset_ids):
         if not ("transformed" in self.state.visible_columns):
             return
 
         transform = self._transforms[self.state.current_transform]
-        transformed_image_ids = []
-        for id in dataset_ids:
-            transformed_image_id = dataset_id_to_transformed_image_id(id)
-            image = get_image(self.context.images_manager, id)
-            transformed_img = transform.execute(image)
-            if image.size != transformed_img.size:
-                # Resize so pixel-wise annotation similarity score works
-                transformed_img = transformed_img.resize(image.size)
-            self.context["image_objects"][transformed_image_id] = transformed_img
-            transformed_image_ids.append(transformed_image_id)
-            self.state[transformed_image_id] = convert_to_base64(transformed_img)
 
-        images_with_ids = [
-            ImageWithId(id, self.context["image_objects"][id]) for id in transformed_image_ids
-        ]
+        def make_image(id):
+            transformed = get_transformed_image(self.context.images_manager, transform, id)
+            original = get_image(self.context.images_manager, id)
+            if original.size != transformed.size:
+                # Resize so pixel-wise annotation similarity score works
+                transformed = transformed.resize(original.size)
+            return transformed
+
+        id_to_matching_size_img = {
+            dataset_id_to_transformed_image_id(id): make_image(id) for id in dataset_ids
+        }
+
+        for id, img in id_to_matching_size_img.items():
+            self.state[id] = convert_to_base64(img)
+
+        images_with_ids = [ImageWithId(id, img) for id, img in id_to_matching_size_img.items()]
         annotations = self.compute_annotations(images_with_ids)
 
-        dataset_ids = [image_id_to_dataset_id(id) for id in transformed_image_ids]
         predictions = convert_from_predictions_to_second_arg(annotations)
         scores = compute_score(
             dataset_ids,
             self.predictions_source_images,
             predictions,
         )
-        for dataset_id, score in scores:
+        for id, score in scores:
             update_image_meta(
                 self.state,
-                dataset_id,
+                id,
                 {"original_detection_to_transformed_detection_score": score},
             )
 
@@ -187,13 +188,18 @@ class TransformsApp(Applet):
             ground_truth_predictions,
             predictions,
         )
-        for dataset_id, score in scores:
+        for id, score in scores:
             update_image_meta(
-                self.state, dataset_id, {"ground_truth_to_transformed_detection_score": score}
+                self.state, id, {"ground_truth_to_transformed_detection_score": score}
             )
 
-        # Only invoke callbacks when we transform images
-        # self.on_transform(transformed_image_ids)
+        id_to_image = {
+            dataset_id_to_transformed_image_id(id): get_transformed_image(
+                self.context.images_manager, transform, id
+            )
+            for id in dataset_ids
+        }
+        self.on_transform(id_to_image)
 
     def compute_annotations(self, images_with_ids):
         """Compute annotations for the given image ids using the object detector model."""
@@ -290,13 +296,9 @@ class TransformsApp(Applet):
     def _updating_images(self):
         return hasattr(self, "_update_images_task") and not self._update_images_task.done()
 
-    def set_selected_dataset_ids(self, selected_dataset_ids: Sequence[str]):
-        # todo: filter list
-        # print("set_selected_dataset_ids", selected_dataset_ids)
-        pass
-
-    def on_scroll(self, from_index, to_index):
-        self._start_update_images(self.state.dataset_ids[from_index : to_index + 1])
+    def on_scroll(self, visible_ids):
+        self.visible_ids = visible_ids
+        self._start_update_images(self.visible_ids)
 
     def delete_computed_image_data(self):
         source_and_transformed = self.state.source_image_ids + self.state.transformed_image_ids

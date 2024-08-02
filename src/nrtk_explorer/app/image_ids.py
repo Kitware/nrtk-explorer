@@ -12,3 +12,7 @@ def dataset_id_to_transformed_image_id(dataset_id: str):
 
 def image_id_to_result_id(image_id: str):
     return f"result_{image_id}"
+
+
+def is_transformed(image_id: str):
+    return image_id.startswith("transformed_img_")

@@ -20,7 +20,7 @@ from nrtk_explorer.library.images_manager import ImagesManager, convert_to_base6
 from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
-from nrtk_explorer.app.image_meta import (
+from nrtk_explorer.app.images.image_meta import (
     update_image_meta,
     delete_image_meta,
 )
@@ -33,15 +33,14 @@ from nrtk_explorer.library.coco_utils import (
 )
 import nrtk_explorer.test_data
 from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync, change_checker
-from nrtk_explorer.app.image_ids import (
+from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
-    image_id_to_dataset_id,
     image_id_to_result_id,
     dataset_id_to_transformed_image_id,
 )
 from nrtk_explorer.library.dataset import get_dataset
-import nrtk_explorer.app.image_server
-from nrtk_explorer.app.images import get_image, get_transformed_image
+import nrtk_explorer.app.images.image_server
+from nrtk_explorer.app.images.images import get_image, get_transformed_image
 
 
 logger = logging.getLogger(__name__)

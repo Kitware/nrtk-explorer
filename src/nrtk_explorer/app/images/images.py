@@ -1,7 +1,7 @@
-# from typing import Sequence
-# from trame_server.state import State
+from typing import Any
+from collections import OrderedDict
 from trame.app import get_server
-from nrtk_explorer.app.image_ids import (
+from nrtk_explorer.app.images.image_ids import (
     image_id_to_result_id,
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
@@ -13,7 +13,7 @@ state, ctrl = server.state, server.controller
 
 
 @state.change("image_ids")
-def on_dataset_ids(**kwargs):
+def init_state(**kwargs):
     dataset_ids = [str(id) for id in state.image_ids]
     # create reactive annotation variables so ImageDetection component has live Refs
     for id in dataset_ids:
@@ -25,8 +25,8 @@ def on_dataset_ids(**kwargs):
     state.hovered_id = None
 
 
-# on_dataset_ids is not called on initial set of state.image_ids
-ctrl.add("on_server_ready")(on_dataset_ids)
+# state.change does not trigger callback on initial set of state.image_ids
+ctrl.add("on_server_ready")(init_state)
 
 
 def get_image(images_manager, dataset_id: str):

@@ -6,6 +6,7 @@ import logging
 from typing import Dict
 from functools import partial
 import os
+from PIL.Image import Image
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
@@ -15,7 +16,7 @@ from trame.app import get_server, asynchronous
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import object_detector
-from nrtk_explorer.library.images_manager import ImageWithId, ImagesManager, convert_to_base64
+from nrtk_explorer.library.images_manager import ImagesManager, convert_to_base64
 from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
@@ -165,8 +166,7 @@ class TransformsApp(Applet):
         for id, img in id_to_matching_size_img.items():
             self.state[id] = convert_to_base64(img)
 
-        images_with_ids = [ImageWithId(id, img) for id, img in id_to_matching_size_img.items()]
-        annotations = self.compute_annotations(images_with_ids)
+        annotations = self.compute_annotations(id_to_matching_size_img)
 
         predictions = convert_from_predictions_to_second_arg(annotations)
         scores = compute_score(
@@ -201,10 +201,10 @@ class TransformsApp(Applet):
         }
         self.on_transform(id_to_image)
 
-    def compute_annotations(self, images_with_ids):
+    def compute_annotations(self, id_to_image: Dict[str, Image]):
         """Compute annotations for the given image ids using the object detector model."""
         predictions = self.detector.eval(
-            images_with_ids,
+            id_to_image,
             batch_size=int(self.state.object_detection_batch_size),
         )
 
@@ -250,20 +250,19 @@ class TransformsApp(Applet):
         }
         self.state.update(annotations)
 
-    def compute_predictions_source_images(self, ids):
-        images_with_ids = [
-            ImageWithId(dataset_id_to_image_id(id), get_image(self.context.images_manager, id))
-            for id in ids
-        ]
+    def compute_predictions_source_images(self, dataset_ids):
+        images_with_ids = {
+            dataset_id_to_image_id(id): get_image(self.context.images_manager, id)
+            for id in dataset_ids
+        }
         annotations = self.compute_annotations(images_with_ids)
         dataset = get_dataset(self.state.current_dataset)
         self.predictions_source_images = convert_from_predictions_to_first_arg(
             annotations,
             dataset,
-            ids,
+            dataset_ids,
         )
 
-        dataset_ids = [image_id_to_dataset_id(id) for id in ids]
         ground_truth_annotations = [self.state[image_id_to_result_id(id)] for id in dataset_ids]
         ground_truth_predictions = convert_from_ground_truth_to_second_arg(
             ground_truth_annotations, self.context.dataset
@@ -278,15 +277,15 @@ class TransformsApp(Applet):
                 self.state, dataset_id, {"original_ground_to_original_detection_score": score}
             )
 
-    async def _update_images(self, ids):
+    async def _update_images(self, dataset_ids):
         async with SetStateAsync(self.state):
-            self.load_ground_truth_annotations(ids)
+            self.load_ground_truth_annotations(dataset_ids)
 
         async with SetStateAsync(self.state):
-            self.compute_predictions_source_images(ids)
+            self.compute_predictions_source_images(dataset_ids)
 
         async with SetStateAsync(self.state):
-            self.update_transformed_images(ids)
+            self.update_transformed_images(dataset_ids)
 
     def _start_update_images(self, priority_ids):
         if hasattr(self, "_update_images_task"):

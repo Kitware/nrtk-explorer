@@ -2,11 +2,16 @@ import gc
 import logging
 import torch
 import transformers
-from .images_manager import ImageWithId
+from typing import Optional, Sequence, Dict, NamedTuple
+from PIL.Image import Image
 
-from typing import Optional, Sequence
 
-ImageIdToAnnotations = Optional[dict[str, Sequence[dict]]]
+ImageIdToAnnotations = dict[str, Sequence[dict]]
+
+
+class ImageWithId(NamedTuple):
+    id: str
+    image: Image
 
 
 class ObjectDetector:
@@ -52,15 +57,17 @@ class ObjectDetector:
 
     def eval(
         self,
-        images: Sequence[ImageWithId],
+        images: Dict[str, Image],
         batch_size: int = 32,
     ) -> ImageIdToAnnotations:
         """Compute object recognition. Returns Annotations grouped by input image paths."""
 
+        images_with_ids = [ImageWithId(id, img) for id, img in images.items()]
+
         # Some models require all the images in a batch to be the same size,
         # otherwise crash or UB.
         batches: dict = {}
-        for image in images:
+        for image in images_with_ids:
             size = image.image.size
             batches.setdefault(size, [])
             batches[size].append(image)
@@ -102,4 +109,4 @@ class ObjectDetector:
                 torch.cuda.empty_cache()
 
         # We should never reach here
-        return None
+        return {}

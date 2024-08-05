@@ -19,6 +19,7 @@ class SetStateAsync:
         self.state = state
 
     async def __aenter__(self):
+        await asyncio.sleep(0)  # give task.cancel() a chance to trigger early exit
         return self.state
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -29,23 +30,27 @@ class SetStateAsync:
         await asyncio.sleep(0)
 
 
-def change_checker(state: State, key: str, callback: Callable, trigger_check=lambda a, b: a != b):
+def change_checker(state: State, key: str, trigger_check=lambda a, b: a != b):
     """
     Usage::
-        change_checker(
-            self.state, "visible_columns", self.on_apply_transform, tranformed_became_visible
-        )
+        @change_checker(self.state, "visible_columns", transformed_became_visible)
+        def on_apply_transform(old_value, new_value):
     """
-    old_value = state[key]
 
-    def on_change():
-        nonlocal old_value
-        new_value = state[key]
-        if trigger_check(old_value, new_value):
-            callback()
-        old_value = new_value
+    def decorator(callback: Callable):
+        old_value = state[key]
 
-    def on_state(**kwargs):
-        on_change()
+        def on_change():
+            nonlocal old_value
+            new_value = state[key]
+            if trigger_check(old_value, new_value):
+                callback(old_value, new_value)
+            old_value = new_value
 
-    state.change(key)(on_state)
+        def on_state(**kwargs):
+            on_change()
+
+        state.change(key)(on_state)
+        return callback
+
+    return decorator

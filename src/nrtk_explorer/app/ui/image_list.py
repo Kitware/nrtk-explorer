@@ -46,10 +46,10 @@ state.visible_columns = [col["name"] for col in COLUMNS]
 state.client_only("image_list_ids")
 
 
-@state.change("dataset_ids", "user_selected_points")
+@state.change("dataset_ids", "user_selected_ids")
 def update_image_list_ids(**kwargs):
-    if len(state.user_selected_points) > 0:
-        state.image_list_ids = state.user_selected_points
+    if len(state.user_selected_ids) > 0:
+        state.image_list_ids = state.user_selected_ids
     else:
         state.image_list_ids = state.dataset_ids
 

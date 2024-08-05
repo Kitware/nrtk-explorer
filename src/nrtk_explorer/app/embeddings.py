@@ -128,7 +128,7 @@ class EmbeddingsApp(Applet):
         }
 
         self.state.points_transformations = {}  # ID to points
-        self.state.user_selected_points = []
+        self.state.user_selected_ids = []
         self.state.camera_position = []
 
         async with SetStateAsync(self.state):
@@ -161,7 +161,7 @@ class EmbeddingsApp(Applet):
         }
 
     def on_select(self, image_ids):
-        self.state.user_selected_points = image_ids
+        self.state.user_selected_ids = image_ids
 
     def on_move(self, camera_position):
         self.state.camera_position = camera_position
@@ -199,7 +199,7 @@ class EmbeddingsApp(Applet):
             points=("points_sources", {}),
             transformedPoints=("points_transformations", {}),
             select=(self.on_select, "[$event]"),
-            selectedImages=("user_selected_points", []),
+            selectedImages=("user_selected_ids", []),
         )
 
     def settings_widget(self):

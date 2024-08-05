@@ -109,7 +109,8 @@ class Engine(Applet):
         self.state.num_images_disabled = True
         self.state.random_sampling = False
         self.state.random_sampling_disabled = True
-        self.state.image_ids = []
+        self.state.dataset_ids = []
+        self.state.hovered_id = None
 
         self._build_ui()
 
@@ -128,22 +129,29 @@ class Engine(Applet):
         self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.random_sampling_disabled = False
         self.state.num_images_disabled = False
+        self.state.dataset_ids = []
+        self.state.flush()  # trigger dataset_ids change handler so matching IDs in new dataset are not cached
+
+        categories = {}
+        for category in self.context.dataset.cats.values():
+            categories[category["id"]] = category
+        self.state.annotation_categories = categories
 
         self.reload_images()
 
     def on_filter_apply(self, filter: FilterProtocol[Iterable[int]], **kwargs):
-        selected_indices = []
-        for index, image_id in enumerate(self.state.image_ids):
+        selected_ids = []
+        for dataset_id in self.state.dataset_ids:
             image_annotations_categories = [
                 annotation["category_id"]
                 for annotation in self.context.dataset.anns.values()
-                if annotation["image_id"] == image_id
+                if annotation["image_id"] == int(dataset_id)
             ]
             include = filter.evaluate(image_annotations_categories)
             if include:
-                selected_indices.append(index)
+                selected_ids.append(dataset_id)
 
-        self._embeddings_app.on_select(selected_indices)
+        self._embeddings_app.on_select(selected_ids)
 
     def on_num_images_change(self, **kwargs):
         self.reload_images()
@@ -152,10 +160,6 @@ class Engine(Applet):
         self.reload_images()
 
     def reload_images(self):
-        categories = {}
-        for category in self.context.dataset.cats.values():
-            categories[category["id"]] = category
-
         images = list(self.context.dataset.imgs.values())
 
         selected_images = []
@@ -177,8 +181,7 @@ class Engine(Applet):
             )
 
         self.context.paths = paths
-        self.state.annotation_categories = categories
-        self.state.image_ids = [img["id"] for img in selected_images]
+        self.state.dataset_ids = [str(img["id"]) for img in selected_images]
 
     def _build_ui(self):
         extra_args = {}

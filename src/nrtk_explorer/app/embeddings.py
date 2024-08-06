@@ -14,7 +14,6 @@ from nrtk_explorer.app.images.image_ids import (
 )
 
 import os
-from typing import Dict, List
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
@@ -55,17 +54,18 @@ class EmbeddingsApp(Applet):
             "is_transformed": True,
         }
 
-        self.state.highlighted_image_id = ""
-        self.state.highlighted_image_is_transformed = False
-
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.on_current_dataset_change()
-        self.on_feature_extraction_model_change()
         self.state.change("current_dataset")(self.on_current_dataset_change)
+
+        self.on_feature_extraction_model_change()
         self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
+
         self.update_points()
         self.state.change("dataset_ids")(self.update_points)
+
+        self.server.controller.apply_transform.add(self.clear_points_transformations)
 
     def on_feature_extraction_model_change(self, **kwargs):
         feature_extraction_model = self.state.feature_extraction_model
@@ -112,6 +112,9 @@ class EmbeddingsApp(Applet):
             **args,
         )
 
+    def clear_points_transformations(self, **kwargs):
+        self.state.points_transformations = {}  # ID to points
+
     async def compute_source_points(self):
         async with SetStateAsync(self.state):
             self.state.is_loading = True
@@ -127,7 +130,8 @@ class EmbeddingsApp(Applet):
             id: point for id, point in zip(self.state.dataset_ids, points)
         }
 
-        self.state.points_transformations = {}  # ID to points
+        self.clear_points_transformations()
+
         self.state.user_selected_ids = []
         self.state.camera_position = []
 
@@ -156,9 +160,8 @@ class EmbeddingsApp(Applet):
 
         points = self.compute_points(self.features, transformation_features)
 
-        self.state.points_transformations = {
-            image_id_to_dataset_id(id): point for id, point in zip(ids, points)
-        }
+        updated_points = {image_id_to_dataset_id(id): point for id, point in zip(ids, points)}
+        self.state.points_transformations = {**self.state.points_transformations, **updated_points}
 
     def on_select(self, image_ids):
         self.state.user_selected_ids = image_ids

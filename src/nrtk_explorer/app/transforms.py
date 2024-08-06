@@ -38,7 +38,6 @@ from nrtk_explorer.app.images.images import (
     get_image,
     get_transformed_image,
     get_annotations,
-    clear_transformed,
     get_ground_truth_annotations,
 )
 
@@ -56,8 +55,6 @@ class TransformsApp(Applet):
         self._parameters_app = ParametersApp(
             server=server,
         )
-
-        self._parameters_app.on_apply_transform = self.on_apply_transform
 
         self._ui = None
 
@@ -89,6 +86,7 @@ class TransformsApp(Applet):
         )
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
+        self.server.controller.apply_transform.add(self.schedule_transformed_images)
         self._on_hover_fn = None
 
     def on_server_ready(self, *args, **kwargs):
@@ -106,13 +104,8 @@ class TransformsApp(Applet):
         if self._on_transform_fn:
             self._on_transform_fn(*args, **kwargs)
 
-    def on_apply_transform(self, *args, **kwargs):
-        """Parameters changed"""
-        logger.debug("on_apply_transform")
-        clear_transformed()
-        self.schedule_transformed_images()
-
-    def schedule_transformed_images(self, *args):
+    def schedule_transformed_images(self, *args, **kwargs):
+        logger.debug("schedule_transformed_images")
         if self._updating_images():
             if self._updating_transformed_images:
                 # computing stale transformed images, restart task
@@ -294,7 +287,7 @@ class TransformsApp(Applet):
                                         quasar.QSelect(
                                             label="Dataset",
                                             v_model=("current_dataset",),
-                                            options=(DATASET_DIRS,),
+                                            options=([],),
                                             filled=True,
                                             emit_value=True,
                                             map_options=True,

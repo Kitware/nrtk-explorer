@@ -212,7 +212,7 @@ def init_state(old, new):
     state.hovered_id = None
 
 
-def clear_transformed():
+def clear_transformed(**kwargs):
     for id in state.dataset_ids:
         keys = get_image_state_keys(id)
         image_cache.clear_item(keys["transformed_image"])
@@ -225,3 +225,6 @@ def clear_transformed():
                 "ground_truth_to_transformed_detection_score": 0,
             },
         )
+
+
+ctrl.apply_transform.add(clear_transformed)

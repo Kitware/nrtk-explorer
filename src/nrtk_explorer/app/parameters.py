@@ -32,8 +32,6 @@ class ParametersApp(Applet):
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
-        self.on_apply_transform = lambda: None
-
         self.server.controller.add("on_server_ready")(self.on_server_ready)
 
         self._ui = None
@@ -76,7 +74,7 @@ class ParametersApp(Applet):
         with html.Div(trame_server=self.server):
             quasar.QBtn(
                 "Apply",
-                click=(self.on_apply_transform,),
+                click=(self.server.controller.apply_transform),
                 classes="full-width",
                 flat=True,
             )

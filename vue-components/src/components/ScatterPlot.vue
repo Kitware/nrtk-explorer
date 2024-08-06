@@ -105,7 +105,7 @@ onMounted(() => {
     },
     onHover(index: number | null) {
       const id = index == null ? '' : indexToId(index)
-      const is_transformed = index == null ? false : id in props.transformedPoints
+      const is_transformed = index == null ? false : isTransformed(index)
       emit('hover', { id, is_transformed })
     },
     onSelect(indices) {

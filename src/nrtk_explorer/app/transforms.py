@@ -62,12 +62,6 @@ class TransformsApp(Applet):
         self._ui = None
 
         self._on_transform_fn = None
-        self.state.models = [
-            "ClassificationResNet50",
-            "ClassificationAlexNet",
-            "ClassificationVgg16",
-        ]
-        self.state.feature_extraction_model = self.state.models[0]
 
         self._transforms: Dict[str, trans.ImageTransform] = {
             "identity": trans.IdentityTransform(),

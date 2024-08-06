@@ -68,22 +68,10 @@ class Engine(Applet):
         self.state.vertical_split = VERTICAL_SPLIT_DEFAULT_VALUE
         self.state.client_only("horizontal_split", "vertical_split")
 
-        transforms_translator = Translator()
-        transforms_translator.add_translation(
-            "feature_extraction_model", "current_transforms_model"
-        )
-
-        self._transforms_app = TransformsApp(
-            server=self.server.create_child_server(translator=transforms_translator)
-        )
-
-        embeddings_translator = Translator()
-        embeddings_translator.add_translation(
-            "feature_extraction_model", "current_embeddings_model"
-        )
+        self._transforms_app = TransformsApp(server=self.server.create_child_server())
 
         self._embeddings_app = EmbeddingsApp(
-            server=self.server.create_child_server(translator=embeddings_translator),
+            server=self.server.create_child_server(),
         )
 
         filtering_translator = Translator()

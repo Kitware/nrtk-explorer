@@ -4,8 +4,6 @@ Define your classes and create the instances that you need to expose
 
 import logging
 from typing import Dict
-from functools import partial
-import os
 import asyncio
 from PIL.Image import Image
 
@@ -22,7 +20,6 @@ from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.images.image_meta import (
     update_image_meta,
-    delete_image_meta,
 )
 from nrtk_explorer.library.coco_utils import (
     convert_from_ground_truth_to_first_arg,
@@ -31,35 +28,30 @@ from nrtk_explorer.library.coco_utils import (
     convert_from_predictions_to_first_arg,
     compute_score,
 )
-import nrtk_explorer.test_data
-from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync, change_checker
+from nrtk_explorer.app.trame_utils import SetStateAsync, change_checker
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
-    image_id_to_result_id,
     dataset_id_to_transformed_image_id,
 )
 from nrtk_explorer.library.dataset import get_dataset
-import nrtk_explorer.app.images.image_server
-from nrtk_explorer.app.images.images import get_image, get_transformed_image, clear_transformed
+from nrtk_explorer.app.images.images import (
+    get_image,
+    get_transformed_image,
+    get_annotations,
+    clear_transformed,
+    get_ground_truth_annotations,
+)
+
+import nrtk_explorer.app.images.image_server  # noqa module level side effects
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
-DATASET_DIRS = [
-    f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
-    f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
-    f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
-]
-
-
 class TransformsApp(Applet):
     def __init__(self, server):
         super().__init__(server)
-
-        self.update_image_meta = partial(update_image_meta, self.server.state)
 
         self._parameters_app = ParametersApp(
             server=server,
@@ -68,9 +60,6 @@ class TransformsApp(Applet):
         self._parameters_app.on_apply_transform = self.on_apply_transform
 
         self._ui = None
-
-        if self.context["image_objects"] is None:
-            self.context["image_objects"] = {}
 
         self._on_transform_fn = None
         self.state.models = [
@@ -93,15 +82,8 @@ class TransformsApp(Applet):
 
         self._parameters_app._transforms = self._transforms
 
-        self.state.annotation_categories = {}
-
-        self.in_view_range = (0, 0)
-
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
-
-        if self.state.current_dataset is None:
-            self.state.current_dataset = DATASET_DIRS[0]
 
         self.state.current_num_elements = 15
 
@@ -184,7 +166,7 @@ class TransformsApp(Applet):
                 {"original_detection_to_transformed_detection_score": score},
             )
 
-        ground_truth_annotations = [self.state[image_id_to_result_id(id)] for id in dataset_ids]
+        ground_truth_annotations = get_ground_truth_annotations(dataset_ids)
         ground_truth_predictions = convert_from_ground_truth_to_first_arg(ground_truth_annotations)
         scores = compute_score(
             dataset_ids,
@@ -209,52 +191,11 @@ class TransformsApp(Applet):
 
     def compute_annotations(self, id_to_image: Dict[str, Image]):
         """Compute annotations for the given image ids using the object detector model."""
-        predictions = self.detector.eval(
-            id_to_image,
-            batch_size=int(self.state.object_detection_batch_size),
-        )
-
-        for id_, annotations in predictions.items():
-            image_annotations = []
-            for prediction in annotations:
-                category_id = None
-                # if no matching category in dataset JSON, category_id will be None
-                for cat_id, cat in self.state.annotation_categories.items():
-                    if cat["name"] == prediction["label"]:
-                        category_id = cat_id
-
-                bbox = prediction["box"]
-                image_annotations.append(
-                    {
-                        "category_id": category_id,
-                        "label": prediction["label"],
-                        "bbox": [
-                            bbox["xmin"],
-                            bbox["ymin"],
-                            bbox["xmax"] - bbox["xmin"],
-                            bbox["ymax"] - bbox["ymin"],
-                        ],
-                    }
-                )
-            self.state[image_id_to_result_id(id_)] = image_annotations
-
-        return predictions
-
-    def load_ground_truth_annotations(self, dataset_ids):
-        # collect annotations for each dataset_id
-        annotations = {
-            image_id_to_result_id(dataset_id): [
-                annotation
-                for annotation in self.context.dataset.anns.values()
-                if str(annotation["image_id"]) == dataset_id
-            ]
-            for dataset_id in dataset_ids
-        }
-        self.state.update(annotations)
+        return get_annotations(self.detector, id_to_image)
 
     def compute_predictions_source_images(self, dataset_ids):
-        images_with_ids = {dataset_id_to_image_id(id): get_image(id) for id in dataset_ids}
-        annotations = self.compute_annotations(images_with_ids)
+        image_id_to_image = {dataset_id_to_image_id(id): get_image(id) for id in dataset_ids}
+        annotations = self.compute_annotations(image_id_to_image)
         dataset = get_dataset(self.state.current_dataset)
         self.predictions_source_images = convert_from_predictions_to_first_arg(
             annotations,
@@ -262,7 +203,7 @@ class TransformsApp(Applet):
             dataset_ids,
         )
 
-        ground_truth_annotations = [self.state[image_id_to_result_id(id)] for id in dataset_ids]
+        ground_truth_annotations = get_ground_truth_annotations(dataset_ids)
         ground_truth_predictions = convert_from_ground_truth_to_second_arg(
             ground_truth_annotations, self.context.dataset
         )
@@ -278,7 +219,7 @@ class TransformsApp(Applet):
 
     async def _update_images(self, dataset_ids):
         async with SetStateAsync(self.state):
-            self.load_ground_truth_annotations(dataset_ids)
+            get_ground_truth_annotations(dataset_ids)  # updates state
 
         async with SetStateAsync(self.state):
             self.compute_predictions_source_images(dataset_ids)
@@ -297,27 +238,6 @@ class TransformsApp(Applet):
     def on_scroll(self, visible_ids):
         self.visible_ids = visible_ids
         self._start_update_images(self.visible_ids)
-
-    def delete_computed_image_data(self):
-        source_and_transformed = self.state.source_image_ids + self.state.transformed_image_ids
-        for image_id in source_and_transformed:
-            delete_state(self.state, image_id)
-            if image_id in self.context["image_objects"]:
-                del self.context["image_objects"][image_id]
-
-        for dataset_id in self.context.selected_dataset_ids:
-            delete_image_meta(self.server.state, dataset_id)
-
-        ids_with_annotations = (
-            self.context.selected_dataset_ids
-            + self.state.source_image_ids
-            + self.state.transformed_image_ids
-        )
-        for id in ids_with_annotations:
-            delete_state(self.state, image_id_to_result_id(id))
-
-        self.state.source_image_ids = []
-        self.state.transformed_image_ids = []
 
     def on_image_hovered(self, id):
         self.state.hovered_id = id

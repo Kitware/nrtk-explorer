@@ -71,9 +71,8 @@ class ImageList(html.Div):
             instance.visible_ids = set()
             server.js_call(ref=instance.get_id(), method="resetVirtualScroll")
 
-    def on_scroll(self, from_index, to_index):
-        # TODO: fix sorted or filtered cases (with table.computedRows?)
-        visible = set(state.image_list_ids[from_index : to_index + 1])
+    def on_scroll(self, from_index, to_index, ids):
+        visible = set(ids[from_index : to_index + 1])
         if self.visible_ids != visible:
             self.visible_ids = visible
             self.scroll_callback(self.visible_ids)
@@ -123,7 +122,11 @@ class ImageList(html.Div):
                     "virtual-scroll",
                     "virtual-scroll-slice-size='2'",
                     "virtual-scroll-item-size='200'",
-                    f'''@virtual-scroll="(e) => trigger('{ self.server.controller.trigger_name(self.on_scroll) }', [e.from, e.to])"''',
+                    # e.ref._.props.items is sorted+filtered rows like the documented QTable computedRows prop
+                    f'''@virtual-scroll="(e) => {{
+                        const ids = e.ref._.props.items.map(i => i.id) 
+                        trigger('{ self.server.controller.trigger_name(self.on_scroll) }', [e.from, e.to, ids])
+                        }}"''',
                     "virtual-scroll-sticky-size-start='48'",
                 ],
             ):

@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Dict, Sequence
 from collections import OrderedDict
 from PIL import Image
 from trame.app import get_server
@@ -11,6 +11,9 @@ from nrtk_explorer.app.images.image_meta import dataset_id_to_meta, update_image
 from nrtk_explorer.library.dataset import get_image_path
 from nrtk_explorer.app.trame_utils import delete_state, change_checker
 from nrtk_explorer.library.images_manager import convert_to_base64
+from nrtk_explorer.library.object_detector import ObjectDetector
+from nrtk_explorer.library.transforms import ImageTransform
+from nrtk_explorer.library.coco_utils import partition
 
 
 class BufferCache:
@@ -39,17 +42,18 @@ class BufferCache:
     def clear_item(self, key: str):
         """Remove a specific item from the cache."""
         if key in self.cache:
-            del self.cache[key]
             self.on_clear_item(key)
+            del self.cache[key]
 
     def clear(self):
         """Clear the cache."""
         for key in self.cache.keys():
-            self.clear_item(key)
+            self.on_clear_item(key)
+        self.cache.clear()
 
 
 server = get_server()
-state, ctrl = server.state, server.controller
+state, context, ctrl = server.state, server.context, server.controller
 
 
 # syncs trame state
@@ -72,7 +76,7 @@ def get_image(dataset_id: str):
     return image
 
 
-def get_transformed_image(transform, dataset_id: str):
+def get_transformed_image(transform: ImageTransform, dataset_id: str):
     key = dataset_id_to_transformed_image_id(dataset_id)
     cached_image = image_cache.get_item(key)
     if cached_image is not None:
@@ -84,10 +88,84 @@ def get_transformed_image(transform, dataset_id: str):
         # Resize so pixel-wise annotation similarity score works
         transformed = transformed.resize(original.size)
 
-    state[key] = convert_to_base64(transformed)
     image_cache.add_item(key, transformed)
 
+    state[key] = convert_to_base64(transformed)
+
     return transformed
+
+
+def add_annotation_to_state(image_id: str, annotations: Any):
+    state[image_id_to_result_id(image_id)] = annotations
+
+
+def delete_annotation_from_state(image_id: str):
+    delete_state(state, image_id_to_result_id(image_id))
+
+
+annotation_cache = BufferCache(1000, delete_annotation_from_state)
+
+
+def prediction_to_annotations(predictions):
+    annotations = []
+    for prediction in predictions:
+        category_id = None
+        # if no matching category in dataset JSON, category_id will be None
+        for cat_id, cat in state.annotation_categories.items():
+            if cat["name"] == prediction["label"]:
+                category_id = cat_id
+
+        bbox = prediction["box"]
+        annotations.append(
+            {
+                "category_id": category_id,
+                "label": prediction["label"],
+                "bbox": [
+                    bbox["xmin"],
+                    bbox["ymin"],
+                    bbox["xmax"] - bbox["xmin"],
+                    bbox["ymax"] - bbox["ymin"],
+                ],
+            }
+        )
+    return annotations
+
+
+def get_annotations(detector: ObjectDetector, id_to_image: Dict[str, Image.Image]):
+    hits, misses = partition(annotation_cache.get_item, id_to_image.keys())
+
+    to_detect = {id: id_to_image[id] for id in misses}
+    predictions = detector.eval(
+        to_detect,
+        batch_size=int(state.object_detection_batch_size),
+    )
+    for id, annotations in predictions.items():
+        annotation_cache.add_item(id, annotations)
+        add_annotation_to_state(id, prediction_to_annotations(annotations))
+
+    predictions.update(**{id: annotation_cache.get_item(id) for id in hits})
+    # match input order because of scoring code assumptions
+    return {id: predictions[id] for id in id_to_image.keys()}
+
+
+def get_ground_truth_annotations(dataset_ids: Sequence[str]):
+    hits, misses = partition(annotation_cache.get_item, dataset_ids)
+
+    annotations = {
+        dataset_id: [
+            annotation
+            for annotation in context.dataset.anns.values()
+            if str(annotation["image_id"]) == dataset_id
+        ]
+        for dataset_id in misses
+    }
+
+    for id, boxes_for_image in annotations.items():
+        annotation_cache.add_item(id, boxes_for_image)
+        add_annotation_to_state(id, boxes_for_image)
+
+    annotations.update({id: annotation_cache.get_item(id) for id in hits})
+    return [annotations[dataset_id] for dataset_id in dataset_ids]
 
 
 def get_image_state_keys(dataset_id: str):
@@ -103,21 +181,25 @@ def get_image_state_keys(dataset_id: str):
 
 
 @state.change("current_dataset")
-def clear_all():
+def clear_all(**kwargs):
     image_cache.clear()
+    annotation_cache.clear()
 
 
 @change_checker(state, "dataset_ids")
 def init_state(old, new):
     if old is not None:
         # clean old ids that are not in new
-        old = set(old)
-        dataset_ids = set(new)
-        to_clean = old - dataset_ids
+        old_ids = set(old)
+        new_ids = set(new)
+        to_clean = old_ids - new_ids
         for id in to_clean:
             image_cache.clear_item(id)  # original image
+            annotation_cache.clear_item(id)  # ground truth
+            annotation_cache.clear_item(dataset_id_to_image_id(id))  # original image detection
             keys = get_image_state_keys(id)
             image_cache.clear_item(keys["transformed_image"])
+            annotation_cache.clear_item(keys["transformed_image"])
             for key in keys.values():
                 delete_state(state, key)
 
@@ -134,7 +216,7 @@ def clear_transformed():
     for id in state.dataset_ids:
         keys = get_image_state_keys(id)
         image_cache.clear_item(keys["transformed_image"])
-        delete_state(state, keys["transformed_image_detection"])
+        annotation_cache.clear_item(keys["transformed_image"])
         update_image_meta(
             state,
             id,

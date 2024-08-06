@@ -54,7 +54,6 @@ class Engine(Applet):
         self.input_paths = known_args.dataset
         self.state.current_dataset = str(Path(self.input_paths[0]).resolve())
 
-        self.context["image_objects"] = {}
         self.context["images_manager"] = images_manager.ImagesManager()
 
         self.state.collapse_dataset = False

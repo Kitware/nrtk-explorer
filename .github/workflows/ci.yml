@@ -46,9 +46,6 @@ jobs:
       run: npm run eslint
 
   unit_tests:
-    needs:
-      - linters_python
-      - linters_vue
     runs-on: ubuntu-latest
     name: ubuntu-latest-tests-python${{ matrix.python-version}}
     strategy:

@@ -4,7 +4,7 @@ from nrtk_explorer.app.trame_utils import delete_state
 ImageMetaId = str
 
 
-def image_id_to_meta(image_id: str) -> ImageMetaId:
+def dataset_id_to_meta(image_id: str) -> ImageMetaId:
     return f"meta_{image_id}"
 
 
@@ -26,7 +26,7 @@ IMAGE_META_DEFAULTS: DatasetImageMeta = {
 
 
 def update_image_meta(state, dataset_id: str, meta_patch: PartialDatasetImageMeta):
-    meta_key = image_id_to_meta(dataset_id)
+    meta_key = dataset_id_to_meta(dataset_id)
     current_meta = {}
     if state.has(meta_key) and state[meta_key] is not None:
         current_meta = state[meta_key]
@@ -34,5 +34,5 @@ def update_image_meta(state, dataset_id: str, meta_patch: PartialDatasetImageMet
 
 
 def delete_image_meta(state, dataset_id: str):
-    meta_key = image_id_to_meta(dataset_id)
+    meta_key = dataset_id_to_meta(dataset_id)
     delete_state(state, meta_key)

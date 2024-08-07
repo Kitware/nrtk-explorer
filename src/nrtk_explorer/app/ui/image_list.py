@@ -36,7 +36,7 @@ COLUMNS = [
 
 
 server = get_server()
-state = server.state
+state, context, ctrl = server.state, server.context, server.controller
 
 state.client_only("columns")
 state.columns = COLUMNS
@@ -54,42 +54,64 @@ def update_image_list_ids(**kwargs):
         state.image_list_ids = state.dataset_ids
 
 
+state.pagination = {}
+
+
 @state.change("image_list_ids")
 def reset_virtual_scroll(**kwargs):
     ImageList.reset_view_range()
+    if state.image_list_view_mode == "grid":
+        ctrl.get_visible_ids()
+
+
+@state.change("image_list_view_mode")
+def update_pagination(**kwargs):
+    if state.image_list_view_mode == "grid":
+        state.pagination = {**state.pagination, "rowsPerPage": 12}
+        ctrl.get_visible_ids()
+    else:
+        state.pagination = {**state.pagination, "rowsPerPage": 0}
 
 
 class ImageList(html.Div):
     instances = []
 
-    def get_id(self):
-        return f"image-list-{self.instance_id}"
-
     @staticmethod
     def reset_view_range():
         for instance in ImageList.instances:
             instance.visible_ids = set()
-            server.js_call(ref=instance.get_id(), method="resetVirtualScroll")
+            server.js_call(ref="image-list", method="resetVirtualScroll")
 
-    def on_scroll(self, from_index, to_index, ids):
-        visible = set(ids[from_index : to_index + 1])
+    def set_in_view_ids(self, ids):
+        visible = set(ids)
         if self.visible_ids != visible:
             self.visible_ids = visible
             self.scroll_callback(self.visible_ids)
 
     def __init__(self, on_scroll, on_hover, **kwargs):
         super().__init__(classes="full-height", **kwargs)
-        self.instance_id = len(ImageList.instances)
         ImageList.instances.append(self)
         self.visible_ids = set()
         self.scroll_callback = on_scroll
         with self:
             client.Style(CSS_FILE.read_text())
+            get_visible_ids = client.JSEval(
+                exec=f'''
+                            ;const list = trame.refs['image-list']
+                            if (!list) return
+                            // wait a tick so pagination prop is applied to computedRows
+                            window.setTimeout(() => {{
+                                const ids = list.computedRows.map(i => i.id)
+                                trigger('{ ctrl.trigger_name(self.set_in_view_ids) }', [ids])
+                            }}, 0)
+                        "''',
+            )
+            ctrl.get_visible_ids = get_visible_ids.exec
             with quasar.QTable(
-                ref=(self.get_id()),
+                ref=("image-list"),
                 classes="full-height sticky-header",
                 flat=True,
-                hide_bottom=True,
+                hide_bottom=("image_list_view_mode !== 'grid'", True),
                 title="Selected Images",
                 grid=("image_list_view_mode === 'grid'", False),
                 filter=("image_list_search", ""),
@@ -117,17 +139,25 @@ class ImageList(html.Div):
                         """,
                 ),
                 row_key="id",
-                rows_per_page_options=("[0]",),  # [0] means show all rows
+                rows_per_page_options=(
+                    "image_list_view_mode === 'table' ? [0] : [6, 12, 24]",
+                    "[0]",
+                ),
                 raw_attrs=[
                     "virtual-scroll",
                     "virtual-scroll-slice-size='2'",
                     "virtual-scroll-item-size='200'",
-                    # e.ref._.props.items is sorted+filtered rows like the documented QTable computedRows prop
+                    # e.ref._.props.items is sorted+filtered rows like the QTable.computedRows computed prop
                     f'''@virtual-scroll="(e) => {{
-                        const ids = e.ref._.props.items.map(i => i.id) 
-                        trigger('{ self.server.controller.trigger_name(self.on_scroll) }', [e.from, e.to, ids])
+                        const ids = e.ref._.props.items.map(i => i.id).slice(e.from, e.to + 1)
+                        trigger('{ self.server.controller.trigger_name(self.set_in_view_ids) }', [ids])
                         }}"''',
                     "virtual-scroll-sticky-size-start='48'",
+                    r"v-model:pagination='pagination'",
+                    f'''@update:pagination="() => {{
+                            if(get('image_list_view_mode').value !== 'grid') return;
+                            trigger('{ self.server.controller.trigger_name(ctrl.get_visible_ids) }')
+                        }}"''',
                 ],
             ):
                 # ImageDetection component for image columns
@@ -297,6 +327,7 @@ class ImageList(html.Div):
                     )
                     quasar.QInput(
                         v_model=("image_list_search", ""),
+                        debounce="300",
                         label="Search",
                         dense=True,
                         classes="col-3 q-pl-md",

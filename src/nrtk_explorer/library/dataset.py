@@ -1,26 +1,24 @@
-from typing import TypedDict, List
+import kwcoco
+from pathlib import Path
 
 
-class DatasetCategory(TypedDict):
-    id: int
-    name: str
+def load_dataset(path: str):
+    return kwcoco.CocoDataset(path)
 
 
-class DatasetImage(TypedDict):
-    id: int
-    file_name: str
-    width: int
-    height: int
+dataset: kwcoco.CocoDataset = kwcoco.CocoDataset()
+dataset_path: str = ""
 
 
-class DatasetAnnotation(TypedDict):
-    id: int
-    image_id: int
-    category_id: int
-    bbox: List[int]
+def get_dataset(path: str, force_reload=False):
+    global dataset, dataset_path
+    if dataset_path != path or force_reload:
+        dataset_path = path
+        dataset = load_dataset(dataset_path)
+    return dataset
 
 
-class Dataset(TypedDict):
-    categories: List[DatasetCategory]
-    images: List[DatasetImage]
-    annotations: List[DatasetAnnotation]
+def get_image_path(id: str):
+    dataset_dir = Path(dataset_path).parent
+    file_name = dataset.imgs[int(id)]["file_name"]
+    return str(dataset_dir / file_name)

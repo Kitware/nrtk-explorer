@@ -27,31 +27,32 @@ classifiers = [
 ]
 
 dependencies = [
-    "nrtk",
+    "accelerate",
+    "kwcoco",
+    "nrtk>=0.4.2",
     "numpy",
     "Pillow",
-    "scikit-learn==1.4.2",
-    "accelerate",
+    "scikit-learn==1.5.1",
+    "smqtk_image_io",
     "tabulate",
-    "transformers",
-    "timm",
+    "timm>=1.0.3",
     "torch",
     "torchvision",
     "trame",
     "trame-client>=2.15.0",
     "trame-quasar",
     "trame-server>=2.15.0",
+    "transformers",
     "umap-learn",
-    "tabulate",
 ]
 
 [project.optional-dependencies]
 dev = [
   "black",
   "flake8",
+  "mypy",
   "pytest",
   "tabulate",
-  "mypy",
 ]
 
 package = [
@@ -75,7 +76,7 @@ build-backend = "hatchling.build"
 [project.scripts]
 nrtk-explorer = "nrtk_explorer.app:main"
 nrtk-explorer-embeddings = "nrtk_explorer.app.embeddings:embeddings"
-nrtk-explorer-tranforms = "nrtk_explorer.app.transforms:transforms"
+nrtk-explorer-transforms = "nrtk_explorer.app.transforms:transforms"
 nrtk-explorer-filtering = "nrtk_explorer.app.filtering:filtering"
 
 [tool.black]

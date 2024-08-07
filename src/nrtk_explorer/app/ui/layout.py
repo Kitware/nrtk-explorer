@@ -75,6 +75,35 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
         with embeddings_actions_slot:
             embeddings_app.compute_ui()
 
+        (annotations_title_slot, annotations_content_slot, _) = ui.card("collapse_annotations")
+
+        with annotations_title_slot:
+            html.Span("Annotations settings", classes="text-h6")
+
+        with annotations_content_slot:
+            quasar.QSelect(
+                label="Object detection Model",
+                v_model=("object_detection_model", "facebook/detr-resnet-50"),
+                options=(
+                    [
+                        {
+                            "label": "facebook/detr-resnet-50",
+                            "value": "facebook/detr-resnet-50",
+                        },
+                    ],
+                ),
+                filled=True,
+                emit_value=True,
+                map_options=True,
+            )
+            quasar.QInput(
+                v_model=("object_detection_batch_size", 32),
+                filled=True,
+                stack_label=True,
+                label="Batch Size",
+                type="number",
+            )
+
         filter_title_slot, filter_content_slot, filter_actions_slot = ui.card("collapse_filter")
 
         with filter_title_slot:
@@ -112,36 +141,12 @@ def dataset_view(
         limits=("[0,100]",),
         horizontal=True,
         classes="inherit-height zero-height",
-        before_class="q-pa-md",
-        after_class="q-pa-md",
     ):
         with html.Template(v_slot_before=True):
             embeddings_app.visualization_widget()
 
         with html.Template(v_slot_after=True):
-            with html.Div(classes="row q-col-gutter-md"):
-                with html.Div(classes="col-6"):
-                    with quasar.QCard(flat=True, bordered=True):
-                        with quasar.QCardSection():
-                            html.Span("Original Dataset", classes="text-h5")
-
-                        with quasar.QCardSection():
-                            transforms_app.original_dataset_widget()
-
-                with html.Div(classes="col-6"):
-                    with quasar.QCard(
-                        flat=True,
-                        bordered=False,
-                        style="background-color: #ffcdd2;",
-                    ):
-                        with quasar.QCardSection():
-                            html.Span(
-                                "Transformed Dataset",
-                                classes="text-h5",
-                            )
-
-                        with quasar.QCardSection():
-                            transforms_app.transformed_dataset_widget()
+            transforms_app.dataset_widget()
 
 
 def explorer(

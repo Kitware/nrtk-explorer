@@ -1,10 +1,12 @@
 import logging
 from typing import Iterable
+from pathlib import Path
 
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library import images_manager
 from nrtk_explorer.library.filtering import FilterProtocol
+from nrtk_explorer.library.dataset import get_dataset
 
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
@@ -12,13 +14,10 @@ from nrtk_explorer.app.filtering import FilteringApp
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app import ui
 import nrtk_explorer.test_data
-from pathlib import Path
 
 import os
 
-import json
 import random
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -33,14 +32,6 @@ DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
     f"{DIR_NAME}/coco-od-2017/test_val2017.json",
 ]
-
-
-def image_id_to_meta(image_id):
-    return f"{image_id}_meta"
-
-
-def image_id_to_result(image_id):
-    return f"{image_id}_result"
 
 
 # ---------------------------------------------------------
@@ -65,7 +56,6 @@ class Engine(Applet):
 
         self.context["image_objects"] = {}
         self.context["images_manager"] = images_manager.ImagesManager()
-        self.context["annotations"] = {}
 
         self.state.collapse_dataset = False
         self.state.collapse_embeddings = False
@@ -103,7 +93,7 @@ class Engine(Applet):
             server=self.server.create_child_server(translator=filtering_translator),
         )
 
-        self._embeddings_app.set_on_select(self._transforms_app.on_selected_images_change)
+        self._embeddings_app.set_on_select(self._transforms_app.set_selected_dataset_ids)
         self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
         self._embeddings_app.set_on_hover(self._transforms_app.on_image_hovered)
         self._transforms_app.set_on_hover(self._embeddings_app.on_image_hovered)
@@ -124,8 +114,6 @@ class Engine(Applet):
 
         self._build_ui()
 
-        self.context.images_manager = images_manager.ImagesManager()
-
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.state.change("current_dataset")(self.on_dataset_change)
@@ -137,11 +125,8 @@ class Engine(Applet):
     def on_dataset_change(self, **kwargs):
         # Reset cache
         self.context.images_manager = images_manager.ImagesManager()
-
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
-
-        self.state.num_images_max = len(dataset["images"])
+        self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
+        self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.random_sampling_disabled = False
         self.state.num_images_disabled = False
 
@@ -149,15 +134,13 @@ class Engine(Applet):
 
     def on_filter_apply(self, filter: FilterProtocol[Iterable[int]], **kwargs):
         selected_indices = []
-
         for index, image_id in enumerate(self.state.images_ids):
-            image_annotations_categories = map(
-                lambda annotation: annotation["category_id"],
-                self.context["annotations"].get(f"img_{image_id}", []),
-            )
-
+            image_annotations_categories = [
+                annotation["category_id"]
+                for annotation in self.context.dataset.anns.values()
+                if annotation["image_id"] == image_id
+            ]
             include = filter.evaluate(image_annotations_categories)
-
             if include:
                 selected_indices.append(index)
 
@@ -170,14 +153,11 @@ class Engine(Applet):
         self.reload_images()
 
     def reload_images(self):
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
-
         categories = {}
-        for category in dataset["categories"]:
+        for category in self.context.dataset.cats.values():
             categories[category["id"]] = category
 
-        images = dataset["images"]
+        images = list(self.context.dataset.imgs.values())
 
         selected_images = []
         if self.state.num_images:

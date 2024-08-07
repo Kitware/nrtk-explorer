@@ -1,5 +1,5 @@
 from .layout import build_layout
-from .image_list import image_list_component
+from .image_list import ImageList, init_state
 from .collapsible_card import card
 
 
@@ -15,6 +15,7 @@ def reload(m=None):
 
 __all__ = [
     "build_layout",
-    "image_list_component",
+    "ImageList",
+    "init_state",
     "card",
 ]

@@ -3,35 +3,46 @@ Define your classes and create the instances that you need to expose
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Sequence
+from functools import partial
+import os
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
-from trame.app import get_server
+from trame.app import get_server, asynchronous
 
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import images_manager, object_detector
-from nrtk_explorer.app import ui
+from nrtk_explorer.app.ui import ImageList, init_state as init_state_image_list
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
+from nrtk_explorer.app.image_meta import (
+    update_image_meta,
+    delete_image_meta,
+)
+from nrtk_explorer.library.coco_utils import (
+    convert_from_ground_truth_to_first_arg,
+    convert_from_ground_truth_to_second_arg,
+    convert_from_predictions_to_second_arg,
+    convert_from_predictions_to_first_arg,
+    compute_score,
+)
 import nrtk_explorer.test_data
-
-import json
-import os
+from nrtk_explorer.app.trame_utils import delete_state, SetStateAsync, change_checker
+from nrtk_explorer.app.image_ids import (
+    image_id_to_dataset_id,
+    image_id_to_result_id,
+    dataset_id_to_image_id,
+    dataset_id_to_transformed_image_id,
+)
+from nrtk_explorer.library.dataset import get_dataset, get_image_path
+import nrtk_explorer.app.image_server
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def image_id_to_meta(image_id):
-    return f"{image_id}_meta"
-
-
-def image_id_to_result(image_id):
-    return f"{image_id}_result"
 
 
 DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
@@ -45,6 +56,8 @@ DATASET_DIRS = [
 class TransformsApp(Applet):
     def __init__(self, server):
         super().__init__(server)
+
+        self.update_image_meta = partial(update_image_meta, self.server.state)
 
         self._parameters_app = ParametersApp(
             server=server,
@@ -84,8 +97,10 @@ class TransformsApp(Applet):
 
         self.state.annotation_categories = {}
 
+        self.context.selected_dataset_ids = []
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
+
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
@@ -94,17 +109,29 @@ class TransformsApp(Applet):
 
         self.state.current_num_elements = 15
 
+        init_state_image_list(self.state)
+
+        def tranformed_became_visible(old, new):
+            return "transformed" not in old and "transformed" in new
+
+        change_checker(
+            self.state, "visible_columns", self.on_apply_transform, tranformed_became_visible
+        )
+
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self._on_hover_fn = None
-        self.detector = object_detector.ObjectDetector(model_name="hustvl/yolos-tiny")
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
-        self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
         self.state.change("current_dataset")(self.on_current_dataset_change)
         self.state.change("current_num_elements")(self.on_current_num_elements_change)
+        self.state.change("object_detection_model")(self.on_object_detection_model_change)
 
+        self.on_object_detection_model_change(self.state.object_detection_model)
         self.on_current_dataset_change(self.state.current_dataset)
+
+    def on_object_detection_model_change(self, model_name, **kwargs):
+        self.detector = object_detector.ObjectDetector(model_name=model_name)
 
     def set_on_transform(self, fn):
         self._on_transform_fn = fn
@@ -115,49 +142,85 @@ class TransformsApp(Applet):
 
     def on_apply_transform(self, *args, **kwargs):
         logger.debug("on_apply_transform")
+        if self._updating_images():
+            return  # update_images will call update_transformed_images() at the end
+        self.update_transformed_images()
 
-        current_transform = self.state.current_transform
+    def update_transformed_images(self):
+        if not ("transformed" in self.state.visible_columns):
+            return
+
+        transform = self._transforms[self.state.current_transform]
         transformed_image_ids = []
-        transform = self._transforms[current_transform]
         for image_id in self.state.source_image_ids:
             image = self.context["image_objects"][image_id]
-
             transformed_image_id = f"transformed_{image_id}"
-            meta_id = image_id_to_meta(image_id)
-            transformed_meta_id = image_id_to_meta(transformed_image_id)
-
             transformed_img = transform.execute(image)
-
+            if image.size != transformed_img.size:
+                # Resize so pixel-wise annotation similarity score works
+                transformed_img = transformed_img.resize(image.size)
             self.context["image_objects"][transformed_image_id] = transformed_img
-
             transformed_image_ids.append(transformed_image_id)
-
             self.state[transformed_image_id] = images_manager.convert_to_base64(transformed_img)
-            self.state[transformed_meta_id] = self.state[meta_id]
-
-            self.state.hovered_id = -1
 
         self.state.transformed_image_ids = transformed_image_ids
-        self.compute_annotations(transformed_image_ids)
+        if len(self.state.source_image_ids) > 0:
+            self.state.hovered_id = ""
+
+        if len(transformed_image_ids) == 0:
+            return
+
+        result_ids = [image_id_to_result_id(id) for id in transformed_image_ids]
+        for id in result_ids:
+            delete_state(self.state, id)
+
+        annotations = self.compute_annotations(transformed_image_ids)
+
+        dataset_ids = [image_id_to_dataset_id(id) for id in transformed_image_ids]
+        predictions = convert_from_predictions_to_second_arg(annotations)
+        scores = compute_score(
+            dataset_ids,
+            self.predictions_source_images,
+            predictions,
+        )
+        for dataset_id, score in scores:
+            update_image_meta(
+                self.state,
+                dataset_id,
+                {"original_detection_to_transformed_detection_score": score},
+            )
+
+        ground_truth_annotations = [self.state[image_id_to_result_id(id)] for id in dataset_ids]
+        ground_truth_predictions = convert_from_ground_truth_to_first_arg(ground_truth_annotations)
+        scores = compute_score(
+            dataset_ids,
+            ground_truth_predictions,
+            predictions,
+        )
+        for dataset_id, score in scores:
+            update_image_meta(
+                self.state, dataset_id, {"ground_truth_to_transformed_detection_score": score}
+            )
 
         # Only invoke callbacks when we transform images
-        if len(transformed_image_ids) > 0:
-            self.on_transform(transformed_image_ids)
+        self.on_transform(transformed_image_ids)
 
     def compute_annotations(self, ids):
         """Compute annotations for the given image ids using the object detector model."""
         if len(ids) == 0:
             return
 
-        for id_ in ids:
-            self.context["annotations"][id_] = []
+        predictions = self.detector.eval(
+            image_ids=ids,
+            content=self.context.image_objects,
+            batch_size=int(self.state.object_detection_batch_size),
+        )
 
-        predictions = self.detector.eval(paths=ids, content=self.context.image_objects)
-
-        for id_, annotations in predictions:
-            image_annotations = self.context["annotations"].setdefault(id_, [])
+        for id_, annotations in predictions.items():
+            image_annotations = []
             for prediction in annotations:
-                category_id = 0
+                category_id = None
+                # if no matching category in dataset JSON, category_id will be None
                 for cat_id, cat in self.state.annotation_categories.items():
                     if cat["name"] == prediction["label"]:
                         category_id = cat_id
@@ -166,7 +229,7 @@ class TransformsApp(Applet):
                 image_annotations.append(
                     {
                         "category_id": category_id,
-                        "id": category_id,
+                        "label": prediction["label"],
                         "bbox": [
                             bbox["xmin"],
                             bbox["ymin"],
@@ -175,162 +238,155 @@ class TransformsApp(Applet):
                         ],
                     }
                 )
+            self.state[image_id_to_result_id(id_)] = image_annotations
 
-        self.update_model_result(ids, self.state.feature_extraction_model)
+        return predictions
 
     def on_current_num_elements_change(self, current_num_elements, **kwargs):
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
-        ids = [img["id"] for img in dataset["images"]]
-        return self.on_selected_images_change(ids[:current_num_elements])
+        ids = [img["id"] for img in self.context.dataset.imgs.values()]
+        return self.set_source_images(ids[:current_num_elements])
 
-    def on_selected_images_change(self, selected_ids):
-        source_image_ids = []
+    def load_ground_truth_annotations(self, dataset_ids):
+        # collect annotations for each dataset_id
+        annotations = {
+            image_id_to_result_id(dataset_id): [
+                annotation
+                for annotation in self.context.dataset.anns.values()
+                if str(annotation["image_id"]) == dataset_id
+            ]
+            for dataset_id in dataset_ids
+        }
+        self.state.update(annotations)
 
-        current_dir = os.path.dirname(self.state.current_dataset)
+    def compute_predictions_source_images(self, ids):
+        """Compute the predictions for the source images."""
 
-        with open(self.state.current_dataset) as f:
-            dataset = json.load(f)
+        if len(ids) == 0:
+            return
+
+        annotations = self.compute_annotations(ids)
+        dataset = get_dataset(self.state.current_dataset)
+        self.predictions_source_images = convert_from_predictions_to_first_arg(
+            annotations,
+            dataset,
+            ids,
+        )
+
+        dataset_ids = [image_id_to_dataset_id(id) for id in ids]
+        ground_truth_annotations = [self.state[image_id_to_result_id(id)] for id in dataset_ids]
+        ground_truth_predictions = convert_from_ground_truth_to_second_arg(
+            ground_truth_annotations, self.context.dataset
+        )
+        scores = compute_score(
+            dataset_ids,
+            self.predictions_source_images,
+            ground_truth_predictions,
+        )
+        for dataset_id, score in scores:
+            update_image_meta(
+                self.state, dataset_id, {"original_ground_to_original_detection_score": score}
+            )
+
+    async def _update_images(self):
+        selected_ids = self.context.selected_dataset_ids
+        loading = len(selected_ids) > 0
+        async with SetStateAsync(self.state):
+            self.state.loading_images = loading
+            self.state.hovered_id = ""
 
         for selected_id in selected_ids:
-            image_index = self.context.image_id_to_index[selected_id]
-            if image_index >= len(dataset["images"]):
-                continue
-
-            image_metadata = dataset["images"][image_index]
-
-            image_id = f"img_{image_metadata['id']}"
-            meta_id = image_id_to_meta(image_id)
-
-            source_image_ids.append(image_id)
-
-            image_filename = os.path.join(current_dir, image_metadata["file_name"])
-
-            img = self.context.images_manager.load_image(image_filename)
-
-            self.state[image_id] = images_manager.convert_to_base64(img)
-            self.state[meta_id] = {
-                "width": image_metadata["width"],
-                "height": image_metadata["height"],
-            }
-            self.state.hovered_id = -1
-
+            filename = get_image_path(selected_id)
+            img = self.context.images_manager.load_image(filename)
+            image_id = dataset_id_to_image_id(selected_id)
             self.context.image_objects[image_id] = img
 
-        self.state.source_image_ids = source_image_ids
-        self.compute_annotations(source_image_ids)
-        self.update_model_result(self.state.source_image_ids, self.state.feature_extraction_model)
-        self.on_apply_transform()
+        async with SetStateAsync(self.state):
+            # create reactive annotation variables so ImageDetection component has live Ref<Annotation[]>
+            for id in selected_ids:
+                self.state[image_id_to_result_id(id)] = None
+                self.state[image_id_to_result_id(dataset_id_to_image_id(id))] = None
+                self.state[image_id_to_result_id(dataset_id_to_transformed_image_id(id))] = None
+            self.state.source_image_ids = [dataset_id_to_image_id(id) for id in selected_ids]
+            self.state.loading_images = False  # remove big spinner and show table
 
-    def reset_data(self):
-        source_image_ids = self.state.source_image_ids
-        transformed_image_ids = self.state.transformed_image_ids
+        async with SetStateAsync(self.state):
+            self.load_ground_truth_annotations(selected_ids)
+
+        async with SetStateAsync(self.state):
+            self.compute_predictions_source_images(self.state.source_image_ids)
+
+        async with SetStateAsync(self.state):
+            self.update_transformed_images()
+
+    def _start_update_images(self):
+        if hasattr(self, "_update_images_task"):
+            self._update_images_task.cancel()
+        self._update_images_task = asynchronous.create_task(self._update_images())
+
+    def _updating_images(self):
+        return hasattr(self, "_update_images_task") and not self._update_images_task.done()
+
+    def set_selected_dataset_ids(self, selected_dataset_ids: Sequence[int]):
+        self.delete_computed_image_data()
+        self.context.selected_dataset_ids = [str(id) for id in selected_dataset_ids]
+        self._start_update_images()
+
+    def delete_computed_image_data(self):
+        source_and_transformed = self.state.source_image_ids + self.state.transformed_image_ids
+        for image_id in source_and_transformed:
+            delete_state(self.state, image_id)
+            if image_id in self.context["image_objects"]:
+                del self.context["image_objects"][image_id]
+
+        for dataset_id in self.context.selected_dataset_ids:
+            delete_image_meta(self.server.state, dataset_id)
+
+        ids_with_annotations = (
+            self.context.selected_dataset_ids
+            + self.state.source_image_ids
+            + self.state.transformed_image_ids
+        )
+        for id in ids_with_annotations:
+            delete_state(self.state, image_id_to_result_id(id))
 
         self.state.source_image_ids = []
         self.state.transformed_image_ids = []
+
+    def reset_data(self):
+        self.delete_computed_image_data()
         self.state.annotation_categories = {}
-
-        for image_id in source_image_ids:
-            result_id = image_id_to_result(image_id)
-            meta_id = image_id_to_meta(image_id)
-
-            if self.state.has(image_id) and self.state[image_id] is not None:
-                self.state[image_id] = None
-
-            if self.state.has(result_id) and self.state[result_id] is not None:
-                self.state[result_id] = None
-
-            if self.state.has(meta_id) and self.state[meta_id] is not None:
-                self.state[meta_id] = None
-
-            if image_id in self.context["image_objects"]:
-                del self.context["image_objects"][image_id]
-
-        for image_id in transformed_image_ids:
-            result_id = image_id_to_result(image_id)
-            meta_id = image_id_to_meta(image_id)
-
-            if self.state.has(image_id) and self.state[image_id] is not None:
-                self.state[image_id] = None
-
-            if self.state.has(result_id) and self.state[result_id] is not None:
-                self.state[result_id] = None
-
-            if self.state.has(meta_id) and self.state[meta_id] is not None:
-                self.state[meta_id] = None
-
-            if image_id in self.context["image_objects"]:
-                del self.context["image_objects"][image_id]
 
     def on_current_dataset_change(self, current_dataset, **kwargs):
         logger.debug(f"on_current_dataset_change change {self.state}")
-
         self.reset_data()
 
-        with open(current_dataset) as f:
-            dataset = json.load(f)
-
         categories = {}
+        if self.context.dataset is None:
+            self.context.dataset = get_dataset(current_dataset, force_reload=True)
 
-        for category in dataset["categories"]:
+        for category in self.context.dataset.cats.values():
             categories[category["id"]] = category
 
         self.state.annotation_categories = categories
 
-        self.context["annotations"] = {}
-
-        self.context.image_id_to_index = {}
-        for i, image in enumerate(dataset["images"]):
-            self.context.image_id_to_index[image["id"]] = i
-
         if self.is_standalone_app:
             self.context.images_manager = images_manager.ImagesManager()
 
-    def on_feature_extraction_model_change(self, **kwargs):
-        logger.debug(f">>> on_feature_extraction_model_change change {self.state}")
-
-        feature_extraction_model = self.state.feature_extraction_model
-
-        self.update_model_result(self.state.source_image_ids, feature_extraction_model)
-        self.update_model_result(self.state.transformed_image_ids, feature_extraction_model)
-
-    def update_model_result(self, image_ids, feature_extraction_model):
-        for image_id in image_ids:
-            result_id = image_id_to_result(image_id)
-            self.state[result_id] = self.context["annotations"].get(image_id, [])
-
-    def on_image_hovered(self, index):
-        self.state.hovered_id = index
+    def on_image_hovered(self, id):
+        self.state.hovered_id = id
 
     def set_on_hover(self, fn):
         self._on_hover_fn = fn
 
     def on_hover(self, hover_event):
-        id_ = int(hover_event["id"])
-        is_transformation = bool(hover_event["isTransformation"])
+        id_ = hover_event["id"]
         self.on_image_hovered(id_)
         if self._on_hover_fn:
-            self._on_hover_fn(id_, is_transformation)
+            self._on_hover_fn(id_)
 
     def settings_widget(self):
         with html.Div(trame_server=self.server):
             with html.Div(classes="col"):
-                quasar.QSelect(
-                    label="Object detection Model",
-                    v_model=("object_detection_model", "facebook/detr-resnet-50"),
-                    options=(
-                        [
-                            {
-                                "label": "facebook/detr-resnet-50",
-                                "value": "facebook/detr-resnet-50",
-                            },
-                        ],
-                    ),
-                    filled=True,
-                    emit_value=True,
-                    map_options=True,
-                )
-
                 self._parameters_app.transform_select_ui()
 
                 with html.Div(
@@ -343,13 +399,8 @@ class TransformsApp(Applet):
         with html.Div(trame_server=self.server):
             self._parameters_app.transform_apply_ui()
 
-    def original_dataset_widget(self):
-        with html.Div(trame_server=self.server):
-            ui.image_list_component("source_image_ids", self.on_hover)
-
-    def transformed_dataset_widget(self):
-        with html.Div(trame_server=self.server):
-            ui.image_list_component("transformed_image_ids", self.on_hover, is_transformation=True)
+    def dataset_widget(self):
+        ImageList(self.on_hover)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property
@@ -400,18 +451,7 @@ class TransformsApp(Applet):
                                 self.settings_widget()
                                 self.apply_ui()
 
-                            with html.Div(classes="col-5 q-pa-md"):
-                                with html.Div(classes="row"):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self.original_dataset_widget()
-
-                            with html.Div(
-                                classes="col-5 q-pa-md",
-                                style="background-color: #ffcdcd;",
-                            ):
-                                with html.Div(classes="row"):
-                                    with html.Div(classes="col q-pa-md"):
-                                        self.transformed_dataset_widget()
+                            self.dataset_widget()
 
                 self._ui = layout
         return self._ui

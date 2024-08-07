@@ -84,20 +84,11 @@ onMounted(() => {
       return `rgba(25,118,210,${alpha})`
     },
     onHover(index: number | null) {
-      if (index) {
-        if (index >= props.points.length) {
-          const selectedPointsIdx = index - props.points.length
-          index = props.selectedPoints[selectedPointsIdx]
-        }
-      }
       emit('hover', index)
     },
     onSelect(indices) {
       onPanModeClick()
-      indices = indices.filter((index) => index < props.points.length)
-      if (scatterPlot) {
-        scatterPlot.setSequences([])
-      }
+      scatterPlot!.setSequences([])
       emit('select', indices)
     }
   })

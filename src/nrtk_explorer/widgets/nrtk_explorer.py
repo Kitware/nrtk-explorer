@@ -18,11 +18,10 @@ class ImageDetection(HtmlElement):
         self._attr_names += [
             "identifier",
             "src",
-            "meta",
             "annotations",
             "categories",
             "selected",
-            "isTransformation",
+            "containerSelector",
         ]
         self._event_names += [
             "hover",

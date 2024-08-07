@@ -4,15 +4,10 @@ export type Vector4<T> = [T, T, T, T]
 export type Vector5<T> = [T, T, T, T, T]
 export type Vector6<T> = [T, T, T, T, T, T]
 
-export type ImageMetadata = {
-  id: number
-  width: number
-  height: number
-}
-
 export type Annotation = {
   id: number
   category_id: number
+  label: string // fallback if category_id has no match
   bbox: Vector4<number>
 }
 

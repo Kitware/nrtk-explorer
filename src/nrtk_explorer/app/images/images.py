@@ -137,7 +137,6 @@ def get_annotations(detector: ObjectDetector, id_to_image: Dict[str, Image.Image
     to_detect = {id: id_to_image[id] for id in misses}
     predictions = detector.eval(
         to_detect,
-        batch_size=int(state.object_detection_batch_size),
     )
     for id, annotations in predictions.items():
         annotation_cache.add_item(id, annotations)

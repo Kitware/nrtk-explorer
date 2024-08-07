@@ -92,10 +92,14 @@ class TransformsApp(Applet):
     def on_server_ready(self, *args, **kwargs):
         self.state.change("object_detection_model")(self.on_object_detection_model_change)
         self.on_object_detection_model_change(self.state.object_detection_model)
+        self.state.change("current_dataset")(self.reset_detector)
 
     def on_object_detection_model_change(self, model_name, **kwargs):
         self.detector = object_detector.ObjectDetector(model_name=model_name)
         # TODO clear detection results and rerun detection
+
+    def reset_detector(self, **kwargs):
+        self.detector.reset()
 
     def set_on_transform(self, fn):
         self._on_transform_fn = fn

@@ -112,7 +112,7 @@ class ImageList(html.Div):
                 classes="full-height sticky-header",
                 flat=True,
                 hide_bottom=("image_list_view_mode !== 'grid'", True),
-                title="Selected Images",
+                title="Sampled Images",
                 grid=("image_list_view_mode === 'grid'", False),
                 filter=("image_list_search", ""),
                 id="image-list",  # set id so that the ImageDetection component can select the container for tooltip positioning
@@ -297,7 +297,7 @@ class ImageList(html.Div):
                     v_slot_top=True,
                     __properties=[("v_slot_top", "v-slot:top='props'")],
                 ):
-                    html.Span("Selected Images", classes="col q-table__title")
+                    html.Span("Sampled Images", classes="col q-table__title")
                     quasar.QSelect(
                         v_model=("visible_columns"),
                         multiple=True,

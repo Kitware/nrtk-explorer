@@ -14,6 +14,9 @@ class ImageWithId(NamedTuple):
     image: Image
 
 
+STARTING_BATCH_SIZE = 32
+
+
 class ObjectDetector:
     """Object detection using Hugging Face's transformers library"""
 
@@ -26,6 +29,7 @@ class ObjectDetector:
         self.task = task
         self.device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
         self.pipeline = model_name
+        self.reset()
 
     @property
     def device(self) -> str:
@@ -55,10 +59,13 @@ class ObjectDetector:
         # Do not display warnings
         transformers.utils.logging.set_verbosity_error()
 
+    def reset(self):
+        self.batch_size = STARTING_BATCH_SIZE
+
     def eval(
         self,
         images: Dict[str, Image],
-        batch_size: int = 32,
+        batch_size: int = 0,  # 0 means auto
     ) -> ImageIdToAnnotations:
         """Compute object recognition. Returns Annotations grouped by input image paths."""
 
@@ -72,15 +79,16 @@ class ObjectDetector:
             batches.setdefault(size, [])
             batches[size].append(image)
 
-        adjusted_batch_size = batch_size
-        while adjusted_batch_size > 0:
+        if batch_size != 0:
+            self.batch_size = self.batch_size
+        while self.batch_size > 0:
             try:
                 predictions_in_baches = [
                     zip(
                         [image.id for image in imagesInBatch],
                         self.pipeline(
                             [image.image for image in imagesInBatch],
-                            batch_size=adjusted_batch_size,
+                            batch_size=self.batch_size,
                         ),
                     )
                     for imagesInBatch in batches.values()
@@ -94,11 +102,12 @@ class ObjectDetector:
                 return predictions_by_image_id
 
             except RuntimeError as e:
-                if "out of memory" in str(e) and adjusted_batch_size > 1:
-                    previous_batch_size = adjusted_batch_size
-                    adjusted_batch_size = adjusted_batch_size // 2
+                if "out of memory" in str(e) and self.batch_size > 1:
+                    previous_batch_size = self.batch_size
+                    self.batch_size = self.batch_size // 2
+                    self.batch_size = self.batch_size
                     print(
-                        f"OOM (Pytorch exception {e}) due to batch_size={previous_batch_size}, setting batch_size={adjusted_batch_size}"
+                        f"OOM (Pytorch exception {e}) due to batch_size={previous_batch_size}, setting batch_size={self.batch_size}"
                     )
                 else:
                     raise

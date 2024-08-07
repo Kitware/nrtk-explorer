@@ -2,6 +2,227 @@
 
 
 
+## v0.3.0 (2024-08-07)
+
+### Chore
+
+* chore(deps): bump scikit-learn from 1.5.0 to 1.5.1
+
+Bumps [scikit-learn](https://github.com/scikit-learn/scikit-learn) from 1.5.0 to 1.5.1.
+- [Release notes](https://github.com/scikit-learn/scikit-learn/releases)
+- [Commits](https://github.com/scikit-learn/scikit-learn/compare/1.5.0...1.5.1)
+
+---
+updated-dependencies:
+- dependency-name: scikit-learn
+  dependency-type: direct:production
+  update-type: version-update:semver-patch
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`95001d5`](https://github.com/Kitware/nrtk-explorer/commit/95001d5d62e7988369aec2df952b336e811f8d11))
+
+* chore(coco_utils): avoid circular import for tests ([`551fe22`](https://github.com/Kitware/nrtk-explorer/commit/551fe22faff31c35bee44c3c70cfbc6194335e78))
+
+* chore: update npm packages ([`b8b245f`](https://github.com/Kitware/nrtk-explorer/commit/b8b245f3e801e3793051a1611050bcf15686302c))
+
+* chore(deps-dev): bump vite from 4.5.2 to 4.5.3 in /vue-components
+
+Bumps [vite](https://github.com/vitejs/vite/tree/HEAD/packages/vite) from 4.5.2 to 4.5.3.
+- [Release notes](https://github.com/vitejs/vite/releases)
+- [Changelog](https://github.com/vitejs/vite/blob/v4.5.3/packages/vite/CHANGELOG.md)
+- [Commits](https://github.com/vitejs/vite/commits/v4.5.3/packages/vite)
+
+---
+updated-dependencies:
+- dependency-name: vite
+  dependency-type: direct:development
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`e57e3b7`](https://github.com/Kitware/nrtk-explorer/commit/e57e3b792c228cc9910eef6822583987aab50e40))
+
+* chore(deps): bump scikit-learn from 1.4.2 to 1.5.0
+
+Bumps [scikit-learn](https://github.com/scikit-learn/scikit-learn) from 1.4.2 to 1.5.0.
+- [Release notes](https://github.com/scikit-learn/scikit-learn/releases)
+- [Commits](https://github.com/scikit-learn/scikit-learn/compare/1.4.2...1.5.0)
+
+---
+updated-dependencies:
+- dependency-name: scikit-learn
+  dependency-type: direct:production
+  update-type: version-update:semver-minor
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`3099684`](https://github.com/Kitware/nrtk-explorer/commit/30996849aae7f75a3389173da6c2f65c18f18b4c))
+
+### Ci
+
+* ci: trigger release ([`f0c9a84`](https://github.com/Kitware/nrtk-explorer/commit/f0c9a84038e9c323b56f4f830f43df32188cebb9))
+
+* ci: add nightly build ([`5b50e68`](https://github.com/Kitware/nrtk-explorer/commit/5b50e68b0426ebf9bbdfda03e2b89014ce8f9cde))
+
+### Feature
+
+* feat(image_list): add visible columns control ([`1c87a6e`](https://github.com/Kitware/nrtk-explorer/commit/1c87a6ee89cd5e489a71bb7eaae4af8511cc9dad))
+
+* feat(transforms): async display of ground truth annotations ([`6b434ee`](https://github.com/Kitware/nrtk-explorer/commit/6b434ee93ad04702eb21ffb05ef60b3838bf6852))
+
+* feat: use kwcoco for coco datasets ([`782d6a3`](https://github.com/Kitware/nrtk-explorer/commit/782d6a37ce9ad2bd7f789bc6be7fc74ed8276ed5))
+
+* feat(dataset): add force_reload parameter ([`cfb2b63`](https://github.com/Kitware/nrtk-explorer/commit/cfb2b633989e6aa192110f7889e6fa52ba8e196a))
+
+* feat(transforms): always show ground truth
+
+Always compute score against ground truth. ([`5c6cde6`](https://github.com/Kitware/nrtk-explorer/commit/5c6cde630b2e27050b17994041e86a40642eadde))
+
+* feat(image_list): replace grid switch with toggle button ([`b95031d`](https://github.com/Kitware/nrtk-explorer/commit/b95031dd6ebefc3d474fd0e0f619e2ef39fa2c64))
+
+* feat(ImageDetection): only show annotation ID for ground truth
+
+Was showing repetitive category ID for object detection model
+annotations. ([`396e3e4`](https://github.com/Kitware/nrtk-explorer/commit/396e3e4ed059c190ec72be96523d7c2f6a3ba77b))
+
+* feat: toggle ground truth/predictions annotations
+
+- Toggle ground truth/predictions annotations for source and
+  transformation images.
+- Compute COCO score (NRTK) instead of embeddings cartesian distance.
+- Add unit tests for the coco_utils.py newly module. ([`0ab0b5b`](https://github.com/Kitware/nrtk-explorer/commit/0ab0b5bdbf5e09031df24eebbdfad273ece50a4a))
+
+* feat(image_list): add search and fullscreen controls ([`3196272`](https://github.com/Kitware/nrtk-explorer/commit/31962720375cf65ab8c2506e1527afa5c7f23c4d))
+
+* feat(ImageDetection): keep tooltip visible and hide scrollbars
+
+* fix img css position to block to avoid following image
+content from shifting as image did not contribute to component width.
+* refactor canvas context creation. ([`d235d14`](https://github.com/Kitware/nrtk-explorer/commit/d235d14bd03f596a36d85303cf22a2e4dca73526))
+
+* feat(image_list): add embeddings distance to image table ([`1d4f6dd`](https://github.com/Kitware/nrtk-explorer/commit/1d4f6ddcc35b7fd74fde0728d9eff712c7572fdf))
+
+* feat(image_list): add table panel under tab ([`172b256`](https://github.com/Kitware/nrtk-explorer/commit/172b2563ca9a0b16ad8dd1b692f72431b2c8500a))
+
+* feat(image_list): spinner for loading images ([`1c162e0`](https://github.com/Kitware/nrtk-explorer/commit/1c162e0f016ceee5210de683198ba72ec00a1119))
+
+* feat(image_list): group original and transformed images ([`6f0d803`](https://github.com/Kitware/nrtk-explorer/commit/6f0d803c0e8884efd6337f6328659d3388442709))
+
+### Fix
+
+* fix(core): filter image selection by ground truth categories
+
+Closes #74 ([`d0ccc0a`](https://github.com/Kitware/nrtk-explorer/commit/d0ccc0a0fc4b9cf642e4dec25f6e86948806f068))
+
+* fix(embeddings): hover on original image highlights ([`0b7d00b`](https://github.com/Kitware/nrtk-explorer/commit/0b7d00bf0adac1d9ac89023c58dc90ef8c721877))
+
+* fix(dataset): prefer implicit return types
+
+get_dataset() returns a CocoDataset, not a Dataset. ([`bc5b0ca`](https://github.com/Kitware/nrtk-explorer/commit/bc5b0ca3c73a6121f144a62e6cbc34ecc6e72089))
+
+* fix: entry name of transforms subapp ([`363716d`](https://github.com/Kitware/nrtk-explorer/commit/363716de5fd8c0e5df2b30afcbec6d1dbf4e3979))
+
+* fix(ImageDetection): keep the same color for same labels ([`9e0a733`](https://github.com/Kitware/nrtk-explorer/commit/9e0a7331f6fa2e60aa42c15b70634c6bc8a372c0))
+
+* fix: dataset.py snake case and remove unused imports ([`53b6005`](https://github.com/Kitware/nrtk-explorer/commit/53b60050327e2592d5a7b973f3b1a3f65a1ea5ad))
+
+* fix: show object detection label if no category in dataset ([`b4f9b41`](https://github.com/Kitware/nrtk-explorer/commit/b4f9b41b19eaff50924dcd52fecb726a54885d5c))
+
+* fix(transforms): compute score for truth to transform correctly ([`141bea6`](https://github.com/Kitware/nrtk-explorer/commit/141bea6404a943a6104b66f0418ab6662935793b))
+
+* fix: score 0 when no predictions, dataset switching bug ([`9cb8ab1`](https://github.com/Kitware/nrtk-explorer/commit/9cb8ab13d103372e2c8b541d954d5ea4ed9eebe0))
+
+* fix(ImageDetection): keep tooltip from clipping under table
+
+Shifting tooltip if out of window was not enough
+when table size was small, and tooltip would clip
+under the table footer. ([`a670d92`](https://github.com/Kitware/nrtk-explorer/commit/a670d92bc18e15d4d02100ee7f436375dff3be47))
+
+* fix(transforms): resize transformed image for scoring
+
+Annotation similarity scoring requires the transformed image
+to be the same size as the original image. ([`86c0e2e`](https://github.com/Kitware/nrtk-explorer/commit/86c0e2e443e38bf8556a15a97d9e18599819f281))
+
+* fix(transforms): use class agnostic scorer
+
+Avoids error when Object Detection Model outputs
+category that is not in COCO JSON. ([`d3bccfe`](https://github.com/Kitware/nrtk-explorer/commit/d3bccfec2bfb3727de551747b8552a94da38ba4d))
+
+* fix(image_meta): add distance to meta type dict ([`43a704e`](https://github.com/Kitware/nrtk-explorer/commit/43a704e09bd121087a5bbf7cbea46263594308f9))
+
+* fix(pyproject): set min versions for nrtk and timm ([`01ce0bb`](https://github.com/Kitware/nrtk-explorer/commit/01ce0bb78ab6e9cd5a02a0af5cc9ce59bed150e2))
+
+* fix(ScatterPlot): after selection, start navigation mode again ([`eb65f38`](https://github.com/Kitware/nrtk-explorer/commit/eb65f3868f631340b85f1a86f325982689c97479))
+
+* fix(embeddings): allow selection of transformed point ([`dd1650f`](https://github.com/Kitware/nrtk-explorer/commit/dd1650f6560c72ed7c7fe4cf5104a6489e5ea95a))
+
+* fix(ImageDetection): avoid extra bottom padding on hover border ([`95235a5`](https://github.com/Kitware/nrtk-explorer/commit/95235a510c6d12ded494cf08b8da2654925e64e9))
+
+* fix(ImageDetection): miss aligned annotations for transformed images
+
+When transformed image resolution was different from the original image,
+the annotations were not aligned with the image.
+
+closes #60 ([`a38e30f`](https://github.com/Kitware/nrtk-explorer/commit/a38e30f821525e192e1f18a37127fec701877d9e))
+
+* fix(embeddings): distinguish image kind on hover ([`26a670d`](https://github.com/Kitware/nrtk-explorer/commit/26a670d8f8ba8c99c486c79a822f981453a6d338))
+
+* fix(image-list): show hover box on original or transformed ([`e61e66c`](https://github.com/Kitware/nrtk-explorer/commit/e61e66c92b6b0bdd9d9de847fcc7a6e48d439455))
+
+### Performance
+
+* perf(transforms): only create transformed images if visible ([`e11b422`](https://github.com/Kitware/nrtk-explorer/commit/e11b422247ba872aafacfdfc6cb29f625ceaf5a0))
+
+### Refactor
+
+* refactor(trame_utils): simplify and doc change_checker ([`0ac0975`](https://github.com/Kitware/nrtk-explorer/commit/0ac0975ad104fb097be6f8b48852defc087d6ab3))
+
+* refactor(image-list): add image server
+
+Keeps original image off state
+
+Remove commented code ([`16a953d`](https://github.com/Kitware/nrtk-explorer/commit/16a953d7947cf6b45dc7c8a9811fab28b67433f1))
+
+* refactor(transforms): dont duplicate annotations on context
+
+Stashing them on state once is enough ([`65e5c8f`](https://github.com/Kitware/nrtk-explorer/commit/65e5c8f4a9ff23248d737d45f752e84f771eacf3))
+
+* refactor(transforms): put state.loading_images in _update_images ([`2f3e244`](https://github.com/Kitware/nrtk-explorer/commit/2f3e2443091efc7b2ea8a69e77e9ea28b8c6549d))
+
+* refactor(object_detector): add return type annotation ([`2237edf`](https://github.com/Kitware/nrtk-explorer/commit/2237edfbd04762be70ce96c1a94dbc1c768bb174))
+
+* refactor(image_ids): remove domain types ([`834a664`](https://github.com/Kitware/nrtk-explorer/commit/834a66456cd504e5dd0766aff7f93afa1f66b69e))
+
+* refactor(object_detector): eval returns image_id keyed dict ([`041a6eb`](https://github.com/Kitware/nrtk-explorer/commit/041a6ebfb81897133b64dc0b54fd4300556bde5c))
+
+* refactor: fix typing on object_detector, nrtk_transforms
+
+and trame_utils ([`ffe0349`](https://github.com/Kitware/nrtk-explorer/commit/ffe03495a89717fd77e0f278100a56e8d3ff00b5))
+
+* refactor(transforms): remove pointless state.image_kinds ([`2308d64`](https://github.com/Kitware/nrtk-explorer/commit/2308d64f548c36cce629e60e0b0e9e215bd0a886))
+
+* refactor: add image_ids and trame_utils modules ([`07b254c`](https://github.com/Kitware/nrtk-explorer/commit/07b254c70f7680fc48cbc5c4ae4437d23562ab20))
+
+* refactor(image_list): use Quasar table grid mode
+
+instead of custom grid view. ([`3fd7629`](https://github.com/Kitware/nrtk-explorer/commit/3fd7629ff3374d231e0cc87748a30e925a96de2e))
+
+* refactor(transforms): index image meta by dataset ID ([`05fd731`](https://github.com/Kitware/nrtk-explorer/commit/05fd7313df74800b713897436119783a05b860c3))
+
+* refactor(embeddings): don&#39;t short circuit if id is empty string ([`6696afe`](https://github.com/Kitware/nrtk-explorer/commit/6696afed0f7a519fc31dc1caff40cdba8c1487fb))
+
+* refactor(transforms): wrap sync _update_images in async _set_source_images ([`a7128d3`](https://github.com/Kitware/nrtk-explorer/commit/a7128d33149a20ffca0d9286c304348b70184347))
+
+* refactor(transforms): rename image_kinds.image_id_key to image_ids_list ([`20af742`](https://github.com/Kitware/nrtk-explorer/commit/20af742d1b896eeff09b0b461bc3259251709615))
+
+* refactor(image_list): use Getter for image_id ([`6460f64`](https://github.com/Kitware/nrtk-explorer/commit/6460f641289cea7d05c33cb217a14c65111e47c0))
+
+### Unknown
+
+* Merge main to release ([`d67665e`](https://github.com/Kitware/nrtk-explorer/commit/d67665e98145de10a2a4281ad02c105ffd7a065d))
+
+* embeddings,object_detector: add OOM recover fix ([`7cfba68`](https://github.com/Kitware/nrtk-explorer/commit/7cfba68cdb6c0a320ed871d85a74551b101c3ad0))
+
+* Auto-merge release back to main ([`983afc9`](https://github.com/Kitware/nrtk-explorer/commit/983afc9dcd3250043f7a41b165a31c636d20a569))
+
+
 ## v0.2.2 (2024-05-22)
 
 ### Chore

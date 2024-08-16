@@ -15,6 +15,7 @@ try:
     from pybsm.otf import darkCurrentFromDensity
     from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
     from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
+
     GaussianBlurPerturberType = Union[GaussianBlurPerturber, None]
     PybsmPerturberType = Union[PybsmPerturber, None]
 except ImportError:

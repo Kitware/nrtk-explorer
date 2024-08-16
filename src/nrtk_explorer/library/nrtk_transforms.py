@@ -15,9 +15,13 @@ try:
     from pybsm.otf import darkCurrentFromDensity
     from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
     from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
+    GaussianBlurPerturberType = Union[GaussianBlurPerturber, None]
+    PybsmPerturberType = Union[PybsmPerturber, None]
 except ImportError:
     logger.info("Disabling NRTK transforms due to missing library/failing imports")
     ENABLED_NRTK_TRANSFORMS = False
+    GaussianBlurPerturberType = None
+    PybsmPerturberType = None
 
 
 def nrtk_transforms_available():
@@ -25,7 +29,7 @@ def nrtk_transforms_available():
 
 
 class NrtkGaussianBlurTransform(ImageTransform):
-    def __init__(self, perturber: Union[GaussianBlurPerturber, None] = None):
+    def __init__(self, perturber: GaussianBlurPerturberType = None):
         if perturber is None:
             perturber = GaussianBlurPerturber()
 
@@ -155,7 +159,7 @@ def createSampleSensorAndScenario():
 
 
 class NrtkPybsmTransform(ImageTransform):
-    def __init__(self, perturber: Union[PybsmPerturber, None] = None):
+    def __init__(self, perturber: PybsmPerturberType = None):
         if perturber is None:
             sensor, scenario = createSampleSensorAndScenario()
             perturber = PybsmPerturber(sensor=sensor, scenario=scenario)

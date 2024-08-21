@@ -1,5 +1,7 @@
 from typing import Any, Callable, Dict, Sequence
 from collections import OrderedDict
+import base64
+import io
 from PIL import Image
 from trame.app import get_server
 from nrtk_explorer.app.images.image_ids import (
@@ -10,10 +12,16 @@ from nrtk_explorer.app.images.image_ids import (
 from nrtk_explorer.app.images.image_meta import dataset_id_to_meta, update_image_meta
 from nrtk_explorer.library.dataset import get_image_path
 from nrtk_explorer.app.trame_utils import delete_state, change_checker
-from nrtk_explorer.library.images_manager import convert_to_base64
 from nrtk_explorer.library.object_detector import ObjectDetector
 from nrtk_explorer.library.transforms import ImageTransform
 from nrtk_explorer.library.coco_utils import partition
+
+
+def convert_to_base64(img: Image) -> str:
+    """Convert image to base64 string"""
+    buf = io.BytesIO()
+    img.save(buf, format="png")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 class BufferCache:
@@ -213,9 +221,9 @@ def init_state(old, new):
 
 def clear_transformed(**kwargs):
     for id in state.dataset_ids:
-        keys = get_image_state_keys(id)
-        image_cache.clear_item(keys["transformed_image"])
-        annotation_cache.clear_item(keys["transformed_image"])
+        transformed_image_id = dataset_id_to_transformed_image_id(id)
+        image_cache.clear_item(transformed_image_id)
+        annotation_cache.clear_item(transformed_image_id)
         update_image_meta(
             state,
             id,

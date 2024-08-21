@@ -1,7 +1,6 @@
 from nrtk_explorer.widgets.nrtk_explorer import ScatterPlot
 from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
-from nrtk_explorer.library import images_manager
 from nrtk_explorer.library.dataset import get_dataset
 from nrtk_explorer.app.trame_utils import SetStateAsync
 from nrtk_explorer.app.applet import Applet
@@ -12,6 +11,7 @@ from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     is_transformed,
 )
+from nrtk_explorer.app.images.images import get_image
 
 import os
 
@@ -36,9 +36,6 @@ class EmbeddingsApp(Applet):
 
         self._ui = None
         self.reducer = dimension_reducers.DimReducerManager()
-        self.is_standalone_app = self.server.state.parent is None
-        if self.is_standalone_app:
-            self.context.images_manager = images_manager.ImagesManager()
 
         if self.state.current_dataset is None:
             self.state.current_dataset = DATASET_DIRS[0]
@@ -70,7 +67,7 @@ class EmbeddingsApp(Applet):
     def on_feature_extraction_model_change(self, **kwargs):
         feature_extraction_model = self.state.feature_extraction_model
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
-            model_name=feature_extraction_model, manager=self.context.images_manager
+            model_name=feature_extraction_model
         )
 
     def on_current_dataset_change(self, **kwargs):
@@ -81,9 +78,6 @@ class EmbeddingsApp(Applet):
         self.images = list(self.context.dataset.imgs.values())
         self.state.num_elements_max = len(self.images)
         self.state.num_elements_disabled = False
-
-        if self.is_standalone_app:
-            self.context.images_manager = images_manager.ImagesManager()
 
     def compute_points(self, fit_features, features):
         if self.state.tab == "PCA":
@@ -119,8 +113,9 @@ class EmbeddingsApp(Applet):
         async with SetStateAsync(self.state):
             self.state.is_loading = True
 
+        images = [get_image(id) for id in self.state.dataset_ids]
         self.features = self.extractor.extract(
-            paths=self.context.paths,
+            images,
             batch_size=int(self.state.model_batch_size),
         )
 
@@ -147,19 +142,14 @@ class EmbeddingsApp(Applet):
         self.update_points()
 
     def on_run_transformations(self, id_to_image):
-        extractor_prepped = {
-            id: self.context.images_manager.prepare_for_model(image)
-            for id, image in id_to_image.items()
-        }
-        ids = extractor_prepped.keys()
         transformation_features = self.extractor.extract(
-            paths=ids,
-            content=extractor_prepped,
+            id_to_image.values(),
             batch_size=int(self.state.model_batch_size),
         )
 
         points = self.compute_points(self.features, transformation_features)
 
+        ids = id_to_image.keys()
         updated_points = {image_id_to_dataset_id(id): point for id, point in zip(ids, points)}
         self.state.points_transformations = {**self.state.points_transformations, **updated_points}
 

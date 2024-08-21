@@ -4,7 +4,6 @@ from pathlib import Path
 
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
-from nrtk_explorer.library import images_manager
 from nrtk_explorer.library.filtering import FilterProtocol
 from nrtk_explorer.library.dataset import get_dataset
 
@@ -53,8 +52,6 @@ class Engine(Applet):
         known_args, _ = self.server.cli.parse_known_args()
         self.input_paths = known_args.dataset
         self.state.current_dataset = str(Path(self.input_paths[0]).resolve())
-
-        self.context["images_manager"] = images_manager.ImagesManager()
 
         self.state.collapse_dataset = False
         self.state.collapse_embeddings = False
@@ -111,7 +108,6 @@ class Engine(Applet):
 
     def on_dataset_change(self, **kwargs):
         # Reset cache
-        self.context.images_manager = images_manager.ImagesManager()
         self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
         self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.random_sampling_disabled = False
@@ -158,16 +154,6 @@ class Engine(Applet):
         else:
             selected_images = images
 
-        paths = list()
-        for image in selected_images:
-            paths.append(
-                os.path.join(
-                    os.path.dirname(self.state.current_dataset),
-                    image["file_name"],
-                )
-            )
-
-        self.context.paths = paths
         self.state.dataset_ids = [str(img["id"]) for img in selected_images]
 
     def _build_ui(self):

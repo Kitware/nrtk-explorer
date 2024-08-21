@@ -3,9 +3,15 @@ import logging
 import numpy as np
 import timm
 import torch
+from PIL.Image import Image
 
-from nrtk_explorer.library import images_manager
 from torch.utils.data import DataLoader, Dataset
+
+IMAGE_MODEL_RESOLUTION = (224, 224)
+
+
+def prepare_for_model(img):
+    """Prepare image for model input"""
 
 
 # Create a dataset for images
@@ -21,10 +27,7 @@ class ImagesDataset(Dataset):
 
 
 class EmbeddingsExtractor:
-    def __init__(
-        self, model_name="resnet50d", manager=images_manager.ImagesManager(), force_cpu=False
-    ):
-        self.manager = manager
+    def __init__(self, model_name="resnet50d", force_cpu=False):
         self.device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
         self.model = model_name
 
@@ -53,27 +56,18 @@ class EmbeddingsExtractor:
             **timm.data.resolve_model_data_config(self._model.pretrained_cfg)
         )
 
-    def transform_image(self, img):
+    def transform_image(self, image: Image):
         """Transform image to fit model input size and format"""
+        img = image.resize(IMAGE_MODEL_RESOLUTION).convert("RGB")
         return self._model_transformer(img).unsqueeze(0)
 
-    def extract(self, paths, content=None, batch_size=32):
-        """Extract features from images in paths"""
-        if len(paths) == 0:
-            return None
+    def extract(self, images, batch_size=32):
+        """Extract features from images"""
+        if len(images) == 0:
+            return []
 
         features = list()
-        transformed_images = list()
-
-        # Load images and transform them
-        for path in paths:
-            img = None
-            if content and path in content:
-                img = content[path]
-            else:
-                img = self.manager.load_image_for_model(path)
-
-            transformed_images.append(self.transform_image(img))
+        transformed_images = [self.transform_image(img) for img in images]
 
         # Extract features from images
         adjusted_batch_size = batch_size

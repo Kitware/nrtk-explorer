@@ -4,7 +4,6 @@ Define your classes and create the instances that you need to expose
 
 import logging
 from typing import Dict
-import asyncio
 from PIL.Image import Image
 
 from trame.ui.quasar import QLayout
@@ -122,27 +121,25 @@ class TransformsApp(Applet):
 
     async def update_transformed_images(self, dataset_ids):
         self._updating_transformed_images = True
+        try:
+            await self._update_transformed_images(dataset_ids)
+        finally:
+            self._updating_transformed_images = False
+
+    async def _update_transformed_images(self, dataset_ids):
         if not ("transformed" in self.state.visible_columns):
             return
 
         transform = self._transforms[self.state.current_transform]
 
-        try:
+        id_to_matching_size_img = {}
+        for id in dataset_ids:
             async with SetStateAsync(self.state):
-                id_to_matching_size_img = {
-                    dataset_id_to_transformed_image_id(id): get_transformed_image(transform, id)
-                    for id in dataset_ids
-                }
-        except asyncio.CancelledError:
-            self._updating_transformed_images = False
-            raise
+                transformed = get_transformed_image(transform, id)
+                id_to_matching_size_img[dataset_id_to_transformed_image_id(id)] = transformed
 
-        try:
-            async with SetStateAsync(self.state):
-                annotations = self.compute_annotations(id_to_matching_size_img)
-        except asyncio.CancelledError:
-            self._updating_transformed_images = False
-            raise
+        async with SetStateAsync(self.state):
+            annotations = self.compute_annotations(id_to_matching_size_img)
 
         predictions = convert_from_predictions_to_second_arg(annotations)
         scores = compute_score(
@@ -177,8 +174,6 @@ class TransformsApp(Applet):
         self.on_transform(id_to_image)
 
         self.state.flush()  # needed cuz in async func and modifying state or else UI does not update
-
-        self._updating_transformed_images = False
 
     def compute_annotations(self, id_to_image: Dict[str, Image]):
         """Compute annotations for the given image ids using the object detector model."""

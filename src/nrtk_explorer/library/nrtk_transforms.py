@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import numpy as np
 import logging
@@ -19,13 +19,23 @@ except ImportError:
     logger.info("Disabling NRTK transforms due to missing library/failing imports")
     ENABLED_NRTK_TRANSFORMS = False
 
+if TYPE_CHECKING:
+    GaussianBlurPerturberType = GaussianBlurPerturber
+    PybsmPerturberType = PybsmPerturber
+else:
+    GaussianBlurPerturberType = None
+    PybsmPerturberType = None
+
+GaussianBlurPerturberArg = Optional[GaussianBlurPerturberType]
+PybsmPerturberArg = Optional[PybsmPerturberType]
+
 
 def nrtk_transforms_available():
     return ENABLED_NRTK_TRANSFORMS
 
 
 class NrtkGaussianBlurTransform(ImageTransform):
-    def __init__(self, perturber: Union[GaussianBlurPerturber, None] = None):
+    def __init__(self, perturber: GaussianBlurPerturberArg = None):
         if perturber is None:
             perturber = GaussianBlurPerturber()
 
@@ -155,7 +165,7 @@ def createSampleSensorAndScenario():
 
 
 class NrtkPybsmTransform(ImageTransform):
-    def __init__(self, perturber: Union[PybsmPerturber, None] = None):
+    def __init__(self, perturber: PybsmPerturberArg = None):
         if perturber is None:
             sensor, scenario = createSampleSensorAndScenario()
             perturber = PybsmPerturber(sensor=sensor, scenario=scenario)

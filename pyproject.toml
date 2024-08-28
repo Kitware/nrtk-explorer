@@ -28,7 +28,6 @@ classifiers = [
 
 dependencies = [
     "accelerate",
-    "kwcoco",
     "nrtk>=0.4.2",
     "numpy",
     "Pillow",
@@ -48,6 +47,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+kwcoco= [
+  "kwcoco",
+]
+
 dev = [
   "black",
   "flake8",

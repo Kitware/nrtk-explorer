@@ -17,7 +17,7 @@ from nrtk_explorer.library.transforms import ImageTransform
 from nrtk_explorer.library.coco_utils import partition
 
 
-def convert_to_base64(img: Image) -> str:
+def convert_to_base64(img: Image.Image) -> str:
     """Convert image to base64 string"""
     buf = io.BytesIO()
     img.save(buf, format="png")
@@ -34,11 +34,11 @@ class BufferCache:
 
     def add_item(self, key: str, item):
         """Add an item to the cache."""
-        if key in self.cache:
-            self.cache.move_to_end(key)
         self.cache[key] = item
+        self.cache.move_to_end(key)
         if len(self.cache) > self.max_size:
-            self.cache.popitem(last=False)
+            oldest = next(iter(self.cache))
+            self.clear_item(oldest)
 
     def get_item(self, key: str):
         """Retrieve an item from the cache."""
@@ -52,12 +52,6 @@ class BufferCache:
         if key in self.cache:
             self.on_clear_item(key)
             del self.cache[key]
-
-    def clear(self):
-        """Clear the cache."""
-        for key in self.cache.keys():
-            self.on_clear_item(key)
-        self.cache.clear()
 
 
 server = get_server()
@@ -185,12 +179,6 @@ def get_image_state_keys(dataset_id: str):
         ),
         "meta_id": dataset_id_to_meta(dataset_id),
     }
-
-
-@state.change("current_dataset")
-def clear_all(**kwargs):
-    image_cache.clear()
-    annotation_cache.clear()
 
 
 @change_checker(state, "dataset_ids")

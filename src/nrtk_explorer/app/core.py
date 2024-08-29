@@ -113,7 +113,6 @@ class Engine(Applet):
         self.state.random_sampling_disabled = False
         self.state.num_images_disabled = False
         self.state.dataset_ids = []
-        self.state.flush()  # trigger dataset_ids change handler so matching IDs in new dataset are not cached
 
         categories = {}
         for category in self.context.dataset.cats.values():

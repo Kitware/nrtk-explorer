@@ -17,7 +17,7 @@ from nrtk_explorer.library.transforms import ImageTransform
 from nrtk_explorer.library.coco_utils import partition
 
 
-def convert_to_base64(img: Image) -> str:
+def convert_to_base64(img: Image.Image) -> str:
     """Convert image to base64 string"""
     buf = io.BytesIO()
     img.save(buf, format="png")
@@ -34,11 +34,11 @@ class BufferCache:
 
     def add_item(self, key: str, item):
         """Add an item to the cache."""
-        if key in self.cache:
-            self.cache.move_to_end(key)
         self.cache[key] = item
+        self.cache.move_to_end(key)
         if len(self.cache) > self.max_size:
-            self.cache.popitem(last=False)
+            oldest = next(iter(self.cache))
+            self.clear_item(oldest)
 
     def get_item(self, key: str):
         """Retrieve an item from the cache."""

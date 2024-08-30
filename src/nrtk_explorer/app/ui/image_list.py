@@ -43,6 +43,26 @@ state.columns = COLUMNS
 state.visible_columns = [col["name"] for col in COLUMNS]
 
 
+columns_dependent_on_transformed_column = [
+    "ground_truth_to_transformed_detection_score",
+    "original_detection_to_transformed_detection_score",
+]
+
+
+@state.change("visible_columns")
+def hide_transformed_dependant_columns(**kwargs):
+    dependant_columns_visible = any(
+        col in state.visible_columns for col in columns_dependent_on_transformed_column
+    )
+    if "transformed" not in state.visible_columns and dependant_columns_visible:
+        state.visible_columns = [
+            col
+            for col in state.visible_columns
+            if col not in columns_dependent_on_transformed_column
+        ]
+        return
+
+
 state.client_only("image_list_ids")
 
 

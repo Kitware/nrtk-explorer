@@ -75,14 +75,21 @@ class TransformsApp(Applet):
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
-        self.state.current_num_elements = 15
+        ### Transform enabled control ###
+        self.state.transform_enabled = True
 
-        def transformed_became_visible(old, new):
-            return "transformed" not in old and "transformed" in new
+        def update_transform_enabled(**kwargs):
+            self.state.transform_enabled = "transformed" in self.state.visible_columns
 
-        change_checker(self.state, "visible_columns", transformed_became_visible)(
+        self.state.change("visible_columns")(update_transform_enabled)
+
+        def transform_became_enabled(old, new):
+            return not old and new
+
+        change_checker(self.state, "transform_enabled", transform_became_enabled)(
             self.schedule_transformed_images
         )
+        ### end Transform enabled control ###
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self.server.controller.apply_transform.add(self.schedule_transformed_images)
@@ -131,7 +138,7 @@ class TransformsApp(Applet):
             self._updating_transformed_images = False
 
     async def _update_transformed_images(self, dataset_ids):
-        if not ("transformed" in self.state.visible_columns):
+        if not self.state.transform_enabled:
             return
 
         transform = self._transforms[self.state.current_transform]

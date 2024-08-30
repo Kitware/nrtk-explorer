@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 try:
-    from pybsm.otf import darkCurrentFromDensity
+    from pybsm.otf import dark_current_from_density
     from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
     from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
 except ImportError:
@@ -99,7 +99,7 @@ def createSampleSensorAndScenario():
     intTime = 30.0e-3
 
     # dark current density of 1 nA/cm2 guess, guess mid range for a silicon camera
-    darkCurrent = darkCurrentFromDensity(1e-5, wx, wy)
+    darkCurrent = dark_current_from_density(1e-5, wx, wy)
 
     # rms read noise (rms electrons)
     readNoise = 25.0

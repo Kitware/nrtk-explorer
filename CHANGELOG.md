@@ -2,6 +2,27 @@
 
 
 
+## v0.3.1 (2024-08-26)
+
+### Ci
+
+* ci: add manual trigger create release build ([`f5c577c`](https://github.com/Kitware/nrtk-explorer/commit/f5c577c86137dbb17fbce062f30a78e65d223682))
+
+### Fix
+
+* fix(nrtk_transforms): avoid runtime error from type hints ([`309b817`](https://github.com/Kitware/nrtk-explorer/commit/309b817344176539f6b0196dc798cda9880cfefc))
+
+### Unknown
+
+* Merge main to release ([`fd39df2`](https://github.com/Kitware/nrtk-explorer/commit/fd39df2f70128710779cbce356264a1fb4f252a1))
+
+* lint ([`bd67b41`](https://github.com/Kitware/nrtk-explorer/commit/bd67b41818fe182cb5c7a279e2a1f1a0e7b59888))
+
+* Fix type checks when missing libraries ([`8ea727a`](https://github.com/Kitware/nrtk-explorer/commit/8ea727af02539ace6054e8d74b7d907ca9f96ed8))
+
+* Auto-merge release back to main ([`fc4fd3b`](https://github.com/Kitware/nrtk-explorer/commit/fc4fd3b16c0d91e4a29b6762b0fe7c0174df6e10))
+
+
 ## v0.3.0 (2024-08-07)
 
 ### Chore

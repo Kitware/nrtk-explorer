@@ -88,6 +88,10 @@ class TransformsApp(Applet):
         self.server.controller.apply_transform.add(self.schedule_transformed_images)
         self._on_hover_fn = None
 
+    @property
+    def get_image_fpath(self):
+        return self.server.controller.get_image_fpath
+
     def on_server_ready(self, *args, **kwargs):
         self.state.change("object_detection_model")(self.on_object_detection_model_change)
         self.on_object_detection_model_change(self.state.object_detection_model)

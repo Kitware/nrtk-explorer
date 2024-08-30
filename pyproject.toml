@@ -1,6 +1,6 @@
 [project]
 name="nrtk-explorer"
-version="0.3.0"
+version="0.3.1"
 description="Model Visualizer"
 authors = [
   {name = "Alessandro Genova", email = "alessandro.genova@kitware.com"},
@@ -28,10 +28,10 @@ classifiers = [
 
 dependencies = [
     "accelerate",
-    "kwcoco",
     "nrtk>=0.4.2",
     "numpy",
     "Pillow",
+    "pybsm>=0.6",
     "scikit-learn==1.5.1",
     "smqtk_image_io",
     "tabulate",
@@ -47,6 +47,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+kwcoco= [
+  "kwcoco",
+]
+
 dev = [
   "black",
   "flake8",

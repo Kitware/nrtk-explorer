@@ -5,7 +5,7 @@ from pathlib import Path
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library.filtering import FilterProtocol
-from nrtk_explorer.library.dataset import get_dataset
+from nrtk_explorer.library.dataset import get_dataset, get_image_fpath
 
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
@@ -52,6 +52,8 @@ class Engine(Applet):
         known_args, _ = self.server.cli.parse_known_args()
         self.input_paths = known_args.dataset
         self.state.current_dataset = str(Path(self.input_paths[0]).resolve())
+
+        self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
 
         self.state.collapse_dataset = False
         self.state.collapse_embeddings = False

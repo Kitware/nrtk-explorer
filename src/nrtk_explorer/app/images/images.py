@@ -10,7 +10,6 @@ from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_transformed_image_id,
 )
 from nrtk_explorer.app.images.image_meta import dataset_id_to_meta, update_image_meta
-from nrtk_explorer.library.dataset import get_image_path
 from nrtk_explorer.app.trame_utils import delete_state, change_checker
 from nrtk_explorer.library.object_detector import ObjectDetector
 from nrtk_explorer.library.transforms import ImageTransform
@@ -77,7 +76,7 @@ def get_image(dataset_id: str):
     if cached_image is not None:
         return cached_image
 
-    image_path = get_image_path(dataset_id)
+    image_path = server.controller.get_image_fpath(int(dataset_id))
     image = Image.open(image_path)
 
     image_cache.add_item(dataset_id, image)

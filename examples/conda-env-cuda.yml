@@ -1,0 +1,13 @@
+name: nrtk-explorer-cuda
+channels:
+  - nvidia
+  - pytorch
+  - conda-forge
+dependencies:
+  - pytorch::pytorch
+  - pytorch::torchvision
+  - pytorch::torchaudio
+  - pytorch::pytorch-cuda=11.8
+  - nrtk-explorer
+variables:
+    channel_priority: flexible

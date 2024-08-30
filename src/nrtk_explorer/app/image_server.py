@@ -2,7 +2,6 @@ from aiohttp import web
 from PIL import Image
 import io
 from trame.app import get_server
-from nrtk_explorer.library.dataset import get_image_path
 
 
 ORIGINAL_IMAGE_ENDPOINT = "original-image"
@@ -25,7 +24,7 @@ def make_response(image, format):
 
 async def original_image_endpoint(request: web.Request):
     id = request.match_info["id"]
-    image_path = get_image_path(id)
+    image_path = server.controller.get_image_fpath(int(id))
 
     if image_path in server.context.images_manager.images:
         image = server.context.images_manager.images[image_path]

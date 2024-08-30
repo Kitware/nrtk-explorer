@@ -37,7 +37,7 @@ from nrtk_explorer.app.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
-from nrtk_explorer.library.dataset import get_dataset, get_image_path
+from nrtk_explorer.library.dataset import get_dataset
 import nrtk_explorer.app.image_server
 
 
@@ -120,6 +120,10 @@ class TransformsApp(Applet):
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self._on_hover_fn = None
+
+    @property
+    def get_image_fpath(self):
+        return self.server.controller.get_image_fpath
 
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
@@ -295,7 +299,7 @@ class TransformsApp(Applet):
             self.state.hovered_id = ""
 
         for selected_id in selected_ids:
-            filename = get_image_path(selected_id)
+            filename = self.get_image_fpath(int(selected_id))
             img = self.context.images_manager.load_image(filename)
             image_id = dataset_id_to_image_id(selected_id)
             self.context.image_objects[image_id] = img

@@ -15,7 +15,7 @@ import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import object_detector
 from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
-from nrtk_explorer.app.parameters import ParametersApp
+from nrtk_explorer.app.parameters import ParametersApp, NotImplemented
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
 from nrtk_explorer.library.coco_utils import (
     convert_from_ground_truth_to_first_arg,
@@ -103,6 +103,7 @@ class TransformsApp(Applet):
         self._on_transform_fn = None
 
         self._transforms: Dict[str, trans.ImageTransform] = {
+            "disable": NotImplemented(),
             "identity": trans.IdentityTransform(),
             "blur": trans.GaussianBlurTransform(),
             "invert": trans.InvertTransform(),
@@ -118,13 +119,29 @@ class TransformsApp(Applet):
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
-        # Transform enabled control ##
+        # Transform enabled control ###
+        def picked_real_transform(old, new):
+            return old == "disable" and new != "disable"
+
+        def turn_on_transform_columns(_, __):
+            if "transformed" not in self.state.visible_columns:
+                self.state.visible_columns = self.state.visible_columns + ["transformed"]
+
+        change_checker(self.state, "current_transform", picked_real_transform)(
+            turn_on_transform_columns
+        )
+
         self.state.transform_enabled = True
 
         def update_transform_enabled(**kwargs):
-            self.state.transform_enabled = "transformed" in self.state.visible_columns
+            self.state.transform_enabled = (
+                "transformed" in self.state.visible_columns
+                and self.state.current_transform != "disable"
+            )
 
         self.state.change("visible_columns")(update_transform_enabled)
+        self.state.change("current_transform")(update_transform_enabled)
+        update_transform_enabled()
 
         def transform_became_enabled(old, new):
             return not old and new
@@ -132,7 +149,20 @@ class TransformsApp(Applet):
         change_checker(self.state, "transform_enabled", transform_became_enabled)(
             self.schedule_transformed_images
         )
-        # end Transform enabled control ##
+
+        def update_visible_columns(**kwargs):
+            if self.state.transform_enabled:
+                if "transformed" not in self.state.visible_columns:
+                    self.state.visible_columns = self.state.visible_columns + ["transformed"]
+            else:
+                if "transformed" in self.state.visible_columns:
+                    self.state.visible_columns = [
+                        col for col in self.state.visible_columns if col != "transformed"
+                    ]
+
+        self.state.change("transform_enabled")(update_visible_columns)
+        update_visible_columns()
+        # end Transform enabled control ###
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self.server.controller.apply_transform.add(self.schedule_transformed_images)

@@ -17,6 +17,27 @@ from nrtk_explorer.library.transforms import (
 )
 
 
+class NotImplemented(ImageTransform):
+    def __init__(self):
+        super().__init__()
+        self._parameters = {}
+
+    def apply(self, image):
+        return image
+
+    def get_parameters(self):
+        return self._parameters
+
+    def set_parameters(self, parameters):
+        self._parameters = parameters
+
+    def get_parameters_description(self):
+        return {}
+
+    def execute(self, input, *input_args):
+        raise NotImplementedError()
+
+
 class ParametersApp(Applet):
     def __init__(self, server):
         super().__init__(server)

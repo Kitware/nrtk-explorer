@@ -75,7 +75,7 @@ class TransformsApp(Applet):
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
-        ### Transform enabled control ###
+        # Transform enabled control ##
         self.state.transform_enabled = True
 
         def update_transform_enabled(**kwargs):
@@ -89,7 +89,7 @@ class TransformsApp(Applet):
         change_checker(self.state, "transform_enabled", transform_became_enabled)(
             self.schedule_transformed_images
         )
-        ### end Transform enabled control ###
+        # end Transform enabled control ##
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self.server.controller.apply_transform.add(self.schedule_transformed_images)

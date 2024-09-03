@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, Sequence
 from collections import OrderedDict
 import base64
 import io
+from functools import lru_cache
 from PIL import Image
 from trame.app import get_server
 from nrtk_explorer.app.images.image_ids import (
@@ -14,6 +15,9 @@ from nrtk_explorer.app.trame_utils import delete_state, change_checker
 from nrtk_explorer.library.object_detector import ObjectDetector
 from nrtk_explorer.library.transforms import ImageTransform
 from nrtk_explorer.library.coco_utils import partition
+
+
+IMAGE_CACHE_SIZE = 50
 
 
 def convert_to_base64(img: Image.Image) -> str:
@@ -63,31 +67,30 @@ server = get_server()
 state, context, ctrl = server.state, server.context, server.controller
 
 
+class RefCountedState:
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    def __del__(self):
+        delete_state(state, self.key)
+
+
 # syncs trame state
 def delete_from_state(key: str):
     delete_state(state, key)
 
 
-image_cache = BufferCache(100, delete_from_state)
-
-
+@lru_cache(maxsize=IMAGE_CACHE_SIZE)
 def get_image(dataset_id: str):
-    cached_image = image_cache.get_item(dataset_id)
-    if cached_image is not None:
-        return cached_image
-
     image_path = server.controller.get_image_fpath(int(dataset_id))
     image = Image.open(image_path)
-
-    image_cache.add_item(dataset_id, image)
     return image
 
 
-def get_transformed_image(transform: ImageTransform, dataset_id: str):
+@lru_cache(maxsize=IMAGE_CACHE_SIZE)
+def get_cached_transformed_image(transform: ImageTransform, dataset_id: str):
     key = dataset_id_to_transformed_image_id(dataset_id)
-    cached_image = image_cache.get_item(key)
-    if cached_image is not None:
-        return cached_image
 
     original = get_image(dataset_id)
     transformed = transform.execute(original)
@@ -95,11 +98,12 @@ def get_transformed_image(transform: ImageTransform, dataset_id: str):
         # Resize so pixel-wise annotation similarity score works
         transformed = transformed.resize(original.size)
 
-    image_cache.add_item(key, transformed)
-
     state[key] = convert_to_base64(transformed)
+    return RefCountedState(key, transformed)
 
-    return transformed
+
+def get_transformed_image(transform: ImageTransform, dataset_id: str):
+    return get_cached_transformed_image(transform, dataset_id).value
 
 
 def add_annotation_to_state(image_id: str, annotations: Any):
@@ -188,7 +192,8 @@ def get_image_state_keys(dataset_id: str):
 
 @state.change("current_dataset")
 def clear_all(**kwargs):
-    image_cache.clear()
+    get_image.cache_clear()
+    get_cached_transformed_image.cache_clear()
     annotation_cache.clear()
 
 
@@ -200,14 +205,11 @@ def init_state(old, new):
         new_ids = set(new)
         to_clean = old_ids - new_ids
         for id in to_clean:
-            image_cache.clear_item(id)  # original image
             annotation_cache.clear_item(id)  # ground truth
             annotation_cache.clear_item(dataset_id_to_image_id(id))  # original image detection
             keys = get_image_state_keys(id)
-            image_cache.clear_item(keys["transformed_image"])
             annotation_cache.clear_item(keys["transformed_image"])
-            for key in keys.values():
-                delete_state(state, key)
+            delete_state(state, keys["meta_id"])
 
     # create reactive annotation variables so ImageDetection component has live Refs
     for id in new:
@@ -221,7 +223,6 @@ def init_state(old, new):
 def clear_transformed(**kwargs):
     for id in state.dataset_ids:
         transformed_image_id = dataset_id_to_transformed_image_id(id)
-        image_cache.clear_item(transformed_image_id)
         annotation_cache.clear_item(transformed_image_id)
         update_image_meta(
             state,
@@ -231,6 +232,7 @@ def clear_transformed(**kwargs):
                 "ground_truth_to_transformed_detection_score": 0,
             },
         )
+    get_cached_transformed_image.cache_clear()
 
 
 ctrl.apply_transform.add(clear_transformed)

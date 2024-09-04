@@ -35,6 +35,12 @@ COLUMNS = [
     },
 ]
 
+TRANSFORM_COLUMNS = [
+    "transformed",
+    "ground_truth_to_transformed_detection_score",
+    "original_detection_to_transformed_detection_score",
+]
+
 
 server = get_server()
 state, context, ctrl = server.state, server.context, server.controller

@@ -27,7 +27,7 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
             dataset_title_slot,
             dataset_content_slot,
             _,
-        ) = ui.card("collapse_dataset")
+        ) = ui.card()
 
         with dataset_title_slot:
             html.Span("Dataset", classes="text-h6")
@@ -64,7 +64,7 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
             embeddings_title_slot,
             embeddings_content_slot,
             embeddings_actions_slot,
-        ) = ui.card("collapse_embeddings")
+        ) = ui.card()
 
         with embeddings_title_slot:
             html.Span("Embeddings", classes="text-h6")
@@ -75,10 +75,10 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
         with embeddings_actions_slot:
             embeddings_app.compute_ui()
 
-        (annotations_title_slot, annotations_content_slot, _) = ui.card("collapse_annotations")
+        (annotations_title_slot, annotations_content_slot, _) = ui.card()
 
         with annotations_title_slot:
-            html.Span("Annotations settings", classes="text-h6")
+            html.Span("Annotations", classes="text-h6")
 
         with annotations_content_slot:
             quasar.QSelect(
@@ -97,7 +97,7 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
                 map_options=True,
             )
 
-        filter_title_slot, filter_content_slot, filter_actions_slot = ui.card("collapse_filter")
+        filter_title_slot, filter_content_slot, filter_actions_slot = ui.card()
 
         with filter_title_slot:
             html.Span("Category Filter", classes="text-h6")
@@ -113,10 +113,11 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
             transforms_title_slot,
             transforms_content_slot,
             transforms_actions_slot,
-        ) = ui.card("collapse_transforms")
+        ) = ui.card()
 
         with transforms_title_slot:
-            html.Span("Transform Settings", classes="text-h6")
+            quasar.QToggle(v_model=("transform_enabled_switch", False))
+            html.Span("Transform", classes="text-h6")
 
         with transforms_content_slot:
             transforms_app.settings_widget()

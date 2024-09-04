@@ -15,7 +15,7 @@ import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 from nrtk_explorer.library import object_detector
 from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
-from nrtk_explorer.app.parameters import ParametersApp, NotImplemented
+from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
 from nrtk_explorer.library.coco_utils import (
     convert_from_ground_truth_to_first_arg,
@@ -38,6 +38,7 @@ from nrtk_explorer.app.images.stateful_annotations import (
     make_stateful_annotations,
     make_stateful_predictor,
 )
+from nrtk_explorer.app.ui.image_list import TRANSFORM_COLUMNS
 
 import nrtk_explorer.app.images.image_server  # noqa module level side effects
 
@@ -103,11 +104,10 @@ class TransformsApp(Applet):
         self._on_transform_fn = None
 
         self._transforms: Dict[str, trans.ImageTransform] = {
-            "disable": NotImplemented(),
-            "identity": trans.IdentityTransform(),
             "blur": trans.GaussianBlurTransform(),
             "invert": trans.InvertTransform(),
             "downsample": trans.DownSampleTransform(),
+            "identity": trans.IdentityTransform(),
         }
 
         if nrtk_trans.nrtk_transforms_available():
@@ -120,14 +120,16 @@ class TransformsApp(Applet):
         self.state.current_transform = self.state.transforms[0]
 
         # Transform enabled control ###
-        def picked_real_transform(old, new):
-            return old == "disable" and new != "disable"
+        def just_enabled_transform(old, new):
+            return old is False and new
 
-        def turn_on_transform_columns(_, __):
-            if "transformed" not in self.state.visible_columns:
-                self.state.visible_columns = self.state.visible_columns + ["transformed"]
+        def turn_on_transform_columns(_=None, __=None):
+            if any(col not in TRANSFORM_COLUMNS for col in self.state.visible_columns):
+                self.state.visible_columns = list(
+                    set([*self.state.visible_columns, *TRANSFORM_COLUMNS])
+                )
 
-        change_checker(self.state, "current_transform", picked_real_transform)(
+        change_checker(self.state, "transform_enabled_switch", just_enabled_transform)(
             turn_on_transform_columns
         )
 
@@ -135,16 +137,15 @@ class TransformsApp(Applet):
 
         def update_transform_enabled(**kwargs):
             self.state.transform_enabled = (
-                "transformed" in self.state.visible_columns
-                and self.state.current_transform != "disable"
+                "transformed" in self.state.visible_columns and self.state.transform_enabled_switch
             )
 
         self.state.change("visible_columns")(update_transform_enabled)
-        self.state.change("current_transform")(update_transform_enabled)
+        self.state.change("transform_enabled_switch")(update_transform_enabled)
         update_transform_enabled()
 
         def transform_became_enabled(old, new):
-            return not old and new
+            return old is False and new
 
         change_checker(self.state, "transform_enabled", transform_became_enabled)(
             self.schedule_transformed_images
@@ -152,8 +153,7 @@ class TransformsApp(Applet):
 
         def update_visible_columns(**kwargs):
             if self.state.transform_enabled:
-                if "transformed" not in self.state.visible_columns:
-                    self.state.visible_columns = self.state.visible_columns + ["transformed"]
+                turn_on_transform_columns()
             else:
                 if "transformed" in self.state.visible_columns:
                     self.state.visible_columns = [
@@ -162,7 +162,7 @@ class TransformsApp(Applet):
 
         self.state.change("transform_enabled")(update_visible_columns)
         update_visible_columns()
-        # end Transform enabled control ###
+        # End transform enabled control ###
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self.server.controller.apply_transform.add(self.schedule_transformed_images)
@@ -326,18 +326,13 @@ class TransformsApp(Applet):
             self._on_hover_fn(id_)
 
     def settings_widget(self):
-        with html.Div(trame_server=self.server):
-            with html.Div(classes="col"):
-                self._parameters_app.transform_select_ui()
-
-                with html.Div(
-                    classes="q-pa-md q-ma-md",
-                    style="border-style: solid; border-width: thin; border-radius: 0.5rem; border-color: lightgray;",
-                ):
-                    self._parameters_app.transform_params_ui()
+        with html.Div(classes="col"):
+            self._parameters_app.transform_select_ui()
+            with html.Div(classes="q-pa-md q-ma-md"):
+                self._parameters_app.transform_params_ui()
 
     def apply_ui(self):
-        with html.Div(trame_server=self.server):
+        with html.Div():
             self._parameters_app.transform_apply_ui()
 
     def dataset_widget(self):

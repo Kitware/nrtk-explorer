@@ -55,14 +55,6 @@ class Engine(Applet):
 
         self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
 
-        self.state.collapse_dataset = False
-        self.state.collapse_embeddings = False
-        self.state.collapse_filter = False
-        self.state.collapse_transforms = False
-        self.state.client_only(
-            "collapse_dataset", "collapse_embeddings", "collapse_filter", "collapse_transforms"
-        )
-
         self.state.horizontal_split = HORIZONTAL_SPLIT_DEFAULT_VALUE
         self.state.vertical_split = VERTICAL_SPLIT_DEFAULT_VALUE
         self.state.client_only("horizontal_split", "vertical_split")

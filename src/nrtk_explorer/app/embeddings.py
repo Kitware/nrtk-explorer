@@ -187,12 +187,12 @@ class EmbeddingsApp(Applet):
         ScatterPlot(
             cameraMove="camera_position=$event",
             cameraPosition=("camera_position",),
-            highlightedImage=("highlighted_image",),
+            highlightedPoint=("highlighted_image",),
             hover=(self.on_point_hover, "[$event]"),
             points=("points_sources", {}),
             transformedPoints=("points_transformations", {}),
             select=(self.on_select, "[$event]"),
-            selectedImages=("user_selected_ids", []),
+            selectedPoints=("user_selected_ids", []),
         )
 
     def settings_widget(self):

@@ -13,18 +13,18 @@ type IdToPoint = Record<string, Vector3<number> | Vector2<number>>
 
 interface Props {
   cameraPosition: number[]
-  highlightedImage: { id: string; is_transformed: boolean }
+  highlightedPoint: { id: string; is_transformed: boolean }
   points: IdToPoint
   transformedPoints: IdToPoint
-  selectedImages: string[]
+  selectedPoints: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   cameraPosition: () => [],
-  highlightedImage: () => ({ id: '', is_transformed: false }),
+  highlightedPoint: () => ({ id: '', is_transformed: false }),
   points: () => ({}),
   transformedPoints: () => ({}),
-  selectedImages: () => []
+  selectedPoints: () => []
 })
 
 type Events = {
@@ -79,7 +79,7 @@ onMounted(() => {
     pointColorer(i) {
       const id = indexToId(i)
       const isTrans = isTransformed(i)
-      if (id === props.highlightedImage.id && isTrans === props.highlightedImage.is_transformed) {
+      if (id === props.highlightedPoint.id && isTrans === props.highlightedPoint.is_transformed) {
         return `rgba(255,0,0,255)`
       }
 
@@ -94,7 +94,7 @@ onMounted(() => {
         return `rgba(${toRGB(color)}, 255)`
       }
 
-      if (props.selectedImages.includes(id)) {
+      if (props.selectedPoints.includes(id)) {
         // silver for original points that are selected
         return `rgba(189,189,189,255)`
       }
@@ -218,7 +218,7 @@ function updateColorMapDomain() {
   colorMapDomain.value = [0, Math.max(...spans) / 3]
 }
 
-const { cameraPosition, points, transformedPoints, selectedImages, highlightedImage } =
+const { cameraPosition, points, transformedPoints, selectedPoints, highlightedPoint } =
   toRefs(props)
 
 watch(cameraPosition, updateCameraPosition)
@@ -227,7 +227,7 @@ watch(points, () => {
   updateColorMapDomain()
 })
 
-watch([points, transformedPoints, selectedImages, highlightedImage], () => {
+watch([points, transformedPoints, selectedPoints, highlightedPoint], () => {
   drawPoints()
   drawLines()
 })

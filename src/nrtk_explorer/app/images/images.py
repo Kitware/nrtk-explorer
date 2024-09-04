@@ -63,10 +63,6 @@ class BufferCache:
         self.cache.clear()
 
 
-server = get_server()
-state, context, ctrl = server.state, server.context, server.controller
-
-
 class RefCountedState:
     def __init__(self, key, value):
         self.key = key
@@ -74,6 +70,10 @@ class RefCountedState:
 
     def __del__(self):
         delete_state(state, self.key)
+
+
+server = get_server()
+state, context, ctrl = server.state, server.context, server.controller
 
 
 # syncs trame state

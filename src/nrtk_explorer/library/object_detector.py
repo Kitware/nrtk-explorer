@@ -65,7 +65,7 @@ class ObjectDetector:
     def eval(
         self,
         images: Dict[str, Image],
-        batch_size: int = 0,  # 0 means auto
+        batch_size: int = 0,  # 0 means use last successful batch size
     ) -> ImageIdToAnnotations:
         """Compute object recognition. Returns Annotations grouped by input image paths."""
 

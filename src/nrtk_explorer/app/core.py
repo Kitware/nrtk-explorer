@@ -98,6 +98,11 @@ class Engine(Applet):
         self.state.dataset_ids = []
         self.state.hovered_id = None
 
+        def clear_hovered(**kwargs):
+            self.state.hovered_id = None
+
+        self.state.change("dataset_ids")(clear_hovered)
+
         self._build_ui()
 
     def on_server_ready(self, *args, **kwargs):

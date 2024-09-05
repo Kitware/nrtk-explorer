@@ -4,7 +4,6 @@ Define your classes and create the instances that you need to expose
 
 import logging
 from typing import Dict
-from PIL.Image import Image
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
@@ -17,9 +16,7 @@ from nrtk_explorer.library import object_detector
 from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
-from nrtk_explorer.app.images.image_meta import (
-    update_image_meta,
-)
+from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
 from nrtk_explorer.library.coco_utils import (
     convert_from_ground_truth_to_first_arg,
     convert_from_ground_truth_to_second_arg,
@@ -27,7 +24,7 @@ from nrtk_explorer.library.coco_utils import (
     convert_from_predictions_to_first_arg,
     compute_score,
 )
-from nrtk_explorer.app.trame_utils import SetStateAsync, change_checker
+from nrtk_explorer.app.trame_utils import SetStateAsync, change_checker, delete_state
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
@@ -36,8 +33,10 @@ from nrtk_explorer.library.dataset import get_dataset
 from nrtk_explorer.app.images.images import (
     get_image,
     get_transformed_image,
-    get_annotations,
-    get_ground_truth_annotations,
+)
+from nrtk_explorer.app.images.stateful_annotations import (
+    make_stateful_annotations,
+    make_stateful_predictor,
 )
 
 import nrtk_explorer.app.images.image_server  # noqa module level side effects
@@ -48,8 +47,52 @@ logger.setLevel(logging.INFO)
 
 
 class TransformsApp(Applet):
-    def __init__(self, server):
+    def __init__(
+        self,
+        server,
+        ground_truth_annotations=None,
+        original_detection_annotations=None,
+        transformed_detection_annotations=None,
+    ):
         super().__init__(server)
+
+        ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(server)
+        self.ground_truth_annotations = ground_truth_annotations.annotations_factory
+
+        original_detection_annotations = original_detection_annotations or make_stateful_predictor(
+            server
+        )
+        self.original_detection_annotations = original_detection_annotations.annotations_factory
+
+        transformed_detection_annotations = (
+            transformed_detection_annotations or make_stateful_predictor(server)
+        )
+        self.transformed_detection_annotations = (
+            transformed_detection_annotations.annotations_factory
+        )
+
+        def clear_transformed(**kwargs):
+            self.transformed_detection_annotations.cache_clear()
+            for id in self.state.dataset_ids:
+                update_image_meta(
+                    self.state,
+                    id,
+                    {
+                        "original_detection_to_transformed_detection_score": 0,
+                        "ground_truth_to_transformed_detection_score": 0,
+                    },
+                )
+
+        server.controller.apply_transform.add(clear_transformed)
+
+        # delete score from state of old ids that are not in new
+        def delete_meta_state(old_ids, new_ids):
+            if old_ids is not None:
+                to_clean = set(old_ids) - set(new_ids)
+                for id in to_clean:
+                    delete_state(self.state, dataset_id_to_meta(id))
+
+        change_checker(self.state, "dataset_ids")(delete_meta_state)
 
         self._parameters_app = ParametersApp(
             server=server,
@@ -150,12 +193,14 @@ class TransformsApp(Applet):
                 id_to_matching_size_img[dataset_id_to_transformed_image_id(id)] = transformed
 
         async with SetStateAsync(self.state):
-            annotations = self.compute_annotations(id_to_matching_size_img)
+            annotations = self.transformed_detection_annotations.get_annotations(
+                self.detector, id_to_matching_size_img
+            )
 
         predictions = convert_from_predictions_to_second_arg(annotations)
         scores = compute_score(
             dataset_ids,
-            self.predictions_source_images,
+            self.predictions_original_images,
             predictions,
         )
         for id, score in scores:
@@ -165,7 +210,9 @@ class TransformsApp(Applet):
                 {"original_detection_to_transformed_detection_score": score},
             )
 
-        ground_truth_annotations = get_ground_truth_annotations(dataset_ids)
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(
+            dataset_ids
+        ).values()
         ground_truth_predictions = convert_from_ground_truth_to_first_arg(ground_truth_annotations)
         scores = compute_score(
             dataset_ids,
@@ -186,27 +233,27 @@ class TransformsApp(Applet):
 
         self.state.flush()  # needed cuz in async func and modifying state or else UI does not update
 
-    def compute_annotations(self, id_to_image: Dict[str, Image]):
-        """Compute annotations for the given image ids using the object detector model."""
-        return get_annotations(self.detector, id_to_image)
-
-    def compute_predictions_source_images(self, dataset_ids):
+    def compute_predictions_original_images(self, dataset_ids):
         image_id_to_image = {dataset_id_to_image_id(id): get_image(id) for id in dataset_ids}
-        annotations = self.compute_annotations(image_id_to_image)
+        annotations = self.original_detection_annotations.get_annotations(
+            self.detector, image_id_to_image
+        )
         dataset = get_dataset(self.state.current_dataset)
-        self.predictions_source_images = convert_from_predictions_to_first_arg(
+        self.predictions_original_images = convert_from_predictions_to_first_arg(
             annotations,
             dataset,
             dataset_ids,
         )
 
-        ground_truth_annotations = get_ground_truth_annotations(dataset_ids)
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(
+            dataset_ids
+        ).values()
         ground_truth_predictions = convert_from_ground_truth_to_second_arg(
             ground_truth_annotations, self.context.dataset
         )
         scores = compute_score(
             dataset_ids,
-            self.predictions_source_images,
+            self.predictions_original_images,
             ground_truth_predictions,
         )
         for dataset_id, score in scores:
@@ -216,10 +263,10 @@ class TransformsApp(Applet):
 
     async def _update_images(self, dataset_ids):
         async with SetStateAsync(self.state):
-            get_ground_truth_annotations(dataset_ids)  # updates state
+            self.ground_truth_annotations.get_annotations(dataset_ids)  # updates state
 
         async with SetStateAsync(self.state):
-            self.compute_predictions_source_images(dataset_ids)
+            self.compute_predictions_original_images(dataset_ids)
 
         async with SetStateAsync(self.state):
             await self.update_transformed_images(dataset_ids)

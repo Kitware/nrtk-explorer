@@ -2,6 +2,7 @@ from pathlib import Path
 from trame.widgets import html, quasar, client
 from trame.app import get_server
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
+from nrtk_explorer.app.images.image_ids import get_image_state_keys
 
 CSS_FILE = Path(__file__).with_name("image_list.css")
 
@@ -64,6 +65,16 @@ def hide_transformed_dependant_columns(**kwargs):
 
 
 state.client_only("image_list_ids")
+
+
+# create reactive annotation variables so ImageDetection component has live Refs
+@state.change("dataset_ids")
+def init_state(**kwargs):
+    for id in state.dataset_ids:
+        keys = get_image_state_keys(id)
+        for key in keys.values():
+            if not state.has(key):
+                state[key] = None
 
 
 @state.change("dataset_ids", "user_selected_ids")

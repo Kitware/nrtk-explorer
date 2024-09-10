@@ -117,9 +117,8 @@ class FilteringApp(Applet):
         return self._ui
 
 
-def filtering(server=None, *args, **kwargs):
-    server = get_server()
-    server.client_type = "vue3"
+def main(server=None, *args, **kwargs):
+    server = get_server(client_type="vue3")
 
     app = FilteringApp(server)
 
@@ -150,4 +149,4 @@ def filtering(server=None, *args, **kwargs):
 
 
 if __name__ == "__main__":
-    filtering()
+    main()

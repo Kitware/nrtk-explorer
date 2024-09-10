@@ -413,9 +413,8 @@ class TransformsApp(Applet):
         return self._ui
 
 
-def transforms(server=None, *args, **kwargs):
-    server = get_server()
-    server.client_type = "vue3"
+def main(server=None, *args, **kwargs):
+    server = get_server(client_type="vue3")
 
     transforms_app = TransformsApp(server)
     transforms_app.ui
@@ -424,4 +423,4 @@ def transforms(server=None, *args, **kwargs):
 
 
 if __name__ == "__main__":
-    transforms()
+    main()

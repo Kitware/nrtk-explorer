@@ -78,10 +78,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.hooks.custom]
 
 [project.scripts]
-nrtk-explorer = "nrtk_explorer.app:main"
-nrtk-explorer-embeddings = "nrtk_explorer.app.embeddings:embeddings"
-nrtk-explorer-transforms = "nrtk_explorer.app.transforms:transforms"
-nrtk-explorer-filtering = "nrtk_explorer.app.filtering:filtering"
+nrtk-explorer = "nrtk_explorer.app.main:main"
+nrtk-explorer-embeddings = "nrtk_explorer.app.embeddings:main"
+nrtk-explorer-transforms = "nrtk_explorer.app.transforms:main"
+nrtk-explorer-filtering = "nrtk_explorer.app.filtering:main"
 
 [tool.black]
 line-length = 99

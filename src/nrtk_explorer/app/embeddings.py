@@ -351,7 +351,7 @@ class EmbeddingsApp(Applet):
         return self._ui
 
 
-def embeddings(server=None, *args, **kwargs):
+def main(server=None, *args, **kwargs):
     server = get_server()
     server.client_type = "vue3"
 
@@ -362,4 +362,4 @@ def embeddings(server=None, *args, **kwargs):
 
 
 if __name__ == "__main__":
-    embeddings()
+    main()

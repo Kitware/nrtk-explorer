@@ -13,32 +13,28 @@ from nrtk_explorer.app.images.image_ids import (
 )
 from nrtk_explorer.app.images.images import get_image
 
-import os
+from pathlib import Path
 
 from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
 from trame.app import get_server, asynchronous
 
 
-os.environ["TRAME_DISABLE_V3_WARNING"] = "1"
-
-DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
-DATASET_DIRS = [
-    f"{DIR_NAME}/OIRDS_v1_0/oirds.json",
-    f"{DIR_NAME}/OIRDS_v1_0/oirds_test.json",
-    f"{DIR_NAME}/OIRDS_v1_0/oirds_train.json",
-]
-
-
 class EmbeddingsApp(Applet):
-    def __init__(self, server):
+    def __init__(self, server, datasets=None):
         super().__init__(server)
 
+        self._dataset_paths = datasets
+        self._on_hover_fn = None
         self._ui = None
         self.reducer = dimension_reducers.DimReducerManager()
 
-        if self.state.current_dataset is None:
-            self.state.current_dataset = DATASET_DIRS[0]
+        # Local initialization if standalone
+        self.is_standalone_app = self.server.root_server == self.server
+        if self.is_standalone_app and datasets:
+            self.state.current_dataset = str(Path(datasets[0]).resolve())
+            self.on_current_dataset_change()
+
         self.features = None
 
         self.state.client_only("camera_position")
@@ -328,9 +324,10 @@ class EmbeddingsApp(Applet):
                                 label="Dataset",
                                 v_model=("current_dataset",),
                                 options=(
+                                    "dataset_options",
                                     [
-                                        {"label": "oirds_test", "value": DATASET_DIRS[0]},
-                                        {"label": "oirds_train", "value": DATASET_DIRS[1]},
+                                        {"label": Path(p).name, "value": str(Path(p).resolve())}
+                                        for p in self._dataset_paths
                                     ],
                                 ),
                                 filled=True,
@@ -352,10 +349,17 @@ class EmbeddingsApp(Applet):
 
 
 def main(server=None, *args, **kwargs):
-    server = get_server()
-    server.client_type = "vue3"
+    server = get_server(client_type="vue3")
+    server.cli.add_argument(
+        "--dataset",
+        nargs="+",
+        required=True,
+        help="Path of the json file describing the image dataset",
+    )
 
-    embeddings_app = EmbeddingsApp(server)
+    known_args, _ = server.cli.parse_known_args()
+
+    embeddings_app = EmbeddingsApp(server, known_args.dataset)
     embeddings_app.ui
 
     server.start(**kwargs)

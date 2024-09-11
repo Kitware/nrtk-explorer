@@ -7,6 +7,7 @@ from nrtk_explorer.library.coco_utils import (
 
 import json
 import os
+from PIL import Image
 import nrtk_explorer.test_data
 
 DIR_PATH = os.path.dirname(nrtk_explorer.test_data.__file__)
@@ -16,17 +17,20 @@ DATASET = f"{DATASET_PATH}/test_val2017.json"
 
 def test_detector_small():
     ds = json.load(open(DATASET))
-    sample = [f"{DATASET_PATH}/{img['file_name']}" for img in ds["images"]][:15]
+    sample = {
+        id: Image.open(f"{DATASET_PATH}/{img['file_name']}")
+        for id, img in enumerate(ds["images"][:15])
+    }
     detector = object_detector.ObjectDetector(model_name="hustvl/yolos-tiny")
-    img = detector.eval(image_ids=sample)
+    img = detector.eval(sample)
     assert len(img) == 15
 
 
 def test_nrkt_scorer():
     ds = json.load(open(DATASET))
-    sample = [f"{DATASET_PATH}/{img['file_name']}" for img in ds["images"]]
+    sample = {img["id"]: Image.open(f"{DATASET_PATH}/{img['file_name']}") for img in ds["images"]}
     detector = object_detector.ObjectDetector(model_name="facebook/detr-resnet-50")
-    predictions = detector.eval(image_ids=sample)
+    predictions = detector.eval(sample)
 
     dataset_annotations = dict()
     for annotation in ds["annotations"]:

@@ -4,7 +4,6 @@ from pathlib import Path
 
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
-from nrtk_explorer.library import images_manager
 from nrtk_explorer.library.filtering import FilterProtocol
 from nrtk_explorer.library.dataset import get_dataset, get_image_fpath
 
@@ -56,9 +55,6 @@ class Engine(Applet):
 
         self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
 
-        self.context["image_objects"] = {}
-        self.context["images_manager"] = images_manager.ImagesManager()
-
         self.state.collapse_dataset = False
         self.state.collapse_embeddings = False
         self.state.collapse_filter = False
@@ -71,22 +67,10 @@ class Engine(Applet):
         self.state.vertical_split = VERTICAL_SPLIT_DEFAULT_VALUE
         self.state.client_only("horizontal_split", "vertical_split")
 
-        transforms_translator = Translator()
-        transforms_translator.add_translation(
-            "feature_extraction_model", "current_transforms_model"
-        )
-
-        self._transforms_app = TransformsApp(
-            server=self.server.create_child_server(translator=transforms_translator)
-        )
-
-        embeddings_translator = Translator()
-        embeddings_translator.add_translation(
-            "feature_extraction_model", "current_embeddings_model"
-        )
+        self._transforms_app = TransformsApp(server=self.server.create_child_server())
 
         self._embeddings_app = EmbeddingsApp(
-            server=self.server.create_child_server(translator=embeddings_translator),
+            server=self.server.create_child_server(),
         )
 
         filtering_translator = Translator()
@@ -95,7 +79,6 @@ class Engine(Applet):
             server=self.server.create_child_server(translator=filtering_translator),
         )
 
-        self._embeddings_app.set_on_select(self._transforms_app.set_selected_dataset_ids)
         self._transforms_app.set_on_transform(self._embeddings_app.on_run_transformations)
         self._embeddings_app.set_on_hover(self._transforms_app.on_image_hovered)
         self._transforms_app.set_on_hover(self._embeddings_app.on_image_hovered)
@@ -112,7 +95,13 @@ class Engine(Applet):
         self.state.num_images_disabled = True
         self.state.random_sampling = False
         self.state.random_sampling_disabled = True
-        self.state.images_id = []
+        self.state.dataset_ids = []
+        self.state.hovered_id = None
+
+        def clear_hovered(**kwargs):
+            self.state.hovered_id = None
+
+        self.state.change("dataset_ids")(clear_hovered)
 
         self._build_ui()
 
@@ -126,27 +115,32 @@ class Engine(Applet):
 
     def on_dataset_change(self, **kwargs):
         # Reset cache
-        self.context.images_manager = images_manager.ImagesManager()
         self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
         self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.random_sampling_disabled = False
         self.state.num_images_disabled = False
+        self.state.dataset_ids = []
+
+        categories = {}
+        for category in self.context.dataset.cats.values():
+            categories[category["id"]] = category
+        self.state.annotation_categories = categories
 
         self.reload_images()
 
     def on_filter_apply(self, filter: FilterProtocol[Iterable[int]], **kwargs):
-        selected_indices = []
-        for index, image_id in enumerate(self.state.images_ids):
+        selected_ids = []
+        for dataset_id in self.state.dataset_ids:
             image_annotations_categories = [
                 annotation["category_id"]
                 for annotation in self.context.dataset.anns.values()
-                if annotation["image_id"] == image_id
+                if annotation["image_id"] == int(dataset_id)
             ]
             include = filter.evaluate(image_annotations_categories)
             if include:
-                selected_indices.append(index)
+                selected_ids.append(dataset_id)
 
-        self._embeddings_app.on_select(selected_indices)
+        self._embeddings_app.on_select(selected_ids)
 
     def on_num_images_change(self, **kwargs):
         self.reload_images()
@@ -155,33 +149,18 @@ class Engine(Applet):
         self.reload_images()
 
     def reload_images(self):
-        categories = {}
-        for category in self.context.dataset.cats.values():
-            categories[category["id"]] = category
-
         images = list(self.context.dataset.imgs.values())
 
         selected_images = []
         if self.state.num_images:
             if self.state.random_sampling:
-                selected_images = random.sample(images, self.state.num_images)
+                selected_images = random.sample(images, min(len(images), self.state.num_images))
             else:
                 selected_images = images[: self.state.num_images]
         else:
             selected_images = images
 
-        paths = list()
-        for image in selected_images:
-            paths.append(
-                os.path.join(
-                    os.path.dirname(self.state.current_dataset),
-                    image["file_name"],
-                )
-            )
-
-        self.context.paths = paths
-        self.state.annotation_categories = categories
-        self.state.images_ids = [img["id"] for img in selected_images]
+        self.state.dataset_ids = [str(img["id"]) for img in selected_images]
 
     def _build_ui(self):
         extra_args = {}

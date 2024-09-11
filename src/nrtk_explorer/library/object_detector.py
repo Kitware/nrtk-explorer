@@ -2,12 +2,19 @@ import gc
 import logging
 import torch
 import transformers
+from typing import Optional, Sequence, Dict, NamedTuple
+from PIL.Image import Image
 
-from typing import Optional, Sequence
 
-from nrtk_explorer.library import images_manager
+ImageIdToAnnotations = dict[str, Sequence[dict]]
 
-ImageIdToAnnotations = Optional[dict[str, Sequence[dict]]]
+
+class ImageWithId(NamedTuple):
+    id: str
+    image: Image
+
+
+STARTING_BATCH_SIZE = 32
 
 
 class ObjectDetector:
@@ -17,16 +24,12 @@ class ObjectDetector:
         self,
         model_name: str = "facebook/detr-resnet-50",
         task: Optional[str] = None,
-        manager: Optional[images_manager.ImagesManager] = None,
         force_cpu: bool = False,
     ):
-        if manager is None:
-            manager = images_manager.ImagesManager()
-
         self.task = task
-        self.manager = manager
         self.device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
         self.pipeline = model_name
+        self.reset()
 
     @property
     def device(self) -> str:
@@ -56,37 +59,39 @@ class ObjectDetector:
         # Do not display warnings
         transformers.utils.logging.set_verbosity_error()
 
+    def reset(self):
+        self.batch_size = STARTING_BATCH_SIZE
+
     def eval(
         self,
-        image_ids: list[str],
-        content: Optional[dict] = None,
-        batch_size: int = 32,
+        images: Dict[str, Image],
+        batch_size: int = 0,  # 0 means use last successful batch size
     ) -> ImageIdToAnnotations:
         """Compute object recognition. Returns Annotations grouped by input image paths."""
+
+        images_with_ids = [ImageWithId(id, img) for id, img in images.items()]
 
         # Some models require all the images in a batch to be the same size,
         # otherwise crash or UB.
         batches: dict = {}
-        for path in image_ids:
-            img = None
-            if content and path in content:
-                img = content[path]
-            else:
-                img = self.manager.load_image(path)
+        for image in images_with_ids:
+            size = image.image.size
+            batches.setdefault(size, [])
+            batches[size].append(image)
 
-            batches.setdefault(img.size, [[], []])
-            batches[img.size][0].append(path)
-            batches[img.size][1].append(img)
-
-        adjusted_batch_size = batch_size
-        while adjusted_batch_size > 0:
+        if batch_size != 0:
+            self.batch_size = self.batch_size
+        while self.batch_size > 0:
             try:
                 predictions_in_baches = [
                     zip(
-                        image_ids,
-                        self.pipeline(images, batch_size=adjusted_batch_size),
+                        [image.id for image in imagesInBatch],
+                        self.pipeline(
+                            [image.image for image in imagesInBatch],
+                            batch_size=self.batch_size,
+                        ),
                     )
-                    for image_ids, images in batches.values()
+                    for imagesInBatch in batches.values()
                 ]
 
                 predictions_by_image_id = {
@@ -97,11 +102,12 @@ class ObjectDetector:
                 return predictions_by_image_id
 
             except RuntimeError as e:
-                if "out of memory" in str(e) and adjusted_batch_size > 1:
-                    previous_batch_size = adjusted_batch_size
-                    adjusted_batch_size = adjusted_batch_size // 2
+                if "out of memory" in str(e) and self.batch_size > 1:
+                    previous_batch_size = self.batch_size
+                    self.batch_size = self.batch_size // 2
+                    self.batch_size = self.batch_size
                     print(
-                        f"OOM (Pytorch exception {e}) due to batch_size={previous_batch_size}, setting batch_size={adjusted_batch_size}"
+                        f"OOM (Pytorch exception {e}) due to batch_size={previous_batch_size}, setting batch_size={self.batch_size}"
                     )
                 else:
                     raise
@@ -112,4 +118,4 @@ class ObjectDetector:
                 torch.cuda.empty_cache()
 
         # We should never reach here
-        return None
+        return {}

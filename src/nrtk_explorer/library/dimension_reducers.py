@@ -33,7 +33,7 @@ class DimReducerManager:
             self.cached_reducers[reducer_id] = reducer
 
         if features is None or len(features) == 0:
-            return None
+            return []
         else:
             if cache is False or reduction_id not in self.cached_reductions:
                 # Perform reduction without modifying the model

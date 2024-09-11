@@ -1,7 +1,7 @@
 from aiohttp import web
-from PIL import Image
 import io
 from trame.app import get_server
+from nrtk_explorer.app.images.images import get_image
 
 
 ORIGINAL_IMAGE_ENDPOINT = "original-image"
@@ -23,21 +23,13 @@ def make_response(image, format):
 
 
 async def original_image_endpoint(request: web.Request):
-    id = request.match_info["id"]
-    image_path = server.controller.get_image_fpath(int(id))
-
-    if image_path in server.context.images_manager.images:
-        image = server.context.images_manager.images[image_path]
-        send_format = "PNG"
-        if is_browser_compatible_image(image.format):
-            send_format = image.format.upper()
-        return make_response(image, send_format)
-
-    if is_browser_compatible_image(image_path):
-        return web.FileResponse(image_path)
+    dataset_id = request.match_info["id"]
+    image = get_image(dataset_id)
+    if is_browser_compatible_image(image.format):
+        send_format = image.format.upper()
     else:
-        image = Image.open(image_path)
-        return make_response(image, "PNG")
+        send_format = "PNG"
+    return make_response(image, send_format)
 
 
 image_routes = [

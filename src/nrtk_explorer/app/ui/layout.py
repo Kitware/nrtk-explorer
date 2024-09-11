@@ -30,7 +30,7 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
         ) = ui.card("collapse_dataset")
 
         with dataset_title_slot:
-            html.Span("Dataset Selection", classes="text-h6")
+            html.Span("Dataset", classes="text-h6")
 
         with dataset_content_slot:
             quasar.QSelect(
@@ -57,7 +57,7 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
             quasar.QToggle(
                 v_model=("random_sampling", False),
                 dense=False,
-                label="Random selection",
+                label="Random sampling",
             )
 
         (
@@ -95,13 +95,6 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
                 filled=True,
                 emit_value=True,
                 map_options=True,
-            )
-            quasar.QInput(
-                v_model=("object_detection_batch_size", 32),
-                filled=True,
-                stack_label=True,
-                label="Batch Size",
-                type="number",
             )
 
         filter_title_slot, filter_content_slot, filter_actions_slot = ui.card("collapse_filter")

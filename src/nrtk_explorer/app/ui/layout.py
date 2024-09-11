@@ -98,18 +98,6 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
                 map_options=True,
             )
 
-        filter_title_slot, filter_content_slot, filter_actions_slot = ui.card()
-
-        with filter_title_slot:
-            html.Span("Category Filter", classes="text-h6")
-
-        with filter_content_slot:
-            filtering_app.filter_operator_ui()
-            filtering_app.filter_options_ui()
-
-        with filter_actions_slot:
-            filtering_app.filter_apply_ui()
-
         (
             transforms_title_slot,
             transforms_content_slot,
@@ -125,6 +113,18 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
 
         with transforms_actions_slot:
             transforms_app.apply_ui()
+
+        filter_title_slot, filter_content_slot, filter_actions_slot = ui.card()
+
+        with filter_title_slot:
+            html.Span("Category Filter", classes="text-h6")
+
+        with filter_content_slot:
+            filtering_app.filter_operator_ui()
+            filtering_app.filter_options_ui()
+
+        with filter_actions_slot:
+            filtering_app.filter_apply_ui()
 
 
 def dataset_view(

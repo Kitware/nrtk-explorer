@@ -78,6 +78,7 @@ def parameters(dataset_paths=[], embeddings_app=None, filtering_app=None, transf
         (annotations_title_slot, annotations_content_slot, _) = ui.card()
 
         with annotations_title_slot:
+            quasar.QToggle(v_model=("annotations_enabled_switch", False))
             html.Span("Annotations", classes="text-h6")
 
         with annotations_content_slot:

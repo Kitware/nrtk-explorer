@@ -54,3 +54,7 @@ def change_checker(state: State, key: str, trigger_check=lambda a, b: a != b):
         return callback
 
     return decorator
+
+
+def boolean_turned_true(old, new):
+    return old is False and new

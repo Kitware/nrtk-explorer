@@ -35,12 +35,6 @@ COLUMNS = [
     },
 ]
 
-TRANSFORM_COLUMNS = [
-    "transformed",
-    "ground_truth_to_transformed_detection_score",
-    "original_detection_to_transformed_detection_score",
-]
-
 
 server = get_server()
 state, context, ctrl = server.state, server.context, server.controller
@@ -50,24 +44,36 @@ state.columns = COLUMNS
 state.visible_columns = [col["name"] for col in COLUMNS]
 
 
-columns_dependent_on_transformed_column = [
+def make_dependent_columns_handler(columns):
+    toggle_column = columns[0]
+    dependent_columns = columns[1:]
+
+    def column_toggler(**kwargs):
+        dependant_columns_visible = any(col in state.visible_columns for col in dependent_columns)
+        if toggle_column not in state.visible_columns and dependant_columns_visible:
+            state.visible_columns = [
+                col for col in state.visible_columns if col not in dependent_columns
+            ]
+
+    return column_toggler
+
+
+ORIGINAL_COLUMNS = [
+    "original",
+    "original_ground_to_original_detection_score",
+]
+
+
+state.change("visible_columns")(make_dependent_columns_handler(ORIGINAL_COLUMNS))
+
+
+TRANSFORM_COLUMNS = [
+    "transformed",
     "ground_truth_to_transformed_detection_score",
     "original_detection_to_transformed_detection_score",
 ]
 
-
-@state.change("visible_columns")
-def hide_transformed_dependant_columns(**kwargs):
-    dependant_columns_visible = any(
-        col in state.visible_columns for col in columns_dependent_on_transformed_column
-    )
-    if "transformed" not in state.visible_columns and dependant_columns_visible:
-        state.visible_columns = [
-            col
-            for col in state.visible_columns
-            if col not in columns_dependent_on_transformed_column
-        ]
-        return
+state.change("visible_columns")(make_dependent_columns_handler(TRANSFORM_COLUMNS))
 
 
 state.client_only("image_list_ids")

@@ -24,7 +24,12 @@ from nrtk_explorer.library.coco_utils import (
     convert_from_predictions_to_first_arg,
     compute_score,
 )
-from nrtk_explorer.app.trame_utils import SetStateAsync, change_checker, delete_state
+from nrtk_explorer.app.trame_utils import (
+    SetStateAsync,
+    change_checker,
+    delete_state,
+    boolean_turned_true,
+)
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
@@ -38,7 +43,7 @@ from nrtk_explorer.app.images.stateful_annotations import (
     make_stateful_annotations,
     make_stateful_predictor,
 )
-from nrtk_explorer.app.ui.image_list import TRANSFORM_COLUMNS
+from nrtk_explorer.app.ui.image_list import TRANSFORM_COLUMNS, ORIGINAL_COLUMNS
 
 import nrtk_explorer.app.images.image_server  # noqa module level side effects
 
@@ -119,30 +124,59 @@ class TransformsApp(Applet):
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
-        # Transform enabled control ###
-        def just_enabled_transform(old, new):
-            return old is False and new
+        # Annotations enabled control via predictions_original_images_enabled ###
+        def update_prediction_original_images_enabled(**kwargs):
+            self.state.predictions_original_images_enabled = (
+                "original" in self.state.visible_columns and self.state.annotations_enabled_switch
+            )
 
-        def turn_on_transform_columns(_=None, __=None):
-            if any(col not in TRANSFORM_COLUMNS for col in self.state.visible_columns):
-                self.state.visible_columns = list(
-                    set([*self.state.visible_columns, *TRANSFORM_COLUMNS])
-                )
-
-        change_checker(self.state, "transform_enabled_switch", just_enabled_transform)(
-            turn_on_transform_columns
+        update_prediction_original_images_enabled()
+        self.state.change("visible_columns", "annotations_enabled_switch")(
+            update_prediction_original_images_enabled
         )
 
-        self.state.transform_enabled = True
+        def on_change_predictions_original_images_enabled(**kwargs):
+            if self.state.predictions_original_images_enabled:
+                # run whole pipeline, so possibly compute transforms too, as transforms compute scores based on original images
+                self._start_update_images(self.visible_ids)
 
+        self.state.change("predictions_original_images_enabled")(
+            on_change_predictions_original_images_enabled
+        )
+
+        def turn_on_original_columns(_=None, __=None):
+            if any(col not in ORIGINAL_COLUMNS for col in self.state.visible_columns):
+                self.state.visible_columns = list(
+                    set([*self.state.visible_columns, *ORIGINAL_COLUMNS])
+                )
+
+        change_checker(self.state, "annotations_enabled_switch", boolean_turned_true)(
+            turn_on_original_columns
+        )
+
+        def update_original_related_visible_columns(**kwargs):
+            if self.state.predictions_original_images_enabled:
+                turn_on_original_columns()
+            else:
+                if "original" in self.state.visible_columns:
+                    self.state.visible_columns = [
+                        col for col in self.state.visible_columns if col != "original"
+                    ]
+
+        update_original_related_visible_columns()
+        self.state.change("predictions_original_images_enabled")(
+            update_original_related_visible_columns
+        )
+        # end annotations enabled control ###
+
+        # Transform enabled control via transform_enabled ###
         def update_transform_enabled(**kwargs):
             self.state.transform_enabled = (
                 "transformed" in self.state.visible_columns and self.state.transform_enabled_switch
             )
 
-        self.state.change("visible_columns")(update_transform_enabled)
-        self.state.change("transform_enabled_switch")(update_transform_enabled)
         update_transform_enabled()
+        self.state.change("visible_columns", "transform_enabled_switch")(update_transform_enabled)
 
         def transform_became_enabled(old, new):
             return old is False and new
@@ -151,7 +185,17 @@ class TransformsApp(Applet):
             self.schedule_transformed_images
         )
 
-        def update_visible_columns(**kwargs):
+        def turn_on_transform_columns(_=None, __=None):
+            if any(col not in TRANSFORM_COLUMNS for col in self.state.visible_columns):
+                self.state.visible_columns = list(
+                    set([*self.state.visible_columns, *TRANSFORM_COLUMNS])
+                )
+
+        change_checker(self.state, "transform_enabled_switch", boolean_turned_true)(
+            turn_on_transform_columns
+        )
+
+        def update_transform_related_visible_columns(**kwargs):
             if self.state.transform_enabled:
                 turn_on_transform_columns()
             else:
@@ -160,8 +204,8 @@ class TransformsApp(Applet):
                         col for col in self.state.visible_columns if col != "transformed"
                     ]
 
-        self.state.change("transform_enabled")(update_visible_columns)
-        update_visible_columns()
+        update_transform_related_visible_columns()
+        self.state.change("transform_enabled")(update_transform_related_visible_columns)
         # End transform enabled control ###
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
@@ -227,32 +271,36 @@ class TransformsApp(Applet):
                 self.detector, id_to_matching_size_img
             )
 
-        predictions = convert_from_predictions_to_second_arg(annotations)
-        scores = compute_score(
-            dataset_ids,
-            self.predictions_original_images,
-            predictions,
-        )
-        for id, score in scores:
-            update_image_meta(
-                self.state,
-                id,
-                {"original_detection_to_transformed_detection_score": score},
+        # depends on original images predictions
+        if self.state.predictions_original_images_enabled:
+            predictions = convert_from_predictions_to_second_arg(annotations)
+            scores = compute_score(
+                dataset_ids,
+                self.predictions_original_images,
+                predictions,
             )
+            for id, score in scores:
+                update_image_meta(
+                    self.state,
+                    id,
+                    {"original_detection_to_transformed_detection_score": score},
+                )
 
-        ground_truth_annotations = self.ground_truth_annotations.get_annotations(
-            dataset_ids
-        ).values()
-        ground_truth_predictions = convert_from_ground_truth_to_first_arg(ground_truth_annotations)
-        scores = compute_score(
-            dataset_ids,
-            ground_truth_predictions,
-            predictions,
-        )
-        for id, score in scores:
-            update_image_meta(
-                self.state, id, {"ground_truth_to_transformed_detection_score": score}
+            ground_truth_annotations = self.ground_truth_annotations.get_annotations(
+                dataset_ids
+            ).values()
+            ground_truth_predictions = convert_from_ground_truth_to_first_arg(
+                ground_truth_annotations
             )
+            scores = compute_score(
+                dataset_ids,
+                ground_truth_predictions,
+                predictions,
+            )
+            for id, score in scores:
+                update_image_meta(
+                    self.state, id, {"ground_truth_to_transformed_detection_score": score}
+                )
 
         id_to_image = {
             dataset_id_to_transformed_image_id(id): get_transformed_image(transform, id)
@@ -264,6 +312,9 @@ class TransformsApp(Applet):
         self.state.flush()  # needed cuz in async func and modifying state or else UI does not update
 
     def compute_predictions_original_images(self, dataset_ids):
+        if not self.state.predictions_original_images_enabled:
+            return
+
         image_id_to_image = {dataset_id_to_image_id(id): get_image(id) for id in dataset_ids}
         annotations = self.original_detection_annotations.get_annotations(
             self.detector, image_id_to_image

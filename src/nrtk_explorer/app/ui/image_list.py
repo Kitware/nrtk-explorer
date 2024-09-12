@@ -82,7 +82,7 @@ TRANSFORM_COLUMNS = [
 make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
 
 
-state.client_only("image_list_ids")
+state.client_only("image_list_ids", "image_size_image_list")
 
 
 # create reactive annotation variables so ImageDetection component has live Refs
@@ -216,7 +216,7 @@ class ImageList(html.Div):
                 ):
                     with quasar.QTd():
                         ImageDetection(
-                            style="max-width: 10rem; float: inline-end;",
+                            style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
                             identifier=("props.row.original",),
                             src=("props.row.original_src",),
                             annotations=("props.row.groundTruthAnnotations",),
@@ -233,7 +233,7 @@ class ImageList(html.Div):
                 ):
                     with quasar.QTd():
                         ImageDetection(
-                            style="max-width: 10rem; float: inline-end;",
+                            style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
                             identifier=("props.row.original",),
                             src=("props.row.original_src",),
                             annotations=("props.row.originalAnnotations",),
@@ -253,7 +253,7 @@ class ImageList(html.Div):
                 ):
                     with quasar.QTd():
                         ImageDetection(
-                            style="max-width: 10rem; float: inline-end;",
+                            style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
                             identifier=("props.row.transformed",),
                             src=("get(props.row.transformed)",),
                             annotations=("props.row.transformedAnnotations",),
@@ -347,6 +347,17 @@ class ImageList(html.Div):
                     __properties=[("v_slot_top", "v-slot:top='props'")],
                 ):
                     html.Span("Sampled Images", classes="col q-table__title")
+                    quasar.QIcon(name="zoom_in", size="1.2rem", classes="q-px-sm")
+                    html.Span("Image Size")
+                    quasar.QSlider(
+                        v_model=("image_size_image_list", 12),
+                        raw_attrs=[
+                            ":min='5'",
+                            ":max='40'",
+                        ],
+                        style="width: 12rem;",
+                        classes="q-mx-md",
+                    )
                     quasar.QSelect(
                         v_model=("visible_columns"),
                         multiple=True,

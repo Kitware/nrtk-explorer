@@ -1,6 +1,7 @@
 from pathlib import Path
 from trame.widgets import html, quasar, client
 from trame.app import get_server
+from nrtk_explorer.app.trame_utils import change_checker
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 from nrtk_explorer.app.images.image_ids import get_image_state_keys
 
@@ -44,18 +45,23 @@ state.columns = COLUMNS
 state.visible_columns = [col["name"] for col in COLUMNS]
 
 
-def make_dependent_columns_handler(columns):
+def make_dependent_columns_handler(state, columns):
     toggle_column = columns[0]
     dependent_columns = columns[1:]
 
-    def column_toggler(**kwargs):
+    def column_toggler(old_columns, new_columns):
         dependant_columns_visible = any(col in state.visible_columns for col in dependent_columns)
         if toggle_column not in state.visible_columns and dependant_columns_visible:
             state.visible_columns = [
                 col for col in state.visible_columns if col not in dependent_columns
             ]
+            return
 
-    return column_toggler
+        toggle_column_turned_on = toggle_column in new_columns and toggle_column not in old_columns
+        if toggle_column_turned_on:
+            state.visible_columns = list(set([*state.visible_columns, *dependent_columns]))
+
+    change_checker(state, "visible_columns")(column_toggler)
 
 
 ORIGINAL_COLUMNS = [
@@ -64,7 +70,7 @@ ORIGINAL_COLUMNS = [
 ]
 
 
-state.change("visible_columns")(make_dependent_columns_handler(ORIGINAL_COLUMNS))
+make_dependent_columns_handler(state, ORIGINAL_COLUMNS)
 
 
 TRANSFORM_COLUMNS = [
@@ -73,7 +79,7 @@ TRANSFORM_COLUMNS = [
     "original_detection_to_transformed_detection_score",
 ]
 
-state.change("visible_columns")(make_dependent_columns_handler(TRANSFORM_COLUMNS))
+make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
 
 
 state.client_only("image_list_ids")

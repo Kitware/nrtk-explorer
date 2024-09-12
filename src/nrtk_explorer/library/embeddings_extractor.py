@@ -10,10 +10,6 @@ from torch.utils.data import DataLoader, Dataset
 IMAGE_MODEL_RESOLUTION = (224, 224)
 
 
-def prepare_for_model(img):
-    """Prepare image for model input"""
-
-
 # Create a dataset for images
 class ImagesDataset(Dataset):
     def __init__(self, images):

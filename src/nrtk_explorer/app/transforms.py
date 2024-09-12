@@ -3,12 +3,13 @@ Define your classes and create the instances that you need to expose
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Callable
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
 from trame.app import get_server, asynchronous
+from trame_server import Server
 
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
@@ -24,12 +25,8 @@ from nrtk_explorer.library.coco_utils import (
     convert_from_predictions_to_first_arg,
     compute_score,
 )
-from nrtk_explorer.app.trame_utils import (
-    SetStateAsync,
-    change_checker,
-    delete_state,
-    boolean_turned_true,
-)
+from nrtk_explorer.app.trame_utils import SetStateAsync, change_checker, delete_state
+
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
@@ -50,6 +47,45 @@ import nrtk_explorer.app.images.image_server  # noqa module level side effects
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+class ProcessingStep:
+    def __init__(
+        self,
+        server: Server,
+        feature_enabled_state_key: str,
+        gui_switch_key: str,
+        column_name: str,
+        enabled_callback: Callable,
+    ):
+        self.state = server.state
+        self.feature_enabled_state_key = feature_enabled_state_key
+        self.gui_switch_key = gui_switch_key
+        self.enabled_callback = enabled_callback
+        self.column_name = column_name
+        self.state.change(self.gui_switch_key)(self.on_gui_switch)
+        self.update_feature_enabled_state()
+        self.state.change("visible_columns", self.gui_switch_key)(
+            self.update_feature_enabled_state
+        )
+        self.state.change(self.feature_enabled_state_key)(self.on_change_feature_enabled)
+
+    def on_gui_switch(self, **kwargs):
+        if self.state[self.gui_switch_key]:
+            self.state.visible_columns = list(set([*self.state.visible_columns, self.column_name]))
+        else:
+            self.state.visible_columns = [
+                col for col in self.state.visible_columns if col != self.column_name
+            ]
+
+    def update_feature_enabled_state(self, **kwargs):
+        self.state[self.feature_enabled_state_key] = (
+            self.column_name in self.state.visible_columns and self.state[self.gui_switch_key]
+        )
+
+    def on_change_feature_enabled(self, **kwargs):
+        if self.state[self.feature_enabled_state_key]:
+            self.enabled_callback()
 
 
 class TransformsApp(Applet):
@@ -124,89 +160,22 @@ class TransformsApp(Applet):
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
-        # Annotations enabled control via predictions_original_images_enabled ###
-        def update_prediction_original_images_enabled(**kwargs):
-            self.state.predictions_original_images_enabled = (
-                "original" in self.state.visible_columns and self.state.annotations_enabled_switch
-            )
-
-        update_prediction_original_images_enabled()
-        self.state.change("visible_columns", "annotations_enabled_switch")(
-            update_prediction_original_images_enabled
+        # On annotations enabled, run whole pipeline to possibly compute transforms. Why? Transforms compute scores are based on original images
+        self.annotations_enable_control = ProcessingStep(
+            server,
+            feature_enabled_state_key="predictions_original_images_enabled",
+            gui_switch_key="annotations_enabled_switch",
+            column_name=ORIGINAL_COLUMNS[0],
+            enabled_callback=self._start_update_images,
         )
 
-        def on_change_predictions_original_images_enabled(**kwargs):
-            if self.state.predictions_original_images_enabled:
-                # run whole pipeline, so possibly compute transforms too, as transforms compute scores based on original images
-                self._start_update_images(self.visible_ids)
-
-        self.state.change("predictions_original_images_enabled")(
-            on_change_predictions_original_images_enabled
+        self.transform_enable_control = ProcessingStep(
+            server,
+            feature_enabled_state_key="transform_enabled",
+            gui_switch_key="transform_enabled_switch",
+            column_name=TRANSFORM_COLUMNS[0],
+            enabled_callback=self.schedule_transformed_images,
         )
-
-        def turn_on_original_columns(_=None, __=None):
-            if any(col not in ORIGINAL_COLUMNS for col in self.state.visible_columns):
-                self.state.visible_columns = list(
-                    set([*self.state.visible_columns, *ORIGINAL_COLUMNS])
-                )
-
-        change_checker(self.state, "annotations_enabled_switch", boolean_turned_true)(
-            turn_on_original_columns
-        )
-
-        def update_original_related_visible_columns(**kwargs):
-            if self.state.predictions_original_images_enabled:
-                turn_on_original_columns()
-            else:
-                if "original" in self.state.visible_columns:
-                    self.state.visible_columns = [
-                        col for col in self.state.visible_columns if col != "original"
-                    ]
-
-        update_original_related_visible_columns()
-        self.state.change("predictions_original_images_enabled")(
-            update_original_related_visible_columns
-        )
-        # end annotations enabled control ###
-
-        # Transform enabled control via transform_enabled ###
-        def update_transform_enabled(**kwargs):
-            self.state.transform_enabled = (
-                "transformed" in self.state.visible_columns and self.state.transform_enabled_switch
-            )
-
-        update_transform_enabled()
-        self.state.change("visible_columns", "transform_enabled_switch")(update_transform_enabled)
-
-        def transform_became_enabled(old, new):
-            return old is False and new
-
-        change_checker(self.state, "transform_enabled", transform_became_enabled)(
-            self.schedule_transformed_images
-        )
-
-        def turn_on_transform_columns(_=None, __=None):
-            if any(col not in TRANSFORM_COLUMNS for col in self.state.visible_columns):
-                self.state.visible_columns = list(
-                    set([*self.state.visible_columns, *TRANSFORM_COLUMNS])
-                )
-
-        change_checker(self.state, "transform_enabled_switch", boolean_turned_true)(
-            turn_on_transform_columns
-        )
-
-        def update_transform_related_visible_columns(**kwargs):
-            if self.state.transform_enabled:
-                turn_on_transform_columns()
-            else:
-                if "transformed" in self.state.visible_columns:
-                    self.state.visible_columns = [
-                        col for col in self.state.visible_columns if col != "transformed"
-                    ]
-
-        update_transform_related_visible_columns()
-        self.state.change("transform_enabled")(update_transform_related_visible_columns)
-        # End transform enabled control ###
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
         self.server.controller.apply_transform.add(self.schedule_transformed_images)
@@ -352,17 +321,17 @@ class TransformsApp(Applet):
         async with SetStateAsync(self.state):
             await self.update_transformed_images(dataset_ids)
 
-    def _start_update_images(self, priority_ids):
+    def _start_update_images(self):
         if hasattr(self, "_update_task"):
             self._update_task.cancel()
-        self._update_task = asynchronous.create_task(self._update_images(priority_ids))
+        self._update_task = asynchronous.create_task(self._update_images(self.visible_ids))
 
     def _updating_images(self):
         return hasattr(self, "_update_task") and not self._update_task.done()
 
     def on_scroll(self, visible_ids):
         self.visible_ids = visible_ids
-        self._start_update_images(self.visible_ids)
+        self._start_update_images()
 
     def on_image_hovered(self, id):
         self.state.hovered_id = id

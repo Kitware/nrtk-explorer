@@ -50,7 +50,7 @@ class FilteringApp(Applet):
         self.state.change("filter_categories")(self.on_filter_categories_change)
         self.state.change("filter_operator")(self.on_filter_categories_change)
 
-    def on_apply_click(self):
+    def on_select_click(self):
         if self.state.filter_not:
             self._on_apply_filter(self._not_filter)
         else:
@@ -86,8 +86,8 @@ class FilteringApp(Applet):
     def filter_apply_ui(self):
         with html.Div(trame_server=self.server):
             quasar.QBtn(
-                "Apply",
-                click=(self.on_apply_click,),
+                "Select Images",
+                click=(self.on_select_click,),
                 flat=True,
             )
 

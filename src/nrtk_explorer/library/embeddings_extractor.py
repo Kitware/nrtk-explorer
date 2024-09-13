@@ -95,4 +95,4 @@ class EmbeddingsExtractor:
                 torch.cuda.empty_cache()
 
         # We should never reach here
-        return None
+        return []

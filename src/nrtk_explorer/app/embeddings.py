@@ -77,6 +77,10 @@ class EmbeddingsApp(Applet):
         self.state.num_elements_disabled = False
 
     def compute_points(self, fit_features, features):
+        if len(features) == 0:
+            # reduce will fail if no features
+            return []
+
         if self.state.tab == "PCA":
             return self.reducer.reduce(
                 name="PCA",

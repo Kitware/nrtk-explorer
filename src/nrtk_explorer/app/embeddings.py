@@ -4,7 +4,7 @@ from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library.dataset import get_dataset
 from nrtk_explorer.app.trame_utils import SetStateAsync
 from nrtk_explorer.app.applet import Applet
-import nrtk_explorer.test_data
+
 from nrtk_explorer.app.images.image_ids import (
     image_id_to_dataset_id,
     dataset_id_to_transformed_image_id,
@@ -32,6 +32,7 @@ class EmbeddingsApp(Applet):
         # Local initialization if standalone
         self.is_standalone_app = self.server.root_server == self.server
         if self.is_standalone_app and datasets:
+            self.state.dataset_ids = []
             self.state.current_dataset = str(Path(datasets[0]).resolve())
             self.on_current_dataset_change()
 

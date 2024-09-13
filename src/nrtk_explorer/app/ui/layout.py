@@ -63,7 +63,7 @@ class NrtkDrawer(html.Div):
             with ui.CollapsibleCard() as card:
                 with card.slot_title:
                     quasar.QToggle(v_model=("annotations_enabled_switch", False))
-                    html.Span("Annotations", classes="text-h6")
+                    html.Span("Model Inference", classes="text-h6")
                 with card.slot_content:
                     quasar.QSelect(
                         label="Object detection Model",
@@ -102,7 +102,7 @@ class NrtkDrawer(html.Div):
                     filtering_app.filter_apply_ui()
 
 
-class Spliter(quasar.QSplitter):
+class Splitter(quasar.QSplitter):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self:
@@ -149,7 +149,7 @@ class NrtkExplorerLayout(QLayout):
             NrtkToolbar(reload=reload)
             with quasar.QPageContainer():
                 with quasar.QPage():
-                    with Spliter(
+                    with Splitter(
                         model_value=("horizontal_split", HORIZONTAL_SPLIT_DEFAULT_VALUE),
                         classes="inherit-height",
                         before_class="inherit-height zero-height scroll",
@@ -163,7 +163,7 @@ class NrtkExplorerLayout(QLayout):
                                 transforms_app=transforms_app,
                             )
                         with split_drawer_main.slot_after:
-                            with Spliter(
+                            with Splitter(
                                 v_model=("vertical_split", VERTICAL_SPLIT_DEFAULT_VALUE),
                                 limits=("[0,100]",),
                                 horizontal=True,

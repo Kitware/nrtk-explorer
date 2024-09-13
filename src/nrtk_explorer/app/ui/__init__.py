@@ -1,6 +1,6 @@
-from .layout import build_layout
+from .layout import NrtkExplorerLayout
 from .image_list import ImageList
-from .collapsible_card import card
+from .collapsible_card import CollapsibleCard
 
 
 def reload(m=None):
@@ -14,7 +14,7 @@ def reload(m=None):
 
 
 __all__ = [
-    "build_layout",
+    "NrtkExplorerLayout",
     "ImageList",
-    "card",
+    "CollapsibleCard",
 ]

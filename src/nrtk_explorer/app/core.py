@@ -24,8 +24,6 @@ logger.setLevel(logging.INFO)
 html.Template.slot_names.add("before")
 html.Template.slot_names.add("after")
 
-HORIZONTAL_SPLIT_DEFAULT_VALUE = 17
-VERTICAL_SPLIT_DEFAULT_VALUE = 40
 
 DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
@@ -55,10 +53,6 @@ class Engine(Applet):
 
         self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
 
-        self.state.horizontal_split = HORIZONTAL_SPLIT_DEFAULT_VALUE
-        self.state.vertical_split = VERTICAL_SPLIT_DEFAULT_VALUE
-        self.state.client_only("horizontal_split", "vertical_split")
-
         self._transforms_app = TransformsApp(server=self.server.create_child_server())
 
         self._embeddings_app = EmbeddingsApp(
@@ -75,9 +69,6 @@ class Engine(Applet):
         self._embeddings_app.set_on_hover(self._transforms_app.on_image_hovered)
         self._transforms_app.set_on_hover(self._embeddings_app.on_image_hovered)
         self._filtering_app.set_on_apply_filter(self.on_filter_apply)
-
-        # Set state variable
-        self.state.trame__title = "nrtk_explorer"
 
         # Bind instance methods to controller
         self.ctrl.on_server_reload = self._build_ui
@@ -160,7 +151,7 @@ class Engine(Applet):
             ui.reload(ui)
             extra_args["reload"] = self._build_ui
 
-        self.ui = ui.build_layout(
+        self.ui = ui.NrtkExplorerLayout(
             server=self.server,
             dataset_paths=self.input_paths,
             embeddings_app=self._embeddings_app,

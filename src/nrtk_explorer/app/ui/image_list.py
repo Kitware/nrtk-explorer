@@ -347,18 +347,28 @@ class ImageList(html.Div):
                     __properties=[("v_slot_top", "v-slot:top='props'")],
                 ):
                     html.Span("Sampled Images", classes="col q-table__title")
+                    # Image size
                     quasar.QIcon(name="zoom_in", size="1.2rem", classes="q-px-sm")
                     html.Span("Image Size")
                     quasar.QSlider(
+                        classes="q-pl-sm q-pr-lg",
                         v_model=("image_size_image_list", 12),
                         raw_attrs=[
                             ":min='5'",
                             ":max='40'",
                         ],
                         style="width: 12rem;",
-                        classes="q-mx-md",
+                    )
+                    # Annotations visible switch
+                    quasar.QIcon(name="picture_in_picture", size="1.2rem", classes="q-pl-lg q-pr-sm")
+                    quasar.QBtnToggle(
+                        v_model=("show_annotations_on_images", True),
+                        raw_attrs=[
+                            ":options=\"[{label: 'Show Annotations', value: true}, {label: 'Hide Annotations', value: false}]\"",
+                        ],
                     )
                     quasar.QSelect(
+                        classes="q-pl-xl q-pr-lg",
                         v_model=("visible_columns"),
                         multiple=True,
                         dense=True,
@@ -373,11 +383,11 @@ class ImageList(html.Div):
                         ],
                     )
                     quasar.QBtn(
+                        classes="q-pl-lg q-pr-xl",
                         icon="fullscreen",
                         dense=True,
                         flat=True,
                         click="props.toggleFullscreen",
-                        classes="q-mx-md",
                     )
                     quasar.QBtnToggle(
                         v_model=("image_list_view_mode", "table"),
@@ -386,9 +396,9 @@ class ImageList(html.Div):
                         ],
                     )
                     quasar.QInput(
+                        classes="q-pl-xl",
                         v_model=("image_list_search", ""),
                         debounce="300",
                         label="Search",
                         dense=True,
-                        classes="col-3 q-pl-md",
                     )

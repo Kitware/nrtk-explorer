@@ -178,7 +178,7 @@ class TransformsApp(Applet):
         )
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
-        self.server.controller.apply_transform.add(self.schedule_transformed_images)
+        self.server.controller.apply_transform.add(self.on_apply_transform)
         self._on_hover_fn = None
 
     @property
@@ -203,6 +203,11 @@ class TransformsApp(Applet):
     def on_transform(self, *args, **kwargs):
         if self._on_transform_fn:
             self._on_transform_fn(*args, **kwargs)
+
+    def on_apply_transform(self, **kwargs):
+        # Turn on switch if user clicked lower apply button
+        self.state.transform_enabled_switch = True
+        self.schedule_transformed_images()
 
     def schedule_transformed_images(self, *args, **kwargs):
         logger.debug("schedule_transformed_images")

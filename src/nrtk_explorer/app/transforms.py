@@ -25,7 +25,7 @@ from nrtk_explorer.library.coco_utils import (
     convert_from_predictions_to_first_arg,
     compute_score,
 )
-from nrtk_explorer.app.trame_utils import SetStateAsync, change_checker, delete_state
+from nrtk_explorer.app.trame_utils import change_checker, delete_state
 
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
@@ -231,14 +231,16 @@ class TransformsApp(Applet):
 
         id_to_matching_size_img = {}
         for id in dataset_ids:
-            async with SetStateAsync(self.state):
+            with self.state:
                 transformed = get_transformed_image(transform, id)
                 id_to_matching_size_img[dataset_id_to_transformed_image_id(id)] = transformed
+            await self.server.network_completion
 
-        async with SetStateAsync(self.state):
+        with self.state:
             annotations = self.transformed_detection_annotations.get_annotations(
                 self.detector, id_to_matching_size_img
             )
+        await self.server.network_completion
 
         # depends on original images predictions
         if self.state.predictions_original_images_enabled:
@@ -312,14 +314,17 @@ class TransformsApp(Applet):
             )
 
     async def _update_images(self, dataset_ids):
-        async with SetStateAsync(self.state):
+        with self.state:
             self.ground_truth_annotations.get_annotations(dataset_ids)  # updates state
+        await self.server.network_completion
 
-        async with SetStateAsync(self.state):
+        with self.state:
             self.compute_predictions_original_images(dataset_ids)
+        await self.server.network_completion
 
-        async with SetStateAsync(self.state):
+        with self.state:
             await self.update_transformed_images(dataset_ids)
+        await self.server.network_completion
 
     def _start_update_images(self):
         if hasattr(self, "_update_task"):

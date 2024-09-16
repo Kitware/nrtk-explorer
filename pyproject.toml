@@ -38,10 +38,9 @@ dependencies = [
     "timm>=1.0.3",
     "torch",
     "torchvision",
-    "trame",
-    "trame-client>=2.15.0",
+    "trame>=3.6",
     "trame-quasar",
-    "trame-server>=2.15.0",
+    "trame-server>=3.2",
     "transformers",
     "umap-learn",
 ]

@@ -1,4 +1,3 @@
-import asyncio
 from typing import Hashable, Callable
 from trame_server.state import State
 
@@ -6,28 +5,6 @@ from trame_server.state import State
 def delete_state(state: State, key: Hashable):
     if state.has(key) and state[key] is not None:
         state[key] = None
-
-
-class SetStateAsync:
-    """
-    Usage::
-        async with SetStateAsync(state):
-            state["key"] = value
-    """
-
-    def __init__(self, state: State):
-        self.state = state
-
-    async def __aenter__(self):
-        await asyncio.sleep(0)  # give task.cancel() a chance to trigger early exit
-        return self.state
-
-    async def __aexit__(self, exc_type, exc, tb):
-        self.state.flush()
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
 
 
 def change_checker(state: State, key: str, trigger_check=lambda a, b: a != b):

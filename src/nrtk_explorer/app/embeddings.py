@@ -2,7 +2,6 @@ from nrtk_explorer.widgets.nrtk_explorer import ScatterPlot
 from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
 from nrtk_explorer.library.dataset import get_dataset
-from nrtk_explorer.app.trame_utils import SetStateAsync
 from nrtk_explorer.app.applet import Applet
 
 from nrtk_explorer.app.images.image_ids import (
@@ -111,8 +110,11 @@ class EmbeddingsApp(Applet):
         self.state.points_transformations = {}  # ID to points
 
     async def compute_source_points(self):
-        async with SetStateAsync(self.state):
+        with self.state:
             self.state.is_loading = True
+
+        # Don't lock server before enabling the spinner on client
+        await self.server.network_completion
 
         images = [get_image(id) for id in self.state.dataset_ids]
         self.features = self.extractor.extract(
@@ -131,7 +133,7 @@ class EmbeddingsApp(Applet):
         self.state.user_selected_ids = []
         self.state.camera_position = []
 
-        async with SetStateAsync(self.state):
+        with self.state:
             self.state.is_loading = False
 
     def update_points(self, **kwargs):

@@ -177,7 +177,7 @@ class TransformsApp(Applet):
             enabled_callback=self.schedule_transformed_images,
         )
 
-        self.server.controller.add("on_server_ready")(self.on_server_ready)
+        self.server.controller.on_server_ready.add(self.on_server_ready)
         self.server.controller.apply_transform.add(self.on_apply_transform)
         self._on_hover_fn = None
 

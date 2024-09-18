@@ -122,6 +122,37 @@ def update_pagination(**kwargs):
         state.pagination = {**state.pagination, "rowsPerPage": 0}
 
 
+class ImageWithSpinner(html.Div):
+    def __init__(
+        self,
+        identifier=None,
+        src=None,
+        annotations=None,
+        categories=None,
+        selected=None,
+        hover=None,
+        containerSelector=None,
+        **kwargs,
+    ):
+        super().__init__(
+            classes="relative-position",
+            **kwargs,
+        )
+        with self:
+            ImageDetection(
+                identifier=identifier,
+                src=src,
+                annotations=(f"show_annotations_on_images ? {annotations[0]} : []",),
+                categories=categories,
+                selected=selected,
+                hover=hover,
+                containerSelector=containerSelector,
+            )
+            quasar.QInnerLoading(
+                showing=(f"!{src[0]} || (show_annotations_on_images && !{annotations[0]}.value)",)
+            )
+
+
 class ImageList(html.Div):
     instances = []
 
@@ -180,6 +211,7 @@ class ImageList(html.Div):
                                     original: `img_${id}`,
                                     original_src: `original-image/${id}`,
                                     transformed: `transformed_img_${id}`,
+                                    transformed_src: get(`transformed_img_${id}`).value,
                                     groundTruthAnnotations: get(`result_${id}`),
                                     originalAnnotations: get(`result_img_${id}`),
                                     transformedAnnotations: get(`result_transformed_img_${id}`),
@@ -215,7 +247,7 @@ class ImageList(html.Div):
                     __properties=[("v_slot_body_cell_truth", "v-slot:body-cell-truth='props'")],
                 ):
                     with quasar.QTd():
-                        ImageDetection(
+                        ImageWithSpinner(
                             style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
                             identifier=("props.row.original",),
                             src=("props.row.original_src",),
@@ -232,7 +264,7 @@ class ImageList(html.Div):
                     ],
                 ):
                     with quasar.QTd():
-                        ImageDetection(
+                        ImageWithSpinner(
                             style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
                             identifier=("props.row.original",),
                             src=("props.row.original_src",),
@@ -252,10 +284,10 @@ class ImageList(html.Div):
                     ],
                 ):
                     with quasar.QTd():
-                        ImageDetection(
+                        ImageWithSpinner(
                             style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
                             identifier=("props.row.transformed",),
-                            src=("get(props.row.transformed)",),
+                            src=("props.row.transformed_src",),
                             annotations=("props.row.transformedAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.transformed == hovered_id)",),
@@ -278,7 +310,7 @@ class ImageList(html.Div):
                                         "Original: Ground Truth Annotations",
                                         classes="text-center",
                                     )
-                                    ImageDetection(
+                                    ImageWithSpinner(
                                         identifier=("props.row.original",),
                                         src=("props.row.original_src",),
                                         annotations=("props.row.groundTruthAnnotations",),
@@ -297,7 +329,7 @@ class ImageList(html.Div):
                                         "Original: Detection Annotations",
                                         classes="text-center",
                                     )
-                                    ImageDetection(
+                                    ImageWithSpinner(
                                         identifier=("props.row.original",),
                                         src=("props.row.original_src",),
                                         annotations=("props.row.originalAnnotations",),
@@ -316,9 +348,9 @@ class ImageList(html.Div):
                                         "Transformed: Detection Annotations",
                                         classes="text-center",
                                     )
-                                    ImageDetection(
+                                    ImageWithSpinner(
                                         identifier=("props.row.transformed",),
-                                        src=("get(props.row.transformed)",),
+                                        src=("get(props.row.transformed).value",),
                                         annotations=("props.row.transformedAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.transformed == hovered_id)",),

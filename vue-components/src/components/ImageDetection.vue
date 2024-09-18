@@ -239,8 +239,6 @@ function mouseMove(e: MouseEvent) {
 const borderSize = computed(() => (props.selected ? '4' : '0'))
 
 const src = computed(() => unref(props.src))
-
-const showSpinner = computed(() => !src.value || unref(props.annotations) == undefined)
 </script>
 
 <template>
@@ -276,6 +274,5 @@ const showSpinner = computed(() => !src.value || unref(props.annotations) == und
         list-style-type: none;
       "
     ></ul>
-    <q-inner-loading :showing="showSpinner" />
   </div>
 </template>

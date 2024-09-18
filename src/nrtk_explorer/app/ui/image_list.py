@@ -360,12 +360,12 @@ class ImageList(html.Div):
                         style="width: 12rem;",
                     )
                     # Annotations visible switch
-                    quasar.QIcon(name="picture_in_picture", size="1.2rem", classes="q-pl-lg q-pr-sm")
-                    quasar.QBtnToggle(
+                    quasar.QIcon(
+                        name="picture_in_picture", size="1.2rem", classes="q-pl-lg q-pr-sm"
+                    )
+                    html.Span("Show Annotations")
+                    quasar.QToggle(
                         v_model=("show_annotations_on_images", True),
-                        raw_attrs=[
-                            ":options=\"[{label: 'Show Annotations', value: true}, {label: 'Hide Annotations', value: false}]\"",
-                        ],
                     )
                     quasar.QSelect(
                         classes="q-pl-xl q-pr-lg",

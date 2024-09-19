@@ -292,7 +292,8 @@ class TransformsApp(Applet):
             return
 
         image_id_to_image = {
-            dataset_id_to_image_id(id): self.images.get_image(id) for id in dataset_ids
+            dataset_id_to_image_id(id): self.images.get_image_without_cache_eviction(id)
+            for id in dataset_ids
         }
         annotations = self.original_detection_annotations.get_annotations(
             self.detector, image_id_to_image

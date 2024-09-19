@@ -2,14 +2,12 @@ from typing import Any, Callable, List, NamedTuple
 from collections import OrderedDict
 import base64
 import io
-from functools import lru_cache
 from PIL import Image
 from trame.decorators import TrameApp, change, controller
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
-from nrtk_explorer.app.images.annotations import DeleteCallbackRef
 from nrtk_explorer.app.trame_utils import delete_state
 from nrtk_explorer.library.transforms import ImageTransform
 
@@ -47,6 +45,9 @@ class LruCache:
         self.cache: OrderedDict[str, CacheItem] = OrderedDict()
         self.max_size = max_size
 
+    def cache_full(self):
+        return len(self.cache) >= self.max_size
+
     def add_item(
         self,
         key: str,
@@ -63,6 +64,10 @@ class LruCache:
             # stale cached item, clear it
             self.clear_item(key)
             cache_item = None
+
+        if self.cache_full():
+            oldest = next(iter(self.cache))
+            self.clear_item(oldest)
 
         if cache_item:
             # Update callbacks list only if they are not already present
@@ -82,9 +87,6 @@ class LruCache:
             on_add_item(key, item)
 
         self.cache.move_to_end(key)
-        if len(self.cache) > self.max_size:
-            oldest = next(iter(self.cache))
-            self.clear_item(oldest)
 
     def clear_item(self, key: str):
         """Remove a specific item from the cache."""
@@ -138,8 +140,17 @@ class Images:
     def _delete_from_state(self, state_key: str):
         delete_state(self.server.state, state_key)
 
+    def get_image_without_cache_eviction(self, dataset_id: str):
+        image_id = dataset_id_to_image_id(dataset_id)
+        image = self.original_images.get_item(image_id)
+        if not image:
+            image = self._load_image(dataset_id)
+        if not self.original_images.cache_full():
+            self.original_images.add_item(image_id, image)
+        return image
+
     def _load_transformed_image(self, transform: ImageTransform, dataset_id: str):
-        original = self.get_image(dataset_id)
+        original = self.get_image_without_cache_eviction(dataset_id)
         transformed = transform.execute(original)
         # So pixel-wise annotation similarity score works
         if original.size != transformed.size:

@@ -121,7 +121,9 @@ class EmbeddingsApp(Applet):
         # Don't lock server before enabling the spinner on client
         await self.server.network_completion
 
-        images = [self.images.get_image(id) for id in self.state.dataset_ids]
+        images = [
+            self.images.get_image_without_cache_eviction(id) for id in self.state.dataset_ids
+        ]
         self.features = self.extractor.extract(
             images,
             batch_size=int(self.state.model_batch_size),

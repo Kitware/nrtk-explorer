@@ -23,6 +23,7 @@ def is_transformed(image_id: str):
 
 def get_image_state_keys(dataset_id: str):
     return {
+        "original_image": dataset_id_to_image_id(dataset_id),
         "ground_truth": image_id_to_result_id(dataset_id),
         "original_image_detection": image_id_to_result_id(dataset_id_to_image_id(dataset_id)),
         "transformed_image": dataset_id_to_transformed_image_id(dataset_id),

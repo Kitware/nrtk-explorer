@@ -82,25 +82,25 @@ TRANSFORM_COLUMNS = [
 make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
 
 
-state.client_only("image_list_ids", "image_size_image_list")
+state.client_only("image_size_image_list")
 
 
-# create reactive annotation variables so ImageDetection component has live Refs
-@state.change("dataset_ids")
-def init_state(**kwargs):
-    for id in state.dataset_ids:
+def set_image_list_ids(dataset_ids):
+    # create reactive variables so ImageDetection components have live Refs
+    for id in dataset_ids:
         keys = get_image_state_keys(id)
         for key in keys.values():
             if not state.has(key):
                 state[key] = None
+    state.image_list_ids = dataset_ids
 
 
 @state.change("dataset_ids", "user_selected_ids")
 def update_image_list_ids(**kwargs):
     if len(state.user_selected_ids) > 0:
-        state.image_list_ids = state.user_selected_ids
+        set_image_list_ids(state.user_selected_ids)
     else:
-        state.image_list_ids = state.dataset_ids
+        set_image_list_ids(state.dataset_ids)
 
 
 state.pagination = {}
@@ -119,7 +119,7 @@ def update_pagination(**kwargs):
         state.pagination = {**state.pagination, "rowsPerPage": 12}
         ctrl.get_visible_ids()
     else:
-        state.pagination = {**state.pagination, "rowsPerPage": 0}
+        state.pagination = {**state.pagination, "rowsPerPage": 0}  # show all rows
 
 
 class ImageWithSpinner(html.Div):
@@ -202,16 +202,18 @@ class ImageList(html.Div):
                     r"""image_list_ids.map((id) =>
                             {
                                 const meta = get(`meta_${id}`)?.value ?? {original_ground_to_original_detection_score: 0, ground_truth_to_transformed_detection_score: 0, original_detection_to_transformed_detection_score: 0}
+                                const original_id = `img_${id}`
+                                const transformed_id = `transformed_img_${id}`
                                 return {
                                     ...meta,
                                     original_ground_to_original_detection_score: meta.original_ground_to_original_detection_score.toFixed(2),
                                     ground_truth_to_transformed_detection_score: meta.ground_truth_to_transformed_detection_score.toFixed(2),
                                     original_detection_to_transformed_detection_score: meta.original_detection_to_transformed_detection_score.toFixed(2),
                                     id,
-                                    original: `img_${id}`,
-                                    original_src: `original-image/${id}`,
-                                    transformed: `transformed_img_${id}`,
-                                    transformed_src: get(`transformed_img_${id}`).value,
+                                    original: original_id,
+                                    original_src: get(original_id).value,
+                                    transformed: transformed_id,
+                                    transformed_src: get(transformed_id).value,
                                     groundTruthAnnotations: get(`result_${id}`),
                                     originalAnnotations: get(`result_img_${id}`),
                                     transformedAnnotations: get(`result_transformed_img_${id}`),
@@ -350,7 +352,7 @@ class ImageList(html.Div):
                                     )
                                     ImageWithSpinner(
                                         identifier=("props.row.transformed",),
-                                        src=("get(props.row.transformed).value",),
+                                        src=("props.row.transformed_src",),
                                         annotations=("props.row.transformedAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.transformed == hovered_id)",),

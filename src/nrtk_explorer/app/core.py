@@ -7,6 +7,7 @@ from trame_server.utils.namespace import Translator
 from nrtk_explorer.library.filtering import FilterProtocol
 from nrtk_explorer.library.dataset import get_dataset, get_image_fpath
 
+from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.transforms import TransformsApp
 from nrtk_explorer.app.filtering import FilteringApp
@@ -52,11 +53,15 @@ class Engine(Applet):
         self.state.current_dataset = str(Path(self.input_paths[0]).resolve())
 
         self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
+        images = Images(server=self.server)
 
-        self._transforms_app = TransformsApp(server=self.server.create_child_server())
+        self._transforms_app = TransformsApp(
+            server=self.server.create_child_server(), images=images
+        )
 
         self._embeddings_app = EmbeddingsApp(
             server=self.server.create_child_server(),
+            images=images,
         )
 
         filtering_translator = Translator()

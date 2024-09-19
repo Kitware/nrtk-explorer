@@ -235,7 +235,7 @@ class TransformsApp(Applet):
         id_to_matching_size_img = {}
         for id in dataset_ids:
             with self.state:
-                transformed = self.images.get_transformed_image(transform, id)
+                transformed = self.images.get_stateful_transformed_image(transform, id)
                 id_to_matching_size_img[dataset_id_to_transformed_image_id(id)] = transformed
             await self.server.network_completion
 
@@ -322,10 +322,10 @@ class TransformsApp(Applet):
 
     async def _update_images(self, dataset_ids):
         # load images on state for ImageList
-        with self.state:
-            for id in dataset_ids:
-                self.images.get_image(id)
-        await self.server.network_completion
+        for id in dataset_ids:
+            with self.state:
+                self.images.get_stateful_image(id)
+            await self.server.network_completion
 
         with self.state:
             self.ground_truth_annotations.get_annotations(dataset_ids)

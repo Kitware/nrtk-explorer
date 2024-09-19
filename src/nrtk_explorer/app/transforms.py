@@ -32,17 +32,12 @@ from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_transformed_image_id,
 )
 from nrtk_explorer.library.dataset import get_dataset
-from nrtk_explorer.app.images.images import (
-    get_image,
-    get_transformed_image,
-)
+from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.images.stateful_annotations import (
     make_stateful_annotations,
     make_stateful_predictor,
 )
 from nrtk_explorer.app.ui.image_list import TRANSFORM_COLUMNS, ORIGINAL_COLUMNS
-
-import nrtk_explorer.app.images.image_server  # noqa module level side effects
 
 
 logger = logging.getLogger(__name__)
@@ -92,11 +87,14 @@ class TransformsApp(Applet):
     def __init__(
         self,
         server,
+        images=None,
         ground_truth_annotations=None,
         original_detection_annotations=None,
         transformed_detection_annotations=None,
     ):
         super().__init__(server)
+
+        self.images = images or Images(server)
 
         ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(server)
         self.ground_truth_annotations = ground_truth_annotations.annotations_factory
@@ -237,7 +235,7 @@ class TransformsApp(Applet):
         id_to_matching_size_img = {}
         for id in dataset_ids:
             with self.state:
-                transformed = get_transformed_image(transform, id)
+                transformed = self.images.get_transformed_image(transform, id)
                 id_to_matching_size_img[dataset_id_to_transformed_image_id(id)] = transformed
             await self.server.network_completion
 
@@ -279,7 +277,9 @@ class TransformsApp(Applet):
                 )
 
         id_to_image = {
-            dataset_id_to_transformed_image_id(id): get_transformed_image(transform, id)
+            dataset_id_to_transformed_image_id(id): self.images.get_transformed_image(
+                transform, id
+            )
             for id in dataset_ids
         }
 
@@ -291,7 +291,9 @@ class TransformsApp(Applet):
         if not self.state.predictions_original_images_enabled:
             return
 
-        image_id_to_image = {dataset_id_to_image_id(id): get_image(id) for id in dataset_ids}
+        image_id_to_image = {
+            dataset_id_to_image_id(id): self.images.get_image(id) for id in dataset_ids
+        }
         annotations = self.original_detection_annotations.get_annotations(
             self.detector, image_id_to_image
         )
@@ -319,8 +321,14 @@ class TransformsApp(Applet):
             )
 
     async def _update_images(self, dataset_ids):
+        # load images on state for ImageList
         with self.state:
-            self.ground_truth_annotations.get_annotations(dataset_ids)  # updates state
+            for id in dataset_ids:
+                self.images.get_image(id)
+        await self.server.network_completion
+
+        with self.state:
+            self.ground_truth_annotations.get_annotations(dataset_ids)
         await self.server.network_completion
 
         with self.state:

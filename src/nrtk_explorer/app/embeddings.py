@@ -10,7 +10,7 @@ from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     is_transformed,
 )
-from nrtk_explorer.app.images.images import get_image
+from nrtk_explorer.app.images.images import Images
 
 from pathlib import Path
 
@@ -20,10 +20,16 @@ from trame.app import get_server, asynchronous
 
 
 class EmbeddingsApp(Applet):
-    def __init__(self, server, datasets=None):
+    def __init__(
+        self,
+        server,
+        datasets=None,
+        images=None,
+    ):
         super().__init__(server)
 
         self._dataset_paths = datasets
+        self.images = images or Images(server)
         self._on_hover_fn = None
         self._ui = None
         self.reducer = dimension_reducers.DimReducerManager()
@@ -71,8 +77,7 @@ class EmbeddingsApp(Applet):
         if self.context.dataset is None:
             self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
 
-        self.images = list(self.context.dataset.imgs.values())
-        self.state.num_elements_max = len(self.images)
+        self.state.num_elements_max = len(list(self.context.dataset.imgs))
         self.state.num_elements_disabled = False
 
     def compute_points(self, fit_features, features):
@@ -116,7 +121,7 @@ class EmbeddingsApp(Applet):
         # Don't lock server before enabling the spinner on client
         await self.server.network_completion
 
-        images = [get_image(id) for id in self.state.dataset_ids]
+        images = [self.images.get_image(id) for id in self.state.dataset_ids]
         self.features = self.extractor.extract(
             images,
             batch_size=int(self.state.model_batch_size),

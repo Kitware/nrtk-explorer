@@ -1,12 +1,12 @@
-from typing import Any, Callable, Dict, Sequence
-from collections import OrderedDict
+from typing import Dict, Sequence
 from functools import lru_cache, partial
 from PIL import Image
+from nrtk_explorer.app.images.cache import LruCache
 from nrtk_explorer.library.object_detector import ObjectDetector
 from nrtk_explorer.library.coco_utils import partition
 
 
-ANNOTATION_CACHE_SIZE = 500
+ANNOTATION_CACHE_SIZE = 1000
 
 
 class DeleteCallbackRef:
@@ -57,58 +57,15 @@ class GroundTruthAnnotations:
         self.get_annotations_for_image.cache_clear()
 
 
-class LruCache:
-    """Least recently accessed item is removed when the cache is full."""
-
-    def __init__(
-        self,
-        max_size: int,
-        on_add_item: Callable[[str, Any], None],
-        on_clear_item: Callable[[str], None],
-    ):
-        self.cache: OrderedDict[str, Any] = OrderedDict()
-        self.max_size = max_size
-        self.on_add_item = on_add_item
-        self.on_clear_item = on_clear_item
-
-    def add_item(self, key: str, item):
-        """Add an item to the cache."""
-        self.cache[key] = item
-        self.cache.move_to_end(key)
-        if len(self.cache) > self.max_size:
-            oldest = next(iter(self.cache))
-            self.clear_item(oldest)
-        self.on_add_item(key, item)
-
-    def get_item(self, key: str):
-        """Retrieve an item from the cache."""
-        if key in self.cache:
-            self.cache.move_to_end(key)
-            return self.cache[key]
-        return None
-
-    def clear_item(self, key: str):
-        """Remove a specific item from the cache."""
-        if key in self.cache:
-            self.on_clear_item(key)
-            del self.cache[key]
-
-    def clear(self):
-        """Clear the cache."""
-        for key in self.cache.keys():
-            self.on_clear_item(key)
-        self.cache.clear()
-
-
 class DetectionAnnotations:
     def __init__(
         self,
         add_to_cache_callback,
         delete_from_cache_callback,
     ):
-        self.cache = LruCache(
-            ANNOTATION_CACHE_SIZE, add_to_cache_callback, delete_from_cache_callback
-        )
+        self.cache = LruCache(ANNOTATION_CACHE_SIZE)
+        self.add_to_cache_callback = add_to_cache_callback
+        self.delete_from_cache_callback = delete_from_cache_callback
 
     def get_annotations(self, detector: ObjectDetector, id_to_image: Dict[str, Image.Image]):
         hits, misses = partition(self.cache.get_item, id_to_image.keys())
@@ -119,7 +76,9 @@ class DetectionAnnotations:
             to_detect,
         )
         for id, annotations in predictions.items():
-            self.cache.add_item(id, annotations)
+            self.cache.add_item(
+                id, annotations, self.add_to_cache_callback, self.delete_from_cache_callback
+            )
 
         predictions.update(**cached_predictions)
         # match input order because of scoring code assumptions

@@ -1,0 +1,17 @@
+trame:
+    www_modules:
+      - nrtk_explorer.module
+    cmd:
+        - python
+        - -m
+        - nrtk_explorer.app.main
+        - --host
+        - ${host}
+        - --port
+        - ${port}
+        - --authKey
+        - ${secret}
+        - --server
+        - --banner
+        - --dataset
+        - /data/OIRDS_v1_0/oirds.json

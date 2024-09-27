@@ -74,6 +74,18 @@ class NrtkDrawer(html.Div):
                                     "label": "facebook/detr-resnet-50",
                                     "value": "facebook/detr-resnet-50",
                                 },
+                                {
+                                    "label": "facebook/detr-resnet-50-dc5",
+                                    "value": "facebook/detr-resnet-50-dc5",
+                                },
+                                {
+                                    "label": "hustvl/yolos-tiny",
+                                    "value": "hustvl/yolos-tiny",
+                                },
+                                {
+                                    "label": "valentinafeve/yolos-fashionpedia",
+                                    "value": "valentinafeve/yolos-fashionpedia",
+                                },
                             ],
                         ),
                         filled=True,

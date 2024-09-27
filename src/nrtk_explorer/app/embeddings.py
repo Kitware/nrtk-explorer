@@ -65,6 +65,9 @@ class EmbeddingsApp(Applet):
         self.state.change("dataset_ids")(self.update_points)
 
         self.server.controller.apply_transform.add(self.clear_points_transformations)
+        self.state.change("transform_enabled_switch")(
+            self.update_points_transformations_visibility
+        )
 
     def on_feature_extraction_model_change(self, **kwargs):
         feature_extraction_model = self.state.feature_extraction_model
@@ -112,7 +115,15 @@ class EmbeddingsApp(Applet):
         )
 
     def clear_points_transformations(self, **kwargs):
-        self.state.points_transformations = {}  # ID to points
+        self.state.points_transformations = {}  # ID to point
+        self._stashed_points_transformations = {}
+
+    def update_points_transformations_visibility(self, **kwargs):
+        if self.state.transform_enabled_switch:
+            self.state.points_transformations = self._stashed_points_transformations
+        else:
+            self._stashed_points_transformations = self.state.points_transformations
+            self.state.points_transformations = {}
 
     async def compute_source_points(self):
         with self.state:

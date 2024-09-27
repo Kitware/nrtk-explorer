@@ -67,8 +67,8 @@ class StatefulAnnotations:
             add_to_cache_callback, delete_from_cache_callback
         )
 
-    @change("current_dataset")
-    def _on_dataset(self, **kwargs):
+    @change("current_dataset", "object_detection_model")
+    def _cache_clear(self, **kwargs):
         self.annotations_factory.cache_clear()
 
 

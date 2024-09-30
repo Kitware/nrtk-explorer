@@ -9,6 +9,9 @@ import type { ColorMap } from '@colormap/core'
 import type { Vector3, Vector2 } from '../types'
 import { toRGB } from '../utilities/colors'
 
+const UNSELECTED_POINT_COLOR = 'rgba(189,189,189,255)'
+const SELECTED_POINT_COLOR = 'rgba(70,70,70,255)'
+
 type IdToPoint = Record<string, Vector3<number> | Vector2<number>>
 
 interface Props {
@@ -95,13 +98,15 @@ onMounted(() => {
       }
 
       if (props.selectedPoints.includes(id)) {
-        // silver for original points that are selected
-        return `rgba(189,189,189,255)`
+        // for original points that are selected
+        return SELECTED_POINT_COLOR
       }
 
-      // blue for unselected points
-      let alpha = hideSourcePoints.value ? 0 : 255
-      return `rgba(25,118,210,${alpha})`
+      if (hideSourcePoints.value) {
+        return 'rgba(0,0,0,0)'
+      }
+
+      return UNSELECTED_POINT_COLOR
     },
     onHover(index: number | null) {
       const id = index == null ? '' : indexToId(index)

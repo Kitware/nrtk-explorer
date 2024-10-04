@@ -15,7 +15,7 @@ const CATEGORY_COLORS: Vector3<number>[] = [
 ]
 
 const TOOLTIP_OFFSET = [8, 8]
-const TOOLTIP_HEIGHT_PADDING = 12 // fudge to keep bottom border from clipping. In pixels
+const TOOLTIP_PADDING = 12 // fudge to keep tooltip from clipping/overflowing. In pixels
 
 let annotationsTree: Quadtree<Rectangle<number>> | undefined = undefined
 
@@ -220,8 +220,8 @@ function mouseMove(e: MouseEvent) {
   const toolTipInContainer = {
     left: parentRect.left + posX - containerRect.left,
     top: parentRect.top + posY - containerRect.top,
-    width: tooltipRect.width,
-    height: tooltipRect.height + TOOLTIP_HEIGHT_PADDING
+    width: tooltipRect.width + TOOLTIP_PADDING,
+    height: tooltipRect.height + TOOLTIP_PADDING
   }
 
   // if text goes off the edge, move up and/or left

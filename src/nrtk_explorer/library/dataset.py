@@ -51,7 +51,8 @@ def get_dataset(path: str, force_reload: bool = False):
     """
     if force_reload:
         __load_dataset.cache_clear()
-    return __load_dataset(path)
+    absolute_path = str(Path(path).resolve())
+    return __load_dataset(absolute_path)
 
 
 def get_image_fpath(selected_id: int, path: str):

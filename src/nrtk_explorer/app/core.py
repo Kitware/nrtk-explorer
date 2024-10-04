@@ -1,6 +1,5 @@
 import logging
 from typing import Iterable
-from pathlib import Path
 
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
@@ -51,7 +50,7 @@ class Engine(Applet):
 
         known_args, _ = self.server.cli.parse_known_args()
         self.input_paths = known_args.dataset
-        self.state.current_dataset = str(Path(self.input_paths[0]).resolve())
+        self.state.current_dataset = self.input_paths[0]
 
         self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
         images = Images(server=self.server)

@@ -160,7 +160,6 @@ onMounted(() => {
       emit('hover', { id, is_transformed })
     },
     onSelect(indices) {
-      onPanModeClick()
       const ids = Array.from(new Set(indices.map(indexToId)))
       emit('select', ids)
     }

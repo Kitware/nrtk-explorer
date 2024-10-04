@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, toRefs } from 'vue'
-import { ScatterGL, Dataset } from 'scatter-gl'
+import { ref, watch, onMounted, toRefs, computed, watchEffect } from 'vue'
+import { ScatterGL } from 'scatter-gl'
 
 import { createColorMap, linearScale } from '@colormap/core'
 import { viridis, cividis, magma, inferno } from '@colormap/presets'
@@ -30,6 +30,9 @@ const props = withDefaults(defineProps<Props>(), {
   selectedPoints: () => []
 })
 
+const { cameraPosition, points, transformedPoints, selectedPoints, highlightedPoint } =
+  toRefs(props)
+
 type Events = {
   cameraMove: [camera_position: Vector3<number> | Vector2<number>]
   hover: [{ id: string; is_transformed: boolean }]
@@ -49,16 +52,20 @@ const colorMapDomain = ref<Vector2<number>>(domain)
 const colorMap = ref<ColorMap>(createColorMap(colors.value[colorMapName.value], scale))
 
 let scatterPlot: ScatterGL | undefined
+const scatterPlotRef = ref<ScatterGL>()
 let hideSourcePoints = ref(false)
 
-const isTransformed = (index: number) => index >= Object.keys(props.points).length
+const sourcePointIds = computed(() => Object.keys(props.points))
+const transformedPointIds = computed(() => Object.keys(props.transformedPoints))
+
+const isTransformed = (index: number) => index >= sourcePointIds.value.length
 
 const indexToId = (index: number) => {
-  const ids = Object.keys(props.points)
+  const ids = sourcePointIds.value
   if (index < ids.length) {
     return ids[index]
   } else {
-    return Object.keys(props.transformedPoints)[index - ids.length]
+    return transformedPointIds.value[index - ids.length]
   }
 }
 
@@ -70,6 +77,45 @@ const idToIndex = (id: string, isTransformed: boolean) => {
     return ids.length + Object.keys(props.transformedPoints).indexOf(id)
   }
 }
+
+const dataset = computed(() => {
+  const allPoints = [...Object.values(points.value), ...Object.values(transformedPoints.value)]
+  if (allPoints.length <= 0) {
+    // If there are no points, we need to create a dataset with at least one point
+    const ds = new ScatterGL.Dataset([[0, 0, 0]])
+    // Then remove the point
+    ds.points = []
+    return ds
+  }
+  return new ScatterGL.Dataset(allPoints)
+})
+
+const sequences = computed(() => {
+  return transformedPointIds.value.map((id) => ({
+    indices: [idToIndex(id, false), idToIndex(id, true)]
+  }))
+})
+
+watchEffect(() => {
+  if (scatterPlotRef.value && scatterPlot) {
+    // Due to a bug in scatter-gl we unselect all points before setting the sequences
+    scatterPlot.select([])
+    scatterPlot.setSequences(sequences.value)
+  }
+})
+
+watch(
+  [
+    scatterPlotRef,
+    dataset,
+    selectedPoints,
+    highlightedPoint,
+    colorMap,
+    hideSourcePoints,
+    sequences
+  ],
+  () => scatterPlot?.render(dataset.value)
+)
 
 onMounted(() => {
   if (!plotContainer.value) {
@@ -119,53 +165,22 @@ onMounted(() => {
       emit('select', ids)
     }
   })
-  ;(window as any).scatterPlot = scatterPlot
+  scatterPlotRef.value = scatterPlot
 
-  let cameraControls = ((scatterPlot as any).scatterPlot as any).orbitCameraControls
-
+  const cameraControls = ((scatterPlot as any).scatterPlot as any).orbitCameraControls
   cameraControls.addEventListener('start', emitCameraPosition)
   cameraControls.addEventListener('change', emitCameraPosition)
   cameraControls.addEventListener('end', emitCameraPosition)
-
   updateCameraPosition(props.cameraPosition)
-  updateColorMapDomain()
-  drawPoints()
-  drawLines()
+
+  // Without this there is an error upon browser refresh when sequences are defined.
+  scatterPlot.render(dataset.value)
 })
 
 function emitCameraPosition() {
   if (scatterPlot) {
     let plotImpl = (scatterPlot as any).scatterPlot as any
     emit('cameraMove', plotImpl.camera.position.toArray())
-  }
-}
-
-function drawPoints() {
-  if (scatterPlot) {
-    const points = [...Object.values(props.points), ...Object.values(props.transformedPoints)]
-    let ds: Dataset
-    if (points.length <= 0) {
-      // If there are no points, we need to create a dataset with at least one point
-      ds = new ScatterGL.Dataset([[0, 0, 0]])
-      // Then we remove the point
-      ds.points = []
-    } else {
-      ds = new ScatterGL.Dataset(points)
-    }
-    scatterPlot.render(ds)
-    ;(scatterPlot as any).scatterPlot.render()
-  }
-}
-
-function drawLines() {
-  if (scatterPlot) {
-    // Due to a bug in scatter-gl we unselect all points before setting the sequences
-    scatterPlot?.select([])
-
-    const sequences = Object.keys(props.transformedPoints).map((id) => ({
-      indices: [idToIndex(id, false), idToIndex(id, true)]
-    }))
-    scatterPlot.setSequences(sequences)
   }
 }
 
@@ -193,6 +208,8 @@ function updateCameraPosition(newValue: number[], oldValue: number[] = []) {
     }
   }
 }
+
+watch(cameraPosition, updateCameraPosition)
 
 function updateColorMapDomain() {
   let bounds: Vector3<Vector2<number>> = [
@@ -223,18 +240,8 @@ function updateColorMapDomain() {
   colorMapDomain.value = [0, Math.max(...spans) / 3]
 }
 
-const { cameraPosition, points, transformedPoints, selectedPoints, highlightedPoint } =
-  toRefs(props)
-
-watch(cameraPosition, updateCameraPosition)
-
 watch(points, () => {
   updateColorMapDomain()
-})
-
-watch([points, transformedPoints, selectedPoints, highlightedPoint], () => {
-  drawPoints()
-  drawLines()
 })
 
 function onSelectModeClick() {
@@ -257,24 +264,13 @@ function onResetModeClick() {
 }
 
 function onHideModeClick() {
-  if (hideSourcePoints.value) {
-    hideSourcePoints.value = false
-  } else {
-    hideSourcePoints.value = true
-  }
-
-  drawPoints()
-  drawLines()
+  hideSourcePoints.value = !hideSourcePoints.value
 }
 
 function onColorMapChange(name: keyof typeof colors.value) {
   colorMapName.value = name
   const scale = linearScale(colorMapDomain.value, range)
   colorMap.value = createColorMap(colors.value[name], scale)
-
-  if (scatterPlot) {
-    ;(scatterPlot as any).scatterPlot.render()
-  }
 }
 
 function onContainerResize() {

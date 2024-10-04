@@ -38,7 +38,7 @@ class EmbeddingsApp(Applet):
         self.is_standalone_app = self.server.root_server == self.server
         if self.is_standalone_app and datasets:
             self.state.dataset_ids = []
-            self.state.current_dataset = str(Path(datasets[0]).resolve())
+            self.state.current_dataset = datasets[0]
             self.on_current_dataset_change()
 
         self.features = None
@@ -351,7 +351,7 @@ class EmbeddingsApp(Applet):
                                 options=(
                                     "dataset_options",
                                     [
-                                        {"label": Path(p).name, "value": str(Path(p).resolve())}
+                                        {"label": Path(p).name, "value": p}
                                         for p in self._dataset_paths
                                     ],
                                 ),

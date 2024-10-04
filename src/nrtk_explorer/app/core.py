@@ -5,6 +5,7 @@ from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library.filtering import FilterProtocol
 from nrtk_explorer.library.dataset import get_dataset, get_image_fpath
+from nrtk_explorer.library.debounce import debounce
 
 from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.embeddings import EmbeddingsApp
@@ -29,7 +30,8 @@ DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
     f"{DIR_NAME}/coco-od-2017/test_val2017.json",
 ]
-NUMBER_OF_IMAGES_DEFAULT = 500
+NUM_IMAGES_DEFAULT = 500
+NUM_IMAGES_DEBOUNCE_TIME = 0.3  # seconds
 
 
 # ---------------------------------------------------------
@@ -96,24 +98,25 @@ class Engine(Applet):
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.state.change("current_dataset")(self.on_dataset_change)
-        self.state.change("num_images")(self.on_num_images_change)
-        self.state.change("random_sampling")(self.on_random_sampling_change)
+        self.state.change("num_images")(
+            debounce(NUM_IMAGES_DEBOUNCE_TIME, self.state)(self.resample_images)
+        )
+        self.state.change("random_sampling")(self.resample_images)
 
         self.on_dataset_change()
 
     def on_dataset_change(self, **kwargs):
+        self.state.dataset_ids = []  # sampled images
         self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
         self.state.num_images_max = len(self.context.dataset.imgs)
-        self.state.num_images = min(self.state.num_images_max, NUMBER_OF_IMAGES_DEFAULT)
+        self.state.num_images = min(self.state.num_images_max, NUM_IMAGES_DEFAULT)
+        self.state.dirty("num_images")  # Trigger resample_images()
         self.state.random_sampling_disabled = False
         self.state.num_images_disabled = False
-        self.state.dataset_ids = []
 
         self.state.annotation_categories = {
             category["id"]: category for category in self.context.dataset.cats.values()
         }
-
-        self.reload_images()
 
     def on_filter_apply(self, filter: FilterProtocol[Iterable[int]], **kwargs):
         selected_ids = []
@@ -129,13 +132,7 @@ class Engine(Applet):
 
         self._embeddings_app.on_select(selected_ids)
 
-    def on_num_images_change(self, **kwargs):
-        self.reload_images()
-
-    def on_random_sampling_change(self, **kwargs):
-        self.reload_images()
-
-    def reload_images(self):
+    def resample_images(self, **kwargs):
         images = list(self.context.dataset.imgs.values())
 
         selected_images = []

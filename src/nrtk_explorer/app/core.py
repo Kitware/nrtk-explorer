@@ -30,6 +30,7 @@ DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
     f"{DIR_NAME}/coco-od-2017/test_val2017.json",
 ]
+NUMBER_OF_IMAGES_DEFAULT = 500
 
 
 # ---------------------------------------------------------
@@ -102,17 +103,16 @@ class Engine(Applet):
         self.on_dataset_change()
 
     def on_dataset_change(self, **kwargs):
-        # Reset cache
         self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
         self.state.num_images_max = len(self.context.dataset.imgs)
+        self.state.num_images = min(self.state.num_images_max, NUMBER_OF_IMAGES_DEFAULT)
         self.state.random_sampling_disabled = False
         self.state.num_images_disabled = False
         self.state.dataset_ids = []
 
-        categories = {}
-        for category in self.context.dataset.cats.values():
-            categories[category["id"]] = category
-        self.state.annotation_categories = categories
+        self.state.annotation_categories = {
+            category["id"]: category for category in self.context.dataset.cats.values()
+        }
 
         self.reload_images()
 

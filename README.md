@@ -42,55 +42,36 @@ git clone https://github.com/vicentebolea/nrtk_explorer_datasets.git
 nrtk-explorer --dataset ./nrtk_explorer_datasets/OIRDS_v1_0/oirds.json
 ```
 
-![nrtk explorer usage](https://raw.githubusercontent.com/Kitware/nrtk-explorer/main/usage.png)
+![nrtk explorer usage](https://github.com/user-attachments/assets/86a61485-471c-4b94-872e-943cb9da52a1)
 
-Installing
-----------
-
-Install it from pypi:
-
-```bash
-pip install nrtk-explorer
-```
-
-Or, download and install it manually with:
-
-```bash
-curl -OL https://github.com/Kitware/nrtk-explorer/archive/refs/heads/main.zip
-```
-
-Inside the application source code top directory, install it with:
-
-```
-pip install -e .
-```
-
-Run the application:
-
-```
-nrtk-explorer
-```
+Some COCO image datasets available at: https://github.com/vicentebolea/nrtk_explorer_datasets/
 
 CLI flags and options
 ---------------------
 
 - `-h|--help` show the help for the command line options, it inherit trame
   command line options and flags.
-- `--dataset` specify the directory containing a json file describing a COCO
-  image dataset. You can specify multiple directory using a comma `,` as a
-  separator. Example usage: `nrtk_explorer --dataset <dataset dir>`. More
-  images datasets available at:
-  https://github.com/vicentebolea/nrtk_explorer_datasets/
+- `--dataset` specify the path to a json file describing a COCO
+  image dataset. You can specify multiple COCO datasets using a comma `,` as a
+  separator. Example usage: `nrtk_explorer --dataset /foo-dir/coco.json, ../bar-dir/baz.json`
 
 Contribute to NRTK_EXPLORER
 ---------------------------
 
-Run tests with:
-
 ```bash
+git clone https://github.com/Kitware/nrtk-explorer.git
+cd nrtk-explorer
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e .
 pytest
 ```
 
 [1]: https://trame.readthedocs.io/en/latest/
 [2]: https://www.kitware.com/
 [3]: https://cocodataset.org/
+
+### Create release
+1. Merge `main` to `release` with a *merge commit*.
+2. Run "Create Release" workflow with workflow from `release` branch.

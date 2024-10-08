@@ -1,5 +1,4 @@
-NRTK EXPLORER
-=============
+# NRTK EXPLORER
 
 NRTK Explorer is a web application for exploring image datasets. It provides
 insights of a image dataset in [COCO][3] format and it evaluate image
@@ -8,9 +7,7 @@ is built using [trame][1] by the [kitware][2] team.
 
 ![nrtk explorer screenshot](https://github.com/user-attachments/assets/85c95836-3490-40ec-813d-e6841c540d51)
 
-
-Features
---------
+## Features
 
 - Explore image datasets in COCO format.
 - Apply parametrized image degradation (such as blur) to the images.
@@ -21,8 +18,7 @@ Features
 - When possible it will attempt to utilize the user GPU as much as possible to
   speedup its computations.
 
-Usage
-----------
+## Usage
 
 Usage example with virtual-env creation
 
@@ -46,8 +42,7 @@ nrtk-explorer --dataset ./nrtk_explorer_datasets/OIRDS_v1_0/oirds.json
 
 Some COCO image datasets available at: https://github.com/vicentebolea/nrtk_explorer_datasets/
 
-CLI flags and options
----------------------
+## CLI flags and options
 
 - `-h|--help` show the help for the command line options, it inherit trame
   command line options and flags.
@@ -55,8 +50,7 @@ CLI flags and options
   image dataset. You can specify multiple COCO datasets using a comma `,` as a
   separator. Example usage: `nrtk_explorer --dataset /foo-dir/coco.json, ../bar-dir/baz.json`
 
-Contribute to NRTK_EXPLORER
----------------------------
+## Contribute to NRTK_EXPLORER
 
 ```bash
 git clone https://github.com/Kitware/nrtk-explorer.git
@@ -73,5 +67,6 @@ pytest
 [3]: https://cocodataset.org/
 
 ### Create release
-1. Merge `main` to `release` with a *merge commit*.
+
+1. Merge `main` to `release` with a _merge commit_.
 2. Run "Create Release" workflow with workflow from `release` branch.

@@ -2,6 +2,210 @@
 
 
 
+## v0.4.0 (2024-10-08)
+
+### Chore
+
+* chore(deps): update build requirement from &lt;0.10.0 to &lt;1.3.0
+
+Updates the requirements on [build](https://github.com/pypa/build) to permit the latest version.
+- [Release notes](https://github.com/pypa/build/releases)
+- [Changelog](https://github.com/pypa/build/blob/main/CHANGELOG.rst)
+- [Commits](https://github.com/pypa/build/compare/0.0.1...1.2.2)
+
+---
+updated-dependencies:
+- dependency-name: build
+  dependency-type: direct:production
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`82bf3c9`](https://github.com/Kitware/nrtk-explorer/commit/82bf3c93888206d77dc1287075cdb0711ac98a9e))
+
+* chore(deps-dev): bump vite from 4.5.3 to 4.5.5 in /vue-components
+
+Bumps [vite](https://github.com/vitejs/vite/tree/HEAD/packages/vite) from 4.5.3 to 4.5.5.
+- [Release notes](https://github.com/vitejs/vite/releases)
+- [Changelog](https://github.com/vitejs/vite/blob/v4.5.5/packages/vite/CHANGELOG.md)
+- [Commits](https://github.com/vitejs/vite/commits/v4.5.5/packages/vite)
+
+---
+updated-dependencies:
+- dependency-name: vite
+  dependency-type: direct:development
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`d103f97`](https://github.com/Kitware/nrtk-explorer/commit/d103f9720c72807502b3e83495d81fc602bc74ad))
+
+* chore(deps): bump rollup from 3.29.4 to 3.29.5 in /vue-components
+
+Bumps [rollup](https://github.com/rollup/rollup) from 3.29.4 to 3.29.5.
+- [Release notes](https://github.com/rollup/rollup/releases)
+- [Changelog](https://github.com/rollup/rollup/blob/master/CHANGELOG.md)
+- [Commits](https://github.com/rollup/rollup/compare/v3.29.4...v3.29.5)
+
+---
+updated-dependencies:
+- dependency-name: rollup
+  dependency-type: indirect
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`a6932ae`](https://github.com/Kitware/nrtk-explorer/commit/a6932ae862b941653e6ce6c42c6a06a8d02ec810))
+
+* chore(docker): add docker deploy definition ([`97db133`](https://github.com/Kitware/nrtk-explorer/commit/97db13331274031bd5dad1e16ebc674af7f65013))
+
+* chore(deps): bump scikit-learn from 1.5.1 to 1.5.2
+
+Bumps [scikit-learn](https://github.com/scikit-learn/scikit-learn) from 1.5.1 to 1.5.2.
+- [Release notes](https://github.com/scikit-learn/scikit-learn/releases)
+- [Commits](https://github.com/scikit-learn/scikit-learn/compare/1.5.1...1.5.2)
+
+---
+updated-dependencies:
+- dependency-name: scikit-learn
+  dependency-type: direct:production
+  update-type: version-update:semver-patch
+...
+
+Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`ebace6e`](https://github.com/Kitware/nrtk-explorer/commit/ebace6e3cc21fb132faa4f1d0215f04b77db6b50))
+
+### Documentation
+
+* docs(README): update screenshot ([`1a834f9`](https://github.com/Kitware/nrtk-explorer/commit/1a834f93779daf73b0434f931f8a04775a487956))
+
+### Feature
+
+* feat(core): default to 500 sampled dataset images ([`2e763ce`](https://github.com/Kitware/nrtk-explorer/commit/2e763ce330e52a9f8f34936958a6dcb61198af4d))
+
+* feat(ScatterPlot): stay in selection mode after selection ([`1edd988`](https://github.com/Kitware/nrtk-explorer/commit/1edd9886cb5e1ac984eb9eeb7437d97ccc2c5b0a))
+
+* feat(ScatterPlot): dark gray for selected points
+
+Light gray for unselected points. Was light blue for unselected points, light gray for selected. ([`5f482c8`](https://github.com/Kitware/nrtk-explorer/commit/5f482c80a98e9e53f708c7337ccb001e642e8275))
+
+* feat(transforms): add 3 more object detection models ([`b2f65ce`](https://github.com/Kitware/nrtk-explorer/commit/b2f65ceb3d4046b92363fff1f449d6a30b6ccbdf))
+
+* feat(image_list): only show spinner if show annotations is on
+
+or image is loading ([`a1a3e18`](https://github.com/Kitware/nrtk-explorer/commit/a1a3e18e845056dd2cc00be7950e2a1559f75095))
+
+* feat(image_list): use normal switch for show annotations ([`f527fef`](https://github.com/Kitware/nrtk-explorer/commit/f527fefc23f8e098a5f5b9a6555e849d80947aa8))
+
+* feat(image_list): add switch to hide annotations ([`12f2971`](https://github.com/Kitware/nrtk-explorer/commit/12f29719c3d892dab5dd22f958466a2a6c2f834f))
+
+* feat(image_list): slider for image size ([`187bd66`](https://github.com/Kitware/nrtk-explorer/commit/187bd6627691baebfbf89e0c73a4b51035512274))
+
+* feat(filtering): relabel Apply button to Select Images ([`59d9da9`](https://github.com/Kitware/nrtk-explorer/commit/59d9da9908c61cf05601527b0d273dc659a1bc59))
+
+* feat(layout): move category filter to bottom ([`b4dec14`](https://github.com/Kitware/nrtk-explorer/commit/b4dec144d98777dec35c5d98e879b56644c95697))
+
+* feat(transforms): toggle switch to disable object detection ([`b6cb739`](https://github.com/Kitware/nrtk-explorer/commit/b6cb739ea88ba9698dc75ca304db15b751141c30))
+
+* feat(transforms): toggle component to disable transforms ([`0d79fca`](https://github.com/Kitware/nrtk-explorer/commit/0d79fca0278581b7aedf9c92b6f64eb69cb83ae8))
+
+* feat(transforms): add disable transform option ([`5cd2601`](https://github.com/Kitware/nrtk-explorer/commit/5cd2601b29f4e98d85ce7e2e8048dfaad8506bd5))
+
+### Fix
+
+* fix(ImageDetection): stop tooltip overflow with fudge to center ([`437b6a5`](https://github.com/Kitware/nrtk-explorer/commit/437b6a557221db6808a9fac0a6296ce30172dc50))
+
+* fix(core): dataset path does not overflow select dropdown ([`b33b975`](https://github.com/Kitware/nrtk-explorer/commit/b33b9758fb990f1a874d1eccc3933b4b0e54c78b))
+
+* fix(ScatterPlot): reactive color map control and perf
+
+Big performance improvements for many point ([`6197f16`](https://github.com/Kitware/nrtk-explorer/commit/6197f16762ffcefa89f52676a102d890b396964a))
+
+* fix(embeddings): disable transforms switch hides points
+
+closes #113 ([`2a6768a`](https://github.com/Kitware/nrtk-explorer/commit/2a6768a82916d58271d9c02110a0ccf458c70cc0))
+
+* fix(images): dont remove image from cache for embeddings ([`e0afacd`](https://github.com/Kitware/nrtk-explorer/commit/e0afacda35b0c43f94fa0b5e88bb1d0b525e3906))
+
+* fix(transforms): turn on transform enabled switch on apply button ([`c821022`](https://github.com/Kitware/nrtk-explorer/commit/c82102255561318d7b6654137c33a858e7e9b0e3))
+
+* fix(dep): properly describe expected version ([`d3c060b`](https://github.com/Kitware/nrtk-explorer/commit/d3c060ba5877d815addc7be4118ee281e3d5dc72))
+
+* fix(network): ensure network completion before heavy work ([`26c73c0`](https://github.com/Kitware/nrtk-explorer/commit/26c73c026e2e4d81bf8dd43126636731100619c2))
+
+* fix(ui): use class components ([`5fafd29`](https://github.com/Kitware/nrtk-explorer/commit/5fafd291376d3c284fab9400e91368e91a03544a))
+
+* fix(embeddings): dont send empty lists to dim reducer ([`ce24374`](https://github.com/Kitware/nrtk-explorer/commit/ce24374291741af667832e72f52ffa8f539c80ee))
+
+* fix(embedding): attempt to revive standalone mode ([`a68d917`](https://github.com/Kitware/nrtk-explorer/commit/a68d917ca6e8b804e92e08df9adab7f4ed0e7850))
+
+* fix(embedding): standalone mode works again ([`f577e99`](https://github.com/Kitware/nrtk-explorer/commit/f577e992f705d0956d166c7d39063fa0b0a53867))
+
+* fix(project): cleanup dependency structure ([`6f64c10`](https://github.com/Kitware/nrtk-explorer/commit/6f64c10ff64c7135c5cecc4863ec58d273384685))
+
+### Performance
+
+* perf(core): add debounce to sample size slider
+
+Closes #115 ([`c841024`](https://github.com/Kitware/nrtk-explorer/commit/c841024d47080de8438f9dd909357a591fd70ba4))
+
+* perf(images): add cache backed get_stateful_image funcs
+
+Sometimes we don&#39;t need the image for visualization and don&#39;t
+need to put it on the trame state. ([`356c78a`](https://github.com/Kitware/nrtk-explorer/commit/356c78a64ba95f9d8d5882a0af40509d554e7c58))
+
+### Refactor
+
+* refactor(annotations): reuse LruCache for annotations ([`3f5f704`](https://github.com/Kitware/nrtk-explorer/commit/3f5f70451ee759c6d0ad60386cd5f3fca45ef010))
+
+* refactor(images): move module level funcs to class ([`3d306e6`](https://github.com/Kitware/nrtk-explorer/commit/3d306e66f465fcd9d4694038809308fc9af93454))
+
+* refactor(transforms): extract detection and transform enable/disable logic ([`a6252fa`](https://github.com/Kitware/nrtk-explorer/commit/a6252fa4356cc9f76af708b27817b9b8b2537238))
+
+### Unknown
+
+* All sampled images in image list (#88)
+
+* feat: show all images in list
+
+* feat(embeddings): selection of points filters list
+
+* refactor(object_detector): remove images_manager dependency
+
+* refactor: move image modules into images folder
+
+* refactor: use BufferCache for images
+
+* refactor: use BufferCache for annotations
+
+* refactor: clean dead code
+
+* fix(embeddings): add transformed img point as computed
+
+* chore(ci): run tests without depending on linters
+
+* fix(image_list): respect client side sorting and filtering
+
+* fix(ScatterPlot): correct is_transformed in hover
+
+* fix(image_list): paginate grid view
+
+Grid view does not do virtual scrolling
+
+* perf(object_detector): reuse last successful batch size
+
+* refactor: remove images_manager
+
+* fix: flush transformed images to state before detection
+
+* fix(images): actually call on_clear callback in BufferCache
+
+* feat(image_list): hide dependant columns when transforms disabled
+
+* refactor(images): use lru_cache for image functions
+
+* refactor(ScatterPlot): rename props to use points
+
+ScatterPlot could be used for non images data.
+
+* refactor: reorder images.py and doc object_detector
+
+* refactor(annotations): move logic from images.py ([`9850cf6`](https://github.com/Kitware/nrtk-explorer/commit/9850cf6118b1bdd04117b2f79dee9d375ee3ff8c))
+
+
 ## v0.3.2 (2024-08-30)
 
 ### Ci

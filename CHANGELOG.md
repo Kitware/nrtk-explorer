@@ -2,6 +2,41 @@
 
 
 
+## v0.3.2 (2024-08-30)
+
+### Ci
+
+* ci: add noop release check ([`1a48185`](https://github.com/Kitware/nrtk-explorer/commit/1a481853af9691ca185261d0c580ca1cb7e51ca2))
+
+* ci: set make_release as manual job ([`0fb5fa2`](https://github.com/Kitware/nrtk-explorer/commit/0fb5fa2351b64587c1cb2480326a41b55883dcda))
+
+* ci: add sync job ([`7962ee3`](https://github.com/Kitware/nrtk-explorer/commit/7962ee3be0c8530101d22ddb6178945189e59011))
+
+### Fix
+
+* fix(dataset): set kwcoco optional backend ([`7400518`](https://github.com/Kitware/nrtk-explorer/commit/74005184f9530b3ac5c48da2f53023a92c1fee45))
+
+* fix(transforms): parametrize pybsm darkCurrentFromDensity call ([`af34dbb`](https://github.com/Kitware/nrtk-explorer/commit/af34dbbcb80c95ee2bbc1dea3bfd42c4aa4aba8d))
+
+### Unknown
+
+* Merge pull request #101 from Kitware/main
+
+Bring master changes ([`9c87f92`](https://github.com/Kitware/nrtk-explorer/commit/9c87f92e4eecee5199fec85ed8b04812e9c5ae04))
+
+* conda: add conda env that includes cuda pytorch ([`e5f0b41`](https://github.com/Kitware/nrtk-explorer/commit/e5f0b41842399d5cf6f57267f0b236a19e344e61))
+
+* Merge release into main ([`f0a1884`](https://github.com/Kitware/nrtk-explorer/commit/f0a1884e6827ca0ed0ccfad7ea0837df4eaa5df4))
+
+* Merge branch &#39;main&#39; into release
+
+* main:
+  ci: set make_release as manual job
+  ci: add sync job ([`d0a9b37`](https://github.com/Kitware/nrtk-explorer/commit/d0a9b37eb28e4e334352ede0f19416fde7d719ad))
+
+* Auto-merge release back to main ([`e4b4eeb`](https://github.com/Kitware/nrtk-explorer/commit/e4b4eeb9383f0557b9664981b9ae5dae1012d36b))
+
+
 ## v0.3.1 (2024-08-26)
 
 ### Ci

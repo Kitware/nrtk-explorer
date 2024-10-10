@@ -28,7 +28,6 @@ classifiers = [
 
 dependencies = [
     "accelerate",
-    "nrtk>=0.4.2",
     "numpy",
     "Pillow",
     "pybsm>=0.6",
@@ -43,6 +42,7 @@ dependencies = [
     "trame-server>=3.2",
     "transformers",
     "umap-learn",
+    "nrtk[headless]>=0.12.0",
 ]
 
 [project.optional-dependencies]

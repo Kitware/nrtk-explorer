@@ -1,5 +1,6 @@
 import asyncio
 from functools import wraps
+from trame.app import asynchronous
 
 
 def debounce(wait, state=None):
@@ -19,13 +20,16 @@ def debounce(wait, state=None):
                     await asyncio.sleep(wait)
                     if state:
                         with state:
-                            await func(*args, **kwargs)
+                            result = func(*args, **kwargs)
                     else:
-                        await func(*args, **kwargs)
+                        result = func(*args, **kwargs)
+
+                    if asyncio.iscoroutine(result):
+                        await result
                 except asyncio.CancelledError:
                     pass
 
-            task = asyncio.create_task(debounced())
+            task = asynchronous.create_task(debounced())
 
         return wrapper
 

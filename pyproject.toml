@@ -28,7 +28,7 @@ classifiers = [
 
 dependencies = [
     "accelerate",
-    "nrtk>=0.4.2",
+    "nrtk[graphics]>=0.12.0",
     "numpy",
     "Pillow",
     "pybsm>=0.6",

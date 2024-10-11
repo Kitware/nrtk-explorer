@@ -188,6 +188,7 @@ class TransformsApp(Applet):
     def on_server_ready(self, *args, **kwargs):
         self.state.change("object_detection_model")(self.on_object_detection_model_change)
         self.on_object_detection_model_change()
+        self.state.change("current_dataset")(self._cancel_update_images)
         self.state.change("current_dataset")(self.reset_detector)
 
     def on_object_detection_model_change(self, **kwargs):
@@ -218,7 +219,7 @@ class TransformsApp(Applet):
         if self._updating_images():
             if self._updating_transformed_images:
                 # computing stale transformed images, restart task
-                self._update_task.cancel()
+                self._cancel_update_images()
             else:
                 return  # update_images will call update_transformed_images() at the end
         self._update_task = asynchronous.create_task(
@@ -346,9 +347,12 @@ class TransformsApp(Applet):
             await self.update_transformed_images(dataset_ids)
         await self.server.network_completion
 
-    def _start_update_images(self):
+    def _cancel_update_images(self, **kwargs):
         if hasattr(self, "_update_task"):
             self._update_task.cancel()
+
+    def _start_update_images(self):
+        self._cancel_update_images()
         self._update_task = asynchronous.create_task(self._update_images(self.visible_dataset_ids))
 
     def _updating_images(self):

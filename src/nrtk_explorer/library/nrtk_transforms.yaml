@@ -11,22 +11,22 @@ nrtk_blur_2:
 
 nrtk_pybsm_2:
   perturber: nrtk.impls.perturb_image.pybsm.perturber.PybsmPerturber
-  perturber_kwargs: nrtk_explorer.library.nrtk_transforms.createSampleSensorAndScenario
-  exec_default_args: [{img_gsd: 0.15}]
+  perturber_kwargs: nrtk_explorer.library.nrtk_transforms.create_sample_sensor_and_scenario
+  exec_default_args: [{ img_gsd: 0.15 }]
   description:
     D:
       _path: [sensor, D]
       type: float
       label: Effective Aperture (m)
       default:
-      description: 
+      description:
       options:
     f:
       _path: [sensor, f]
       type: float
       label: Focal length (m)
       default:
-      description: 
+      description:
       options:
 
 fake:
@@ -36,11 +36,11 @@ fake:
       type: float
       label: A param
       default:
-      description: 
+      description:
       options:
     B:
       type: float
       label: B param
       default:
-      description: 
+      description:
       options:

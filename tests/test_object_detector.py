@@ -6,29 +6,19 @@ from nrtk_explorer.library.coco_utils import (
 )
 
 import json
-import os
-from PIL import Image
-import nrtk_explorer.test_data
-
-DIR_PATH = os.path.dirname(nrtk_explorer.test_data.__file__)
-DATASET_PATH = f"{DIR_PATH}/coco-od-2017/"
-DATASET = f"{DATASET_PATH}/test_val2017.json"
+from utils import get_images, DATASET
 
 
 def test_detector_small():
-    ds = json.load(open(DATASET))
-    sample = {
-        id: Image.open(f"{DATASET_PATH}/{img['file_name']}")
-        for id, img in enumerate(ds["images"][:15])
-    }
+    sample = get_images()
     detector = object_detector.ObjectDetector(model_name="hustvl/yolos-tiny")
     img = detector.eval(sample)
-    assert len(img) == 15
+    assert len(img) == len(sample.keys())
 
 
 def test_nrkt_scorer():
     ds = json.load(open(DATASET))
-    sample = {img["id"]: Image.open(f"{DATASET_PATH}/{img['file_name']}") for img in ds["images"]}
+    sample = get_images()
     detector = object_detector.ObjectDetector(model_name="facebook/detr-resnet-50")
     predictions = detector.eval(sample)
 
@@ -46,5 +36,6 @@ def test_nrkt_scorer():
     scorer = COCOScorer(DATASET)
     score_output = scorer.score(coco_ground_truth, coco_predictions)
 
-    assert len(predictions) == 16
-    assert len(score_output) == 16
+    image_count = len(sample.keys())
+    assert len(predictions) == image_count
+    assert len(score_output) == image_count

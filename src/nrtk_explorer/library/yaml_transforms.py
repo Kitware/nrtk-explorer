@@ -4,12 +4,7 @@ import contextlib
 
 from PIL import Image as ImageModule
 from pathlib import Path
-from yaml import load
-
-try:
-    from yaml import CLoader as Loader
-except ImportError:
-    from yaml import Loader
+from yaml import load, Loader
 
 TRANSFORM_FILE = Path(__file__).with_name("nrtk_transforms.yaml").resolve()
 

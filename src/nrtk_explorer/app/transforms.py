@@ -13,6 +13,7 @@ from trame_server import Server
 
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
+import nrtk_explorer.library.yaml_transforms as nrtk_yaml
 from nrtk_explorer.library import object_detector
 from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
@@ -152,6 +153,9 @@ class TransformsApp(Applet):
         if nrtk_trans.nrtk_transforms_available():
             self._transforms["nrtk_blur"] = nrtk_trans.NrtkGaussianBlurTransform()
             self._transforms["nrtk_pybsm"] = nrtk_trans.NrtkPybsmTransform()
+
+        # Add transform from YAML definition
+        self._transforms.update(nrtk_yaml.generate_transforms())
 
         self._parameters_app._transforms = self._transforms
 

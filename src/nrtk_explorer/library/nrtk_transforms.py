@@ -161,14 +161,14 @@ def createSampleSensorAndScenario():
     scenario = PybsmScenario(scenario_name, ihaze, altitude, groundRange)
     scenario.aircraftSpeed = 100.0
 
-    return sensor, scenario
+    return dict(sensor=sensor, scenario=scenario)
 
 
 class NrtkPybsmTransform(ImageTransform):
     def __init__(self, perturber: PybsmPerturberArg = None):
         if perturber is None:
-            sensor, scenario = createSampleSensorAndScenario()
-            perturber = PybsmPerturber(sensor=sensor, scenario=scenario)
+            kwargs = createSampleSensorAndScenario()
+            perturber = PybsmPerturber(**kwargs)
 
         self._perturber: PybsmPerturber = perturber
 

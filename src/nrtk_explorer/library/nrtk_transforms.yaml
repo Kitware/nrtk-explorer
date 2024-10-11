@@ -1,0 +1,46 @@
+nrtk_blur_2:
+  perturber: nrtk.impls.perturb_image.generic.cv2.blur.GaussianBlurPerturber
+  description:
+    ksize:
+      _path: [ksize]
+      type: integer
+      label: Kernel Size
+      default: 1
+      description:
+      option:
+
+nrtk_pybsm_2:
+  perturber: nrtk.impls.perturb_image.pybsm.perturber.PybsmPerturber
+  perturber_kwargs: nrtk_explorer.library.nrtk_transforms.createSampleSensorAndScenario
+  exec_default_args: [{img_gsd: 0.15}]
+  description:
+    D:
+      _path: [sensor, D]
+      type: float
+      label: Effective Aperture (m)
+      default:
+      description: 
+      options:
+    f:
+      _path: [sensor, f]
+      type: float
+      label: Focal length (m)
+      default:
+      description: 
+      options:
+
+fake:
+  perturber: nrtk.does.not.exist.perturber.MySuperClass
+  description:
+    A:
+      type: float
+      label: A param
+      default:
+      description: 
+      options:
+    B:
+      type: float
+      label: B param
+      default:
+      description: 
+      options:

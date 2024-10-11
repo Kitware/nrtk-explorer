@@ -1,1 +1,2 @@
 graft nrtk_explorer/module/serve
+include nrtk_explorer/app/library/nrtk_transforms.yaml

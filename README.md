@@ -18,23 +18,21 @@ is built using [trame][1] by the [kitware][2] team.
 - When possible it will attempt to utilize the user GPU as much as possible to
   speedup its computations.
 
-## Usage
+## Installing
 
-Usage example with virtual-env creation
+Install it from pypi:
 
 ```bash
-# Setup python environment
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-
-# install application
 pip install nrtk-explorer
+```
 
+## Usage
+
+```bash
 # get some sample data
 git clone https://github.com/vicentebolea/nrtk_explorer_datasets.git
 
-# Run the application on given dataset (908 images)
+# Run the application on given dataset
 nrtk-explorer --dataset ./nrtk_explorer_datasets/OIRDS_v1_0/oirds.json
 ```
 
@@ -58,8 +56,8 @@ cd nrtk-explorer
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
-pip install -e .
-pytest
+pip install -e '.[dev]'
+pytest .
 ```
 
 [1]: https://trame.readthedocs.io/en/latest/
@@ -70,3 +68,4 @@ pytest
 
 1. Merge `main` to `release` with a _merge commit_.
 2. Run "Create Release" workflow with workflow from `release` branch.
+3. Merge `release` to `main` with a _merge commit_.

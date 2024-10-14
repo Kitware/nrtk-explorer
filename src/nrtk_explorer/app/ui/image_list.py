@@ -83,27 +83,6 @@ TRANSFORM_COLUMNS = [
 make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
 
 
-state.client_only("image_size_image_list")
-
-
-def set_image_list_ids(dataset_ids):
-    # create reactive variables so ImageDetection components have live Refs
-    for id in dataset_ids:
-        keys = get_image_state_keys(id)
-        for key in keys.values():
-            if not state.has(key):
-                state[key] = None
-    state.image_list_ids = dataset_ids
-
-
-@state.change("dataset_ids", "user_selected_ids")
-def update_image_list_ids(**kwargs):
-    if len(state.user_selected_ids) > 0:
-        set_image_list_ids(state.user_selected_ids)
-    else:
-        set_image_list_ids(state.dataset_ids)
-
-
 class ImageWithSpinner(html.Div):
     def __init__(
         self,
@@ -138,35 +117,53 @@ class ImageWithSpinner(html.Div):
 @TrameApp()
 class ImageList(html.Div):
 
-    @change("image_list_view_mode")
-    def update_pagination(self, **kwargs):
-        old_pagination = self.state.pagination or {}
-        if self.state.image_list_view_mode == "grid":
-            self.state.pagination = {**old_pagination, "rowsPerPage": 12}
-            ctrl.get_visible_ids()
-        else:
-            self.state.pagination = {**old_pagination, "rowsPerPage": 0}  # show all rows
-
-    @change("image_list_ids")
-    def reset_view_range(self, **kwargs):
-        self.visible_ids = set()
-        server.js_call(ref="image-list", method="resetVirtualScroll")
-        if self.state.image_list_view_mode == "grid":
-            ctrl.get_visible_ids()
-
     def set_in_view_ids(self, ids):
         visible = set(ids)
         if self.visible_ids != visible:
             self.visible_ids = visible
             self.scroll_callback(self.visible_ids)
 
+    def _set_image_list_ids(self, dataset_ids):
+        # create reactive variables so ImageDetection components have live Refs
+        for id in dataset_ids:
+            keys = get_image_state_keys(id)
+            for key in keys.values():
+                if not self.state.has(key):
+                    self.state[key] = None
+        self.state.image_list_ids = dataset_ids
+
+    @change("dataset_ids", "user_selected_ids")
+    def update_image_list_ids(self, **kwargs):
+        if len(self.state.user_selected_ids) > 0:
+            self._set_image_list_ids(self.state.user_selected_ids)
+        else:
+            self._set_image_list_ids(self.state.dataset_ids)
+
+    @change("image_list_ids")
+    def reset_view_range(self, **kwargs):
+        self.visible_ids = set()
+        self.server.js_call(ref="image-list", method="resetVirtualScroll")
+        if self.state.image_list_view_mode == "grid":
+            self.server.controller.get_visible_ids()
+
+    @change("image_list_view_mode")
+    def update_pagination(self, **kwargs):
+        old_pagination = self.state.pagination or {}
+        if self.state.image_list_view_mode == "grid":
+            self.state.pagination = {**old_pagination, "rowsPerPage": 12}
+            self.server.controller.get_visible_ids()
+        else:
+            self.state.pagination = {**old_pagination, "rowsPerPage": 0}  # show all rows
+
     def __init__(self, server, on_scroll, on_hover, **kwargs):
         super().__init__(classes="full-height", **kwargs)
         self.server = server
         self.state = server.state
+        self.ctrl = server.controller
         self.visible_ids = set()
         self.scroll_callback = on_scroll
         self.update_pagination()
+        self.state.client_only("image_size_image_list")
         with self:
             client.Style(CSS_FILE.read_text())
             get_visible_ids = client.JSEval(
@@ -176,11 +173,11 @@ class ImageList(html.Div):
                             // wait a tick so pagination prop is applied to computedRows
                             window.setTimeout(() => {{
                                 const ids = list.computedRows.map(i => i.id)
-                                trigger('{ ctrl.trigger_name(self.set_in_view_ids) }', [ids])
+                                trigger('{ self.ctrl.trigger_name(self.set_in_view_ids) }', [ids])
                             }}, 0)
                         "''',
             )
-            ctrl.get_visible_ids = get_visible_ids.exec
+            self.ctrl.get_visible_ids = get_visible_ids.exec
             with quasar.QTable(
                 ref=("image-list"),
                 classes="full-height sticky-header",
@@ -233,7 +230,7 @@ class ImageList(html.Div):
                     r"v-model:pagination='pagination'",
                     f'''@update:pagination="() => {{
                             if(get('image_list_view_mode').value !== 'grid') return;
-                            trigger('{ self.server.controller.trigger_name(ctrl.get_visible_ids) }')
+                            trigger('{ self.server.controller.trigger_name(self.ctrl.get_visible_ids) }')
                         }}"''',
                 ],
             ):

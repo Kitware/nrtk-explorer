@@ -104,24 +104,6 @@ def update_image_list_ids(**kwargs):
         set_image_list_ids(state.dataset_ids)
 
 
-state.pagination = {}
-
-
-@state.change("image_list_ids")
-def reset_virtual_scroll(**kwargs):
-    if state.image_list_view_mode == "grid":
-        ctrl.get_visible_ids()
-
-
-@state.change("image_list_view_mode")
-def update_pagination(**kwargs):
-    if state.image_list_view_mode == "grid":
-        state.pagination = {**state.pagination, "rowsPerPage": 12}
-        ctrl.get_visible_ids()
-    else:
-        state.pagination = {**state.pagination, "rowsPerPage": 0}  # show all rows
-
-
 class ImageWithSpinner(html.Div):
     def __init__(
         self,
@@ -155,10 +137,22 @@ class ImageWithSpinner(html.Div):
 
 @TrameApp()
 class ImageList(html.Div):
+
+    @change("image_list_view_mode")
+    def update_pagination(self, **kwargs):
+        old_pagination = self.state.pagination or {}
+        if self.state.image_list_view_mode == "grid":
+            self.state.pagination = {**old_pagination, "rowsPerPage": 12}
+            ctrl.get_visible_ids()
+        else:
+            self.state.pagination = {**old_pagination, "rowsPerPage": 0}  # show all rows
+
     @change("image_list_ids")
     def reset_view_range(self, **kwargs):
         self.visible_ids = set()
         server.js_call(ref="image-list", method="resetVirtualScroll")
+        if self.state.image_list_view_mode == "grid":
+            ctrl.get_visible_ids()
 
     def set_in_view_ids(self, ids):
         visible = set(ids)
@@ -169,8 +163,10 @@ class ImageList(html.Div):
     def __init__(self, server, on_scroll, on_hover, **kwargs):
         super().__init__(classes="full-height", **kwargs)
         self.server = server
+        self.state = server.state
         self.visible_ids = set()
         self.scroll_callback = on_scroll
+        self.update_pagination()
         with self:
             client.Style(CSS_FILE.read_text())
             get_visible_ids = client.JSEval(

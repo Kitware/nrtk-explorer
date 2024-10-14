@@ -1,6 +1,5 @@
 from pathlib import Path
 from trame.widgets import html, quasar, client
-from trame.app import get_server
 from trame.decorators import TrameApp, change
 from nrtk_explorer.app.trame_utils import change_checker
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
@@ -38,14 +37,6 @@ COLUMNS = [
 ]
 
 
-server = get_server()
-state, context, ctrl = server.state, server.context, server.controller
-
-state.client_only("columns")
-state.columns = COLUMNS
-state.visible_columns = [col["name"] for col in COLUMNS]
-
-
 def make_dependent_columns_handler(state, columns):
     toggle_column = columns[0]
     dependent_columns = columns[1:]
@@ -71,16 +62,17 @@ ORIGINAL_COLUMNS = [
 ]
 
 
-make_dependent_columns_handler(state, ORIGINAL_COLUMNS)
-
-
 TRANSFORM_COLUMNS = [
     "transformed",
     "ground_truth_to_transformed_detection_score",
     "original_detection_to_transformed_detection_score",
 ]
 
-make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
+
+def init_visibile_columns(state):
+    state.visible_columns = [col["name"] for col in COLUMNS]
+    make_dependent_columns_handler(state, ORIGINAL_COLUMNS)
+    make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
 
 
 class ImageWithSpinner(html.Div):
@@ -160,10 +152,15 @@ class ImageList(html.Div):
         self.server = server
         self.state = server.state
         self.ctrl = server.controller
+
         self.visible_ids = set()
         self.scroll_callback = on_scroll
         self.update_pagination()
         self.state.client_only("image_size_image_list")
+
+        self.state.columns = COLUMNS
+        self.state.client_only("columns")
+
         with self:
             client.Style(CSS_FILE.read_text())
             get_visible_ids = client.JSEval(

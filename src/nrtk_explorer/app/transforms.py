@@ -1,7 +1,3 @@
-r"""
-Define your classes and create the instances that you need to expose
-"""
-
 import logging
 from typing import Dict, Callable
 
@@ -15,7 +11,6 @@ import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 import nrtk_explorer.library.yaml_transforms as nrtk_yaml
 from nrtk_explorer.library import object_detector
-from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
@@ -38,7 +33,12 @@ from nrtk_explorer.app.images.stateful_annotations import (
     make_stateful_annotations,
     make_stateful_predictor,
 )
-from nrtk_explorer.app.ui.image_list import TRANSFORM_COLUMNS, ORIGINAL_COLUMNS
+from nrtk_explorer.app.ui import ImageList
+from nrtk_explorer.app.ui.image_list import (
+    TRANSFORM_COLUMNS,
+    ORIGINAL_COLUMNS,
+    init_visibile_columns,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -161,6 +161,8 @@ class TransformsApp(Applet):
 
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
+
+        init_visibile_columns(self.state)
 
         # On annotations enabled, run whole pipeline to possibly compute transforms. Why? Transforms compute scores are based on original images
         self.annotations_enable_control = ProcessingStep(

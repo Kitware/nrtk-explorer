@@ -1,6 +1,7 @@
 from pathlib import Path
 from trame.widgets import html, quasar, client
 from trame.app import get_server
+from trame.decorators import TrameApp, change
 from nrtk_explorer.app.trame_utils import change_checker
 from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 from nrtk_explorer.app.images.image_ids import get_image_state_keys
@@ -108,7 +109,6 @@ state.pagination = {}
 
 @state.change("image_list_ids")
 def reset_virtual_scroll(**kwargs):
-    ImageList.reset_view_range()
     if state.image_list_view_mode == "grid":
         ctrl.get_visible_ids()
 
@@ -153,14 +153,12 @@ class ImageWithSpinner(html.Div):
             )
 
 
+@TrameApp()
 class ImageList(html.Div):
-    instances = []
-
-    @staticmethod
-    def reset_view_range():
-        for instance in ImageList.instances:
-            instance.visible_ids = set()
-            server.js_call(ref="image-list", method="resetVirtualScroll")
+    @change("image_list_ids")
+    def reset_view_range(self, **kwargs):
+        self.visible_ids = set()
+        server.js_call(ref="image-list", method="resetVirtualScroll")
 
     def set_in_view_ids(self, ids):
         visible = set(ids)
@@ -168,9 +166,9 @@ class ImageList(html.Div):
             self.visible_ids = visible
             self.scroll_callback(self.visible_ids)
 
-    def __init__(self, on_scroll, on_hover, **kwargs):
+    def __init__(self, server, on_scroll, on_hover, **kwargs):
         super().__init__(classes="full-height", **kwargs)
-        ImageList.instances.append(self)
+        self.server = server
         self.visible_ids = set()
         self.scroll_callback = on_scroll
         with self:

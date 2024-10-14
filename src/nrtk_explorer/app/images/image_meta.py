@@ -1,5 +1,4 @@
 from typing import TypedDict
-from nrtk_explorer.app.trame_utils import delete_state
 
 ImageMetaId = str
 
@@ -31,8 +30,3 @@ def update_image_meta(state, dataset_id: str, meta_patch: PartialDatasetImageMet
     if state.has(meta_key) and state[meta_key] is not None:
         current_meta = state[meta_key]
     state[meta_key] = {**IMAGE_META_DEFAULTS, **current_meta, **meta_patch}
-
-
-def delete_image_meta(state, dataset_id: str):
-    meta_key = dataset_id_to_meta(dataset_id)
-    delete_state(state, meta_key)

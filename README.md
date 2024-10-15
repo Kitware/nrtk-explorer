@@ -60,6 +60,8 @@ pip install -e '.[dev]'
 pytest .
 ```
 
+For more details on setting up a development environment see [DEVELOPMENT docs](docs/source/manual/DEVELOPMENT.rst).
+
 [1]: https://trame.readthedocs.io/en/latest/
 [2]: https://www.kitware.com/
 [3]: https://cocodataset.org/

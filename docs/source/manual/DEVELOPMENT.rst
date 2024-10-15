@@ -15,7 +15,7 @@ Setup NPM
 
 To develop nrtk-explorer ensure that `npm is installed <setup>`_.
 
-For convinience we provide scriptable instructions for Ubuntu 22.04
+For convenience we provide scriptable instructions for Ubuntu 22.04
 
 On Ubuntu 22.04
 Installing a more modern version of node js from 06-Aug-2024 17:08
@@ -54,7 +54,7 @@ Installing a more modern version of node js from 06-Aug-2024 17:08
 Install in Development Mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Before installing this module, it is a good idea to be in a virutal environment. If you are no in one, you can set one up:
+Before installing this module, it is a good idea to be in a virtual environment. If you are no in one, you can set one up:
 
 
 .. code:: bash

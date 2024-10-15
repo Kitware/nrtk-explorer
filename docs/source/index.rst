@@ -1,4 +1,4 @@
-.. The large version wont work because github strips rst image rescaling. https://i.imgur.com/AcWVroL.png
+.. The large version won't work because github strips rst image rescaling. https://i.imgur.com/AcWVroL.png
     # TODO: Add a logo
     .. image:: https://i.imgur.com/PoYIsWE.png
        :height: 100px

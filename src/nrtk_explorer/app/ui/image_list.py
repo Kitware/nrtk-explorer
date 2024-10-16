@@ -68,11 +68,17 @@ TRANSFORM_COLUMNS = [
     "original_detection_to_transformed_detection_score",
 ]
 
+visibile_columns_initialized = False
+
 
 def init_visibile_columns(state):
+    global visibile_columns_initialized
+    if visibile_columns_initialized:
+        return
     state.visible_columns = [col["name"] for col in COLUMNS]
     make_dependent_columns_handler(state, ORIGINAL_COLUMNS)
     make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
+    visibile_columns_initialized = True
 
 
 class ImageWithSpinner(html.Div):
@@ -147,12 +153,8 @@ class ImageList(html.Div):
         else:
             self.state.pagination = {**old_pagination, "rowsPerPage": 0}  # show all rows
 
-    def __init__(self, server, on_scroll, on_hover, **kwargs):
+    def __init__(self, on_scroll, on_hover, **kwargs):
         super().__init__(classes="full-height", **kwargs)
-        self.server = server
-        self.state = server.state
-        self.ctrl = server.controller
-
         self.visible_ids = set()
         self.scroll_callback = on_scroll
         self.update_pagination()

@@ -391,7 +391,7 @@ class TransformsApp(Applet):
             self._parameters_app.transform_apply_ui()
 
     def dataset_widget(self):
-        ImageList(self.server, self.on_scroll, self.on_hover)
+        ImageList(self.on_scroll, self.on_hover)
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

@@ -1,0 +1,12 @@
+name: nrtk-explorer
+channels:
+  - conda-forge
+dependencies:
+  - python==3.10
+  - ipykernel
+  - jhsingle-native-proxy>=0.8.2
+  - pip
+  - pip:
+      - kwcoco
+      - nrtk-explorer>=0.5
+variables: {}

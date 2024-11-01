@@ -1,9 +1,10 @@
 from pathlib import Path
 from trame.widgets import html, quasar, client
 from trame.decorators import TrameApp, change
+from trame_annotations.widgets.annotations import ImageDetection
 from nrtk_explorer.app.trame_utils import change_checker
-from nrtk_explorer.widgets.nrtk_explorer import ImageDetection
 from nrtk_explorer.app.images.image_ids import get_image_state_keys
+
 
 CSS_FILE = Path(__file__).with_name("image_list.css")
 
@@ -90,7 +91,7 @@ class ImageWithSpinner(html.Div):
         categories=None,
         selected=None,
         hover=None,
-        containerSelector=None,
+        container_selector=None,
         **kwargs,
     ):
         super().__init__(
@@ -105,7 +106,7 @@ class ImageWithSpinner(html.Div):
                 categories=categories,
                 selected=selected,
                 hover=hover,
-                containerSelector=containerSelector,
+                container_selector=container_selector,
             )
             quasar.QInnerLoading(
                 showing=(f"!{src[0]} || (show_annotations_on_images && !{annotations[0]}.value)",)
@@ -247,7 +248,7 @@ class ImageList(html.Div):
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
                             hover=(on_hover, "[$event]"),
-                            containerSelector="#image-list .q-table__middle",
+                            container_selector="#image-list .q-table__middle",
                         )
                 with html.Template(
                     v_slot_body_cell_original=True,
@@ -264,7 +265,7 @@ class ImageList(html.Div):
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
                             hover=(on_hover, "[$event]"),
-                            containerSelector="#image-list .q-table__middle",
+                            container_selector="#image-list .q-table__middle",
                         )
                 with html.Template(
                     v_slot_body_cell_transformed=True,
@@ -284,7 +285,7 @@ class ImageList(html.Div):
                             categories=("annotation_categories",),
                             selected=("(props.row.transformed == hovered_id)",),
                             hover=(on_hover, "[$event]"),
-                            containerSelector="#image-list .q-table__middle",
+                            container_selector="#image-list .q-table__middle",
                         )
                 # Grid Mode template for each row/grid-item
                 with html.Template(

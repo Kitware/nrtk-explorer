@@ -9,25 +9,6 @@ class HtmlElement(AbstractElement):
             self.server.enable_module(module)
 
 
-class ImageDetection(HtmlElement):
-    def __init__(self, **kwargs):
-        super().__init__(
-            "image-detection",
-            **kwargs,
-        )
-        self._attr_names += [
-            "identifier",
-            "src",
-            "annotations",
-            "categories",
-            "selected",
-            "containerSelector",
-        ]
-        self._event_names += [
-            "hover",
-        ]
-
-
 class ScatterPlot(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(

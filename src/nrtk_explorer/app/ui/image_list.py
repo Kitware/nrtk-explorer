@@ -69,17 +69,17 @@ TRANSFORM_COLUMNS = [
     "original_detection_to_transformed_detection_score",
 ]
 
-visibile_columns_initialized = False
+visible_columns_initialized = False
 
 
-def init_visibile_columns(state):
-    global visibile_columns_initialized
-    if visibile_columns_initialized:
+def init_visible_columns(state):
+    global visible_columns_initialized
+    if visible_columns_initialized:
         return
     state.visible_columns = [col["name"] for col in COLUMNS]
     make_dependent_columns_handler(state, ORIGINAL_COLUMNS)
     make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
-    visibile_columns_initialized = True
+    visible_columns_initialized = True
 
 
 class ImageWithSpinner(html.Div):

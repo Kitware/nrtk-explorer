@@ -41,6 +41,13 @@ from nrtk_explorer.app.ui.image_list import (
 )
 
 
+INFERENCE_MODELS_DEFAULT = [
+    "facebook/detr-resnet-50",
+    "hustvl/yolos-tiny",
+    "valentinafeve/yolos-fashionpedia",
+]
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -94,6 +101,17 @@ class TransformsApp(Applet):
         transformed_detection_annotations=None,
     ):
         super().__init__(server)
+
+        self.server.cli.add_argument(
+            "--models",
+            nargs="+",
+            default=INFERENCE_MODELS_DEFAULT,
+            help="Space separated list of inference models",
+        )
+
+        known_args, _ = self.server.cli.parse_known_args()
+        self.state.inference_models = known_args.models
+        self.state.object_detection_model = self.state.inference_models[0]
 
         self.images = images or Images(server)
 

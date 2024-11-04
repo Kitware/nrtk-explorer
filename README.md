@@ -45,8 +45,12 @@ Some COCO image datasets available at: https://github.com/vicentebolea/nrtk_expl
 - `-h|--help` show the help for the command line options, it inherit trame
   command line options and flags.
 - `--dataset` specify the path to a json file describing a COCO
-  image dataset. You can specify multiple COCO datasets using a comma `,` as a
-  separator. Example usage: `nrtk_explorer --dataset /foo-dir/coco.json, ../bar-dir/baz.json`
+  image dataset. You can specify multiple COCO datasets using a space as the
+  separator. Example: `nrtk_explorer --dataset /foo-dir/coco.json ../bar-dir/baz.json`
+- `--models` specify the Hugging Face Hub object detection repository name to use.
+  [Possible models](https://huggingface.co/models?pipeline_tag=object-detection&library=transformers&sort=trending).
+  Specify multiple models using a space as the separator.  
+  Example: `nrtk_explorer --models hustvl/yolos-tiny facebook/detr-resnet-50`
 
 ## Contribute to NRTK_EXPLORER
 

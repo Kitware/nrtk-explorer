@@ -37,7 +37,7 @@ from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.ui.image_list import (
     TRANSFORM_COLUMNS,
     ORIGINAL_COLUMNS,
-    init_visibile_columns,
+    init_visible_columns,
 )
 
 
@@ -180,7 +180,7 @@ class TransformsApp(Applet):
         self.state.transforms = [k for k in self._transforms.keys()]
         self.state.current_transform = self.state.transforms[0]
 
-        init_visibile_columns(self.state)
+        init_visible_columns(self.state)
 
         # On annotations enabled, run whole pipeline to possibly compute transforms. Why? Transforms compute scores are based on original images
         self.annotations_enable_control = ProcessingStep(

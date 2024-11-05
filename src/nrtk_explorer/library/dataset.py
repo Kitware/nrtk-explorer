@@ -12,8 +12,8 @@ from pathlib import Path
 import json
 
 
-class DefaultDataset:
-    """Default dataset class to load the dataset and get the image file path given an image id."""
+class JsonDataset:
+    """Read a COCO JSON and get the image file path given an image id."""
 
     def __init__(self, path: str):
         with open(path) as f:
@@ -38,7 +38,7 @@ def __load_dataset(path: str):
 
         return kwcoco.CocoDataset(path)
     except ImportError:
-        return DefaultDataset(path)
+        return JsonDataset(path)
 
 
 def get_dataset(path: str, force_reload: bool = False):

@@ -33,8 +33,7 @@ class Images:
         )
 
     def _load_image(self, dataset_id: str):
-        image_path = self.server.controller.get_image_fpath(int(dataset_id))
-        return Image.open(image_path)
+        return self.server.context.dataset.get_image(int(dataset_id))
 
     def get_image(self, dataset_id: str, **kwargs):
         """For cache side effects pass on_add_item and on_clear_item callbacks as kwargs"""

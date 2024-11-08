@@ -6,6 +6,8 @@ from PIL import Image as ImageModule
 from pathlib import Path
 from yaml import load, Loader
 
+from nrtk_explorer.library.transforms import ImageTransform
+
 TRANSFORM_FILE = Path(__file__).with_name("nrtk_transforms.yaml").resolve()
 
 if "NRTK_TRANSFORM_DEFINITION" in os.environ:
@@ -93,7 +95,7 @@ def create_perturber_instance(klass, kwargs):
 # -----------------------------------------------------------------------------
 
 
-class GenericPerturber:
+class GenericPerturber(ImageTransform):
     def __init__(self, config):
         self.description = config.get("description")
         self.exec_args = config.get("exec_default_args", [])

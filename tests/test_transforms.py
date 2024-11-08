@@ -7,7 +7,7 @@ from nrtk_explorer.library.yaml_transforms import (
 
 def test_gaussian_blur():
     transforms = generate_transforms()
-    blur = transforms["nrtk_blur_2"]
+    blur = transforms["nrtk_cv2_gauss_blur"]
     blur.set_parameters({"ksize": 3})
     blur.execute(get_image())
 

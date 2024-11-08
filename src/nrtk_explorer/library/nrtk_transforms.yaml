@@ -1,13 +1,119 @@
-nrtk_blur_2:
+nrtk_pil_brightness:
+  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.BrightnessPerturber
+  description:
+    factor:
+      type: float
+      label: Factor
+
+nrtk_pil_color:
+  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.ColorPerturber
+  description:
+    factor:
+      type: float
+      label: Factor
+
+nrtk_pil_contrast:
+  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.ContrastPerturber
+  description:
+    factor:
+      type: float
+      label: Factor
+
+nrtk_pil_sharpness:
+  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.SharpnessPerturber
+  description:
+    factor:
+      type: float
+      label: Factor
+
+nrtk_cv2_average_blur:
+  perturber: nrtk.impls.perturb_image.generic.cv2.blur.AverageBlurPerturber
+  description:
+    ksize:
+      type: integer
+      label: Kernel Size
+
+nrtk_cv2_gauss_blur:
   perturber: nrtk.impls.perturb_image.generic.cv2.blur.GaussianBlurPerturber
   description:
     ksize:
-      _path: [ksize]
       type: integer
       label: Kernel Size
-      default: 1
-      description:
-      option:
+
+nrtk_cv2_median_blur:
+  perturber: nrtk.impls.perturb_image.generic.cv2.blur.MedianBlurPerturber
+  perturber_kwargs: { ksize: 3 }
+  description:
+    ksize:
+      type: integer
+      label: Kernel Size
+
+nrtk_sk_salt_noise:
+  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.SaltNoisePerturber
+  description:
+    amount:
+      type: float
+      label: Noise amount
+
+nrtk_sk_pepper_noise:
+  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.PepperNoisePerturber
+  description:
+    amount:
+      type: float
+      label: Noise amount
+
+nrtk_sk_salt_pepper_noise:
+  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.SaltAndPepperNoisePerturber
+  description:
+    amount:
+      type: float
+      label: Noise amount
+    salt_vs_pepper:
+      type: float
+      label: Salt vs Pepper
+
+nrtk_sk_gauss_noise:
+  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.GaussianNoisePerturber
+  description:
+    mean:
+      type: float
+      label: Mean
+    var:
+      type: float
+      label: Variance
+
+nrtk_sk_speckle_noise:
+  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.SpeckleNoisePerturber
+  description:
+    mean:
+      type: float
+      label: Mean
+    var:
+      type: float
+      label: Variance
+
+nrtk_pybsm_jitter_otf:
+  perturber: nrtk.impls.perturb_image.pybsm.jitter_otf_perturber.JitterOTFPerturber
+  description:
+    s_x:
+      type: float
+      label: RMS Jitter Amplitute X (rad)
+    s_y:
+      type: float
+      label: RMS Jitter Amplitute Y (rad)
+
+nrtk_pybsm_detector_otf:
+  perturber: nrtk.impls.perturb_image.pybsm.detector_otf_perturber.DetectorOTFPerturber
+  description:
+    w_x:
+      type: float
+      label: Detector width X (m)
+    w_y:
+      type: float
+      label: Detector width Y (m)
+    f:
+      type: float
+      label: Focal length (m)
 
 nrtk_pybsm_2:
   perturber: nrtk.impls.perturb_image.pybsm.perturber.PybsmPerturber

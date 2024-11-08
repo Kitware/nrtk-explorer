@@ -13,20 +13,16 @@ logger.setLevel(logging.INFO)
 
 try:
     from pybsm.otf import dark_current_from_density
-    from nrtk.impls.perturb_image.generic.cv2.blur import GaussianBlurPerturber
     from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
 except ImportError:
     logger.info("Disabling NRTK transforms due to missing library/failing imports")
     ENABLED_NRTK_TRANSFORMS = False
 
 if TYPE_CHECKING:
-    GaussianBlurPerturberType = GaussianBlurPerturber
     PybsmPerturberType = PybsmPerturber
 else:
-    GaussianBlurPerturberType = None
     PybsmPerturberType = None
 
-GaussianBlurPerturberArg = Optional[GaussianBlurPerturberType]
 PybsmPerturberArg = Optional[PybsmPerturberType]
 
 
@@ -148,41 +144,6 @@ def create_sample_scenario():
 
 def create_sample_sensor_and_scenario():
     return dict(sensor=create_sample_sensor(), scenario=create_sample_scenario())
-
-
-class NrtkGaussianBlurTransform(ImageTransform):
-    def __init__(self, perturber: GaussianBlurPerturberArg = None):
-        if perturber is None:
-            perturber = GaussianBlurPerturber()
-
-        self._perturber: GaussianBlurPerturber = perturber
-
-    def get_parameters(self) -> Dict[str, Any]:
-        return {
-            "ksize": self._perturber.ksize,
-        }
-
-    def set_parameters(self, params: Dict[str, Any]):
-        self._perturber.ksize = params.get("ksize", 1)
-
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
-        ksize_description: ParameterDescription = {
-            "type": "integer",
-            "label": "Kernel Size",
-            "default": 1,
-            "description": None,
-            "options": None,
-        }
-
-        return {
-            "ksize": ksize_description,
-        }
-
-    def execute(self, input: Image, *input_args: Any) -> Image:
-        input_array = np.asarray(input)
-        output_array = self._perturber.perturb(input_array)
-
-        return ImageModule.fromarray(output_array)
 
 
 class NrtkPybsmTransform(ImageTransform):

@@ -1,5 +1,5 @@
 import base64
-import io
+from io import BytesIO
 from PIL import Image
 from trame.decorators import TrameApp, change, controller
 from nrtk_explorer.app.images.image_ids import (
@@ -11,11 +11,23 @@ from nrtk_explorer.app.images.cache import LruCache
 from nrtk_explorer.library.transforms import ImageTransform
 
 
-def convert_to_base64(img: Image.Image) -> str:
-    """Convert image to base64 string"""
-    buf = io.BytesIO()
-    img.save(buf, format="png")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+def convert_to_base64(img):
+    """Convert PIL Image to base64 string with PNG format."""
+    buf = BytesIO()
+    try:
+        # Convert CMYK to RGB if needed
+        if img.mode == "CMYK":
+            img = img.convert("RGB")
+
+        # Save as PNG
+        img.save(buf, format="png")
+        buf.seek(0)
+
+        # Convert to base64 and add data URI prefix
+        b64_str = base64.b64encode(buf.getvalue()).decode()
+        return f"data:image/png;base64,{b64_str}"
+    finally:
+        buf.close()
 
 
 IMAGE_CACHE_SIZE = 200

@@ -4,7 +4,7 @@ from typing import Iterable
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library.filtering import FilterProtocol
-from nrtk_explorer.library.dataset import get_dataset, get_image_fpath
+from nrtk_explorer.library.dataset import get_dataset
 from nrtk_explorer.library.debounce import debounce
 
 from nrtk_explorer.app.images.images import Images
@@ -54,7 +54,6 @@ class Engine(Applet):
         self.input_paths = known_args.dataset
         self.state.current_dataset = self.input_paths[0]
 
-        self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
         images = Images(server=self.server)
 
         self._transforms_app = TransformsApp(
@@ -107,8 +106,9 @@ class Engine(Applet):
 
     def on_dataset_change(self, **kwargs):
         self.state.dataset_ids = []  # sampled images
-        self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
-        self.state.num_images_max = len(self.context.dataset.imgs)
+        dataset = get_dataset(self.state.current_dataset)
+        self.context.dataset = dataset
+        self.state.num_images_max = len(dataset.imgs)
         self.state.num_images = min(self.state.num_images_max, NUM_IMAGES_DEFAULT)
         self.state.dirty("num_images")  # Trigger resample_images()
         self.state.random_sampling_disabled = False

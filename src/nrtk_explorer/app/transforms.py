@@ -204,10 +204,6 @@ class TransformsApp(Applet):
 
         self.visible_dataset_ids = []  # set by ImageList via self.on_scroll callback
 
-    @property
-    def get_image_fpath(self):
-        return self.server.controller.get_image_fpath
-
     def on_server_ready(self, *args, **kwargs):
         self.state.change("object_detection_model")(self.on_object_detection_model_change)
         self.on_object_detection_model_change()

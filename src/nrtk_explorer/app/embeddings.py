@@ -78,7 +78,7 @@ class EmbeddingsApp(Applet):
     def on_current_dataset_change(self, **kwargs):
         self.state.num_elements_disabled = True
         if self.context.dataset is None:
-            self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
+            self.context.dataset = get_dataset(self.state.current_dataset)
 
         self.state.num_elements_max = len(list(self.context.dataset.imgs))
         self.state.num_elements_disabled = False

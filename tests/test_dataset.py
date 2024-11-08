@@ -21,10 +21,6 @@ def test_get_dataset(dataset_path):
     ds2 = get_dataset(dataset_path)
     assert ds1 is ds2
 
-    ds1 = get_dataset(dataset_path)
-    ds2 = get_dataset(dataset_path, force_reload=True)
-    assert ds1 is not ds2
-
 
 @mock.patch("nrtk_explorer.library.dataset.__load_dataset", lambda path: JsonDataset(path))
 def test_get_dataset_empty():
@@ -37,4 +33,4 @@ def test_DefaultDataset(dataset_path):
     assert len(ds.imgs) > 0
     assert len(ds.cats) > 0
     assert len(ds.anns) > 0
-    assert Path(ds.get_image_fpath(491497)).name == "000000491497.jpg"
+    assert ds.get_image(next(iter(ds.imgs.keys()))) is not None

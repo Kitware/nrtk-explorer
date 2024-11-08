@@ -9,6 +9,13 @@ from functools import lru_cache
 from pathlib import Path
 import json
 from PIL import Image
+from datasets import (
+    load_dataset,
+    get_dataset_default_config_name,
+    get_dataset_infos,
+    Sequence,
+    ClassLabel,
+)
 
 
 class JsonDataset:
@@ -66,7 +73,6 @@ class HuggingFaceDataset:
     """Interface to Hugging Face Dataset with the same API as JsonDataset."""
 
     def __init__(self, identifier: str):
-        from datasets import load_dataset, get_dataset_default_config_name, get_dataset_infos
 
         infos = get_dataset_infos(identifier)
         selected_split_name = None
@@ -86,93 +92,140 @@ class HuggingFaceDataset:
                 key=lambda item: item[1].num_examples,
             )
 
-        self.dataset = load_dataset(identifier, selected_config_name, split=selected_split_name)
+        self._dataset = load_dataset(
+            identifier, selected_config_name, split=selected_split_name, keep_in_memory=True
+        )
+        self._metadata = self._dataset.remove_columns(["image"])
+
+        imgs, row_idx_to_id, id_to_row_idx = self._load_images()
+        self.imgs = imgs
+        self._row_idx_to_id = row_idx_to_id
+        self._id_to_row_idx = id_to_row_idx
+
         self.cats = self._load_categories()
+
         self.anns = self._load_annotations()
-        self.imgs = self._load_images()
 
     def _load_categories(self):
-        if "labels" in self.dataset.features:
-            labels = self.dataset.features["labels"].names
-            return {i: {"id": i, "name": name} for i, name in enumerate(labels)}
+        labels = None
+        if "labels" in self._metadata.features:
+            labels = self._metadata.features["labels"].names
 
-        if "objects" in self.dataset.features:
-            labels = self.dataset.features["objects"].feature["category"].names
-            return {i: {"id": i, "name": name} for i, name in enumerate(labels)}
-        return {}
+        if "objects" in self._metadata.features:
+            objects = self._metadata.features["objects"]
+
+            if not isinstance(objects, Sequence) and "category" in objects:
+                category_feature = objects["category"]
+                if isinstance(category_feature, Sequence):
+                    if hasattr(category_feature.feature, "names"):
+                        labels = category_feature.feature.names
+                    else:
+                        # Try to get unique categories from the dataset
+                        categories = set()
+                        for example in self._metadata:
+                            if "objects" in example and "category" in example["objects"]:
+                                categories.update(example["objects"]["category"])
+                        labels = sorted(list(categories))
+                elif isinstance(category_feature, ClassLabel):
+                    labels = category_feature.names
+                elif hasattr(category_feature, "names"):
+                    labels = category_feature.names
+            else:
+                category_feature = self._metadata.features["objects"].feature["category"]
+                if hasattr(category_feature, "names"):
+                    labels = category_feature.names
+                else:
+                    # Fallback to collecting unique categories
+                    categories = set()
+                    for example in self._metadata:
+                        if "objects" in example:
+                            categories.update(example["objects"]["category"])
+                    labels = sorted(list(categories))
+
+        if labels is None:
+            print("Could not find category labels in dataset")
+            return {}
+
+        return {i: {"id": i, "name": str(name)} for i, name in enumerate(labels)}
 
     def _load_annotations(self):
         annotations = {}
-        for idx, example in enumerate(self.dataset):
+
+        counter = 0
+
+        def make_id():
+            nonlocal counter
+            counter += 1
+            return f"ann_{counter}"
+
+        for idx, example in enumerate(self._metadata):
             if "objects" in example:
                 objects = example["objects"]
-                image_id = example.get("id", idx)
-                id_key = "id" if "id" in objects else "bbox_id"
-                for obj_id, bbox, category_id in zip(
-                    objects[id_key], objects["bbox"], objects["category"]
+                image_id = self._row_idx_to_id[idx]
+                dataset_has_ids = True
+                ids = objects.get("id", objects.get("bbox_id"))
+                if ids is None:
+                    ids = [make_id() for _ in range(len(objects["bbox"]))]
+                    dataset_has_ids = False
+
+                for annotation_id, bbox, category_id in zip(
+                    ids, objects["bbox"], objects["category"]
                 ):
-                    annotations[obj_id] = {
-                        "id": obj_id,
+                    if category_id not in self.cats:
+                        # assuming category_id is the name, find the id
+                        category_name = category_id
+                        category_id = next(
+                            (
+                                cat_id
+                                for cat_id, cat in self.cats.items()
+                                if cat["name"] == category_name
+                            ),
+                            None,
+                        )
+
+                    annotations[annotation_id] = {
+                        "id": annotation_id if dataset_has_ids else None,
                         "image_id": image_id,
                         "category_id": category_id,
                         "bbox": bbox,
                     }
 
-        counter = 1
-
-        def get_id(annotations):
-            nonlocal counter
-            """Generate a unique string ID not present in annotations."""
-            while True:
-                new_id = f"ann_{counter}"
-                if new_id not in annotations:
-                    return new_id
-                counter += 1
-
-        for idx, example in enumerate(self.dataset):
-            if "labels" in example:
-                image = example["image"]
-                annotation_id = get_id(annotations)
-                annotations[annotation_id] = {
-                    "id": annotation_id,
-                    "image_id": idx,
-                    "category_id": example["labels"],
-                    "bbox": [2, 2, image.width - 2, image.height - 2],
-                }
+        # for idx, example in enumerate(self._metadata):
+        #     if "labels" in example:
+        #         image_id = self._row_idx_to_id[idx]
+        #         image = example["image"]
+        #         annotation_id = make_id()
+        #         annotations[annotation_id] = {
+        #             "id": None,
+        #             "image_id": image_id,
+        #             "category_id": example["labels"],
+        #             "bbox": [2, 2, image.width - 2, image.height - 2],
+        #         }
 
         return annotations
 
     def _load_images(self):
         images = {}
-        for idx, example in enumerate(self.dataset):
-            image = example["image"]
+        row_idx_to_id = {}
+        id_to_row_idx = {}
+        for idx, example in enumerate(self._metadata):
             id = example.get("id", idx)
             images[id] = {
                 "id": id,
-                "height": image.height,
-                "width": image.width,
             }
-        return images
+            row_idx_to_id[idx] = id
+            id_to_row_idx[id] = idx
+        return images, row_idx_to_id, id_to_row_idx
 
-    def get_image_fpath(self, selected_id: int):
-        """Get the image file path given an image id."""
-        image = self.imgs.get(selected_id)
-        if image:
-            return image["file_name"]
-        raise KeyError(f"Image ID {selected_id} not found.")
-
-    def get_image(self, id: int):
+    def get_image(self, id):
         """Get the image given an image id."""
-        return self.dataset[id]["image"]
-
-
-def wrap_hugging_face_dataset(identifier):
-    return HuggingFaceDataset(identifier)
+        row = self._id_to_row_idx[id]
+        return self._dataset[row]["image"]
 
 
 @lru_cache
 def __load_dataset(identifier: str):
-    """Load the dataset given the path to the dataset file."""
+    """Load the dataset."""
 
     absolute_path = str(Path(identifier).resolve())
 
@@ -180,22 +233,14 @@ def __load_dataset(identifier: str):
         return make_coco_dataset(absolute_path)
 
     # Assume identifier is a Hugging Face Dataset
-    return wrap_hugging_face_dataset(identifier)
+    return HuggingFaceDataset(identifier)
 
 
-def get_dataset(identifier: str, force_reload: bool = False):
-    """Get the dataset object given the path to the dataset file.
+def get_dataset(identifier: str):
+    """Get the dataset object.
     Args:
-        path (str): Path to the dataset file.
-        force_reload (bool): Whether to force reload the dataset. Default: False.
+        identifier (str): Path to the dataset file or HuggingFace hub dataset identifier.
     Return:
         dataset: Dataset object.
     """
-    if force_reload:
-        __load_dataset.cache_clear()
     return __load_dataset(identifier)
-
-
-def get_image_fpath(selected_id: int, path: str):
-    """Get the image file path given an image id."""
-    return get_dataset(path).get_image_fpath(selected_id)

@@ -83,7 +83,7 @@ def expand_hugging_face_datasets(dataset_identifiers: SequenceType[str]):
 
 
 HF_ROWS_MAX_TO_DOWNLOAD = 5000
-HF_ROWS_TO_TAKE_STREAMING = 1000
+HF_ROWS_TO_TAKE_STREAMING = 600
 
 
 class HuggingFaceDataset:
@@ -143,45 +143,28 @@ class HuggingFaceDataset:
         return self._dataset[row]["image"]
 
     def _load_categories(self):
+        def extract_labels(feature):
+            if isinstance(feature, ClassLabel):
+                return feature.names
+            if hasattr(feature, "names"):
+                return feature.names
+            if isinstance(feature, Sequence):
+                return extract_labels(feature.feature)
+            if isinstance(feature, dict):
+                for key in ["category", "label"]:
+                    if key in feature:
+                        return extract_labels(feature[key])
+            return None
+
         labels = None
-        if "labels" in self._metadata.features:
-            labels = self._metadata.features["labels"].names
+        features = self._metadata.features
 
-        if "objects" in self._metadata.features:
-            objects = self._metadata.features["objects"]
-
-            if not isinstance(objects, Sequence) and "category" in objects:
-                category_feature = objects["category"]
-                if isinstance(category_feature, Sequence):
-                    if hasattr(category_feature.feature, "names"):
-                        labels = category_feature.feature.names
-                    else:
-                        # Try to get unique categories from the dataset
-                        categories = set()
-                        for example in self._metadata:
-                            if "objects" in example and "category" in example["objects"]:
-                                categories.update(example["objects"]["category"])
-                        labels = sorted(list(categories))
-                elif isinstance(category_feature, ClassLabel):
-                    labels = category_feature.names
-                elif hasattr(category_feature, "names"):
-                    labels = category_feature.names
-            else:
-                category_feature = self._metadata.features["objects"].feature["category"]
-                if hasattr(category_feature, "names"):
-                    labels = category_feature.names
-                else:
-                    # Fallback to collecting unique categories
-                    categories = set()
-                    for example in self._metadata:
-                        if "objects" in example:
-                            categories.update(example["objects"]["category"])
-                    labels = sorted(list(categories))
-
+        if "labels" in features:
+            labels = extract_labels(features["labels"])
+        if not labels and "objects" in features:
+            labels = extract_labels(features["objects"])
         if labels is None:
-            print("Could not find category labels in dataset")
             return {}
-
         return {i: {"id": i, "name": str(name)} for i, name in enumerate(labels)}
 
     def _load_annotations(self):
@@ -194,6 +177,7 @@ class HuggingFaceDataset:
             counter += 1
             return f"ann_{counter}"
 
+        new_cats = set()
         for idx, example in enumerate(self._metadata):
             if "objects" in example:
                 objects = example["objects"]
@@ -204,20 +188,11 @@ class HuggingFaceDataset:
                     ids = [make_id() for _ in range(len(objects["bbox"]))]
                     dataset_has_ids = False
 
-                for annotation_id, bbox, category_id in zip(
-                    ids, objects["bbox"], objects["category"]
-                ):
+                categories = objects.get("category", objects.get("label"))
+
+                for annotation_id, bbox, category_id in zip(ids, objects["bbox"], categories):
                     if category_id not in self.cats:
-                        # assuming category_id is the name, find the id
-                        category_name = category_id
-                        category_id = next(
-                            (
-                                cat_id
-                                for cat_id, cat in self.cats.items()
-                                if cat["name"] == category_name
-                            ),
-                            None,
-                        )
+                        new_cats.add(category_id)
 
                     annotations[annotation_id] = {
                         "id": annotation_id if dataset_has_ids else None,
@@ -226,17 +201,14 @@ class HuggingFaceDataset:
                         "bbox": bbox,
                     }
 
-        # for idx, example in enumerate(self._metadata):
-        #     if "labels" in example:
-        #         image_id = self._row_idx_to_id[idx]
-        #         image = example["image"]
-        #         annotation_id = make_id()
-        #         annotations[annotation_id] = {
-        #             "id": None,
-        #             "image_id": image_id,
-        #             "category_id": example["labels"],
-        #             "bbox": [2, 2, image.width - 2, image.height - 2],
-        #         }
+        if new_cats:
+            max_existing_id = max(self.cats.keys(), default=0)
+            for new_cat in new_cats:
+                max_existing_id += 1
+                self.cats[max_existing_id] = {"id": max_existing_id, "name": str(new_cat)}
+            name_to_id = {cat["name"]: cat["id"] for cat in self.cats.values()}
+            for annotation in annotations.values():
+                annotation["category_id"] = name_to_id[annotation["category_id"]]
 
         return annotations
 

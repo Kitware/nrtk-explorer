@@ -4,7 +4,7 @@ from typing import Iterable
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library.filtering import FilterProtocol
-from nrtk_explorer.library.dataset import get_dataset
+from nrtk_explorer.library.dataset import get_dataset, expand_hugging_face_datasets
 from nrtk_explorer.library.debounce import debounce
 
 from nrtk_explorer.app.images.images import Images
@@ -51,7 +51,8 @@ class Engine(Applet):
         )
 
         known_args, _ = self.server.cli.parse_known_args()
-        self.input_paths = known_args.dataset
+        dataset_identifiers = expand_hugging_face_datasets(known_args.dataset)
+        self.input_paths = dataset_identifiers
         self.state.current_dataset = self.input_paths[0]
 
         images = Images(server=self.server)

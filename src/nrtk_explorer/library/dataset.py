@@ -5,13 +5,13 @@ Example:
     dataset = get_dataset("path/to/dataset.json")
 """
 
+from typing import Sequence as SequenceType
 from functools import lru_cache
 from pathlib import Path
 import json
 from PIL import Image
 from datasets import (
     load_dataset,
-    get_dataset_default_config_name,
     get_dataset_infos,
     Sequence,
     ClassLabel,
@@ -69,32 +69,30 @@ def is_coco_dataset(path: str):
         return all(key in content for key in required_keys)
 
 
+def expand_hugging_face_datasets(dataset_identifiers: SequenceType[str]):
+    expanded_identifiers = []
+    for identifier in dataset_identifiers:
+        if is_coco_dataset(identifier):
+            expanded_identifiers.append(identifier)
+        else:
+            infos = get_dataset_infos(identifier)
+            for config_name, info in infos.items():
+                for split_name in info.splits:
+                    expanded_identifiers.append(f"{identifier}@{config_name}@{split_name}")
+    return expanded_identifiers
+
+
 class HuggingFaceDataset:
     """Interface to Hugging Face Dataset with the same API as JsonDataset."""
 
     def __init__(self, identifier: str):
+        parts = identifier.split("@")
+        if len(parts) == 3:
+            identifier, selected_config_name, selected_split_name = parts
+        else:
+            raise ValueError("Identifier must be in the format 'dataset@config@split'")
 
-        infos = get_dataset_infos(identifier)
-        selected_split_name = None
-        selected_config_name = get_dataset_default_config_name(identifier)
-        if selected_config_name is None:
-            max_rows = 0
-            for config_name, info in infos.items():
-                for split_name, split_info in info.splits.items():
-                    if split_info.num_examples > max_rows:
-                        max_rows = split_info.num_examples
-                        selected_config_name = config_name
-                        selected_split_name = split_name
-        if selected_split_name is None:
-            split_infos = infos[selected_config_name].splits
-            selected_split_name, _ = max(
-                split_infos.items(),
-                key=lambda item: item[1].num_examples,
-            )
-
-        self._dataset = load_dataset(
-            identifier, selected_config_name, split=selected_split_name, keep_in_memory=True
-        )
+        self._dataset = load_dataset(identifier, selected_config_name, split=selected_split_name)
         self._metadata = self._dataset.remove_columns(["image"])
 
         imgs, row_idx_to_id, id_to_row_idx = self._load_images()
@@ -209,7 +207,7 @@ class HuggingFaceDataset:
         row_idx_to_id = {}
         id_to_row_idx = {}
         for idx, example in enumerate(self._metadata):
-            id = example.get("id", idx)
+            id = example.get("id", example.get("image_id", idx))
             images[id] = {
                 "id": id,
             }

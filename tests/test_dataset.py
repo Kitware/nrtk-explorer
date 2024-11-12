@@ -1,7 +1,6 @@
 from nrtk_explorer.library.dataset import get_dataset, JsonDataset
 import nrtk_explorer.test_data
 
-from unittest import mock
 from pathlib import Path
 
 import pytest
@@ -22,9 +21,8 @@ def test_get_dataset(dataset_path):
     assert ds1 is ds2
 
 
-@mock.patch("nrtk_explorer.library.dataset.__load_dataset", lambda path: JsonDataset(path))
 def test_get_dataset_empty():
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ValueError):
         get_dataset("nonexisting")
 
 

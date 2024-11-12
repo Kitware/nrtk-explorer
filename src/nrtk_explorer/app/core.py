@@ -107,9 +107,8 @@ class Engine(Applet):
 
     def on_dataset_change(self, **kwargs):
         self.state.dataset_ids = []  # sampled images
-        dataset = get_dataset(self.state.current_dataset)
-        self.context.dataset = dataset
-        self.state.num_images_max = len(dataset.imgs)
+        self.context.dataset = get_dataset(self.state.current_dataset)
+        self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.num_images = min(self.state.num_images_max, NUM_IMAGES_DEFAULT)
         self.state.dirty("num_images")  # Trigger resample_images()
         self.state.random_sampling_disabled = False

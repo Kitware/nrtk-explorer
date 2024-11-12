@@ -27,7 +27,6 @@ from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
-from nrtk_explorer.library.dataset import get_dataset
 from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.images.stateful_annotations import (
     make_stateful_annotations,

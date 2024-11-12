@@ -26,6 +26,7 @@ class BaseDataset:
     def get_image(self, id: int):
         """Get the image given an image id."""
         img = self._get_image(id)
+        # transforms and base64 encoding require RGB mode
         return img.convert("RGB") if img.mode != "RGB" else img
 
 
@@ -55,7 +56,9 @@ def make_coco_dataset(path: str):
         import kwcoco
 
         class CocoDataset(kwcoco.CocoDataset, BaseDataset):
-            pass
+            def _get_image(self, id: int):
+                image_fpath = self.get_image_fpath(id)
+                return Image.open(image_fpath)
 
         return CocoDataset(path)
     except ImportError:

@@ -91,7 +91,9 @@ class HuggingFaceDataset(BaseDataset):
     def __init__(self, identifier: str):
         repo, config, split = identifier.split("@")
         infos = get_dataset_infos(repo)[config]
-        self._streaming = infos.splits[split].num_examples > HF_ROWS_MAX_TO_DOWNLOAD
+        split_info = infos.splits[split]
+        num_examples = split_info.num_examples if hasattr(split_info, "num_examples") else None
+        self._streaming = num_examples is None or num_examples > HF_ROWS_MAX_TO_DOWNLOAD
         self._dataset = load_dataset(repo, config, split=split, streaming=self._streaming)
         if self._streaming:
             self._dataset = self._dataset.take(HF_ROWS_TO_TAKE_STREAMING)
@@ -116,8 +118,10 @@ class HuggingFaceDataset(BaseDataset):
                 return feature.names
             if isinstance(feature, SequenceDataset):
                 return extract_labels(feature.feature)
+            if isinstance(feature, list):
+                return extract_labels(feature[0])
             if isinstance(feature, dict):
-                for key in ["category", "label"]:
+                for key in ["category", "category_id", "label"]:
                     if key in feature:
                         return extract_labels(feature[key])
             return None
@@ -132,7 +136,10 @@ class HuggingFaceDataset(BaseDataset):
             self.cats = {i: {"id": i, "name": str(name)} for i, name in enumerate(labels)}
 
         new_cats = set()
-        for idx, example in enumerate(self._dataset):
+        maybe_no_image = (
+            self._dataset if self._streaming else self._dataset.remove_columns(["image"])
+        )
+        for idx, example in enumerate(maybe_no_image):
             id = example.get("id", example.get("image_id", idx))
             if self._streaming:
                 self.imgs[id] = {"id": id, "image": example["image"]}
@@ -142,14 +149,25 @@ class HuggingFaceDataset(BaseDataset):
 
             if "objects" in example:
                 objects = example["objects"]
-                dataset_has_ids = True
+                if isinstance(objects, list):
+                    # Convert list of dicts to dict of lists. We want columns, not rows.
+                    cat_keys = ["category", "category_id", "label"]
+                    cat_key = next(
+                        (key for key in cat_keys if objects and key in objects[0]), cat_keys[0]
+                    )
+                    keys = ["id", "bbox", cat_key]
+                    objects = {key: [obj.get(key) for obj in objects] for key in keys}
                 ids = objects.get("id") or [make_id() for _ in range(len(objects.get("bbox", [])))]
-                categories = objects.get("category") or objects.get("label", [])
+                categories = (
+                    objects.get("category")
+                    or objects.get("category_id")
+                    or objects.get("label", [])
+                )
                 for ann_id, bbox, cat_id in zip(ids, objects.get("bbox", []), categories):
                     if cat_id not in self.cats:
                         new_cats.add(cat_id)
                     self.anns[ann_id] = {
-                        "id": ann_id if dataset_has_ids else None,
+                        "id": ann_id,
                         "image_id": id,
                         "category_id": cat_id,
                         "bbox": bbox,
@@ -159,7 +177,7 @@ class HuggingFaceDataset(BaseDataset):
             max_existing_id = max(self.cats.keys(), default=0)
             for new_cat in new_cats:
                 max_existing_id += 1
-                self.cats[max_existing_id] = {"id": max_existing_id, "name": str(new_cat)}
+                self.cats[max_existing_id] = {"id": max_existing_id, "name": new_cat}
             name_to_id = {cat["name"]: cat["id"] for cat in self.cats.values()}
             for annotation in self.anns.values():
                 annotation["category_id"] = name_to_id[annotation["category_id"]]

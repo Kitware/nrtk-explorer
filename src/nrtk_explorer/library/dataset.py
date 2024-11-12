@@ -6,6 +6,7 @@ Example:
 """
 
 from typing import Sequence as SequenceType
+from abc import ABC, abstractmethod
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -21,7 +22,10 @@ from datasets import (
 HF_ROWS_TO_TAKE_STREAMING = 300
 
 
-class BaseDataset:
+class BaseDataset(ABC):
+    @abstractmethod
+    def _get_image(self, id: int):
+        pass
 
     def get_image(self, id: int):
         """Get the image given an image id."""
@@ -99,10 +103,10 @@ class HuggingFaceDataset(BaseDataset):
         self._dataset = load_dataset(repo, config, split=split, streaming=self._streaming)
         if self._streaming:
             self._dataset = self._dataset.take(HF_ROWS_TO_TAKE_STREAMING)
-        self.imgs = {}
-        self.anns = {}
-        self.cats = {}
-        self._id_to_row_idx = {}
+        self.imgs: dict[str, dict] = {}
+        self.anns: dict[str, dict] = {}
+        self.cats: dict[str, dict] = {}
+        self._id_to_row_idx: dict[str, int] = {}
         self._load_data()
 
     def _load_data(self):

@@ -182,12 +182,19 @@ class HuggingFaceDataset:
             for annotation in self.anns.values():
                 annotation["category_id"] = name_to_id[annotation["category_id"]]
 
-    def get_image(self, id):
-        """Get the image given an image id."""
+    def _get_image(self, id):
         if self._streaming:
             return self._id_to_row_idx[id]
         row = self._id_to_row_idx[id]
         return self._dataset[row]["image"]
+
+    def get_image(self, id):
+        """Get the image given an image id."""
+        img = self._get_image(id)
+        # transform filters and to converting to base64 requires RGB
+        if img.mode != "RGB":
+            return img.convert("RGB")
+        return img
 
 
 @lru_cache

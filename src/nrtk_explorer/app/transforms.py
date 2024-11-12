@@ -324,10 +324,9 @@ class TransformsApp(Applet):
         annotations = self.original_detection_annotations.get_annotations(
             self.detector, image_id_to_image
         )
-        dataset = get_dataset(self.state.current_dataset)
         self.predictions_original_images = convert_from_predictions_to_first_arg(
             annotations,
-            dataset,
+            self.context.dataset,
             dataset_ids,
         )
 

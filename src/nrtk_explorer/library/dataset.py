@@ -18,8 +18,7 @@ from datasets import (
     ClassLabel,
 )
 
-HF_ROWS_MAX_TO_DOWNLOAD = 5000
-HF_ROWS_TO_TAKE_STREAMING = 600
+HF_ROWS_TO_TAKE_STREAMING = 300
 
 
 class BaseDataset:
@@ -72,7 +71,7 @@ def is_coco_dataset(path: str):
     return all(key in content for key in required_keys)
 
 
-def expand_hugging_face_datasets(dataset_identifiers: SequenceType[str]):
+def expand_hugging_face_datasets(dataset_identifiers: SequenceType[str], streaming=True):
     expanded_identifiers = []
     for identifier in dataset_identifiers:
         if is_coco_dataset(identifier):
@@ -81,7 +80,10 @@ def expand_hugging_face_datasets(dataset_identifiers: SequenceType[str]):
             infos = get_dataset_infos(identifier)
             for config_name, info in infos.items():
                 for split_name in info.splits:
-                    expanded_identifiers.append(f"{identifier}@{config_name}@{split_name}")
+                    streaming_str = "streaming" if streaming else "download"
+                    expanded_identifiers.append(
+                        f"{identifier}@{config_name}@{split_name}@{streaming_str}"
+                    )
     return expanded_identifiers
 
 
@@ -89,11 +91,8 @@ class HuggingFaceDataset(BaseDataset):
     """Interface for Hugging Face datasets with a similar API to JsonDataset."""
 
     def __init__(self, identifier: str):
-        repo, config, split = identifier.split("@")
-        infos = get_dataset_infos(repo)[config]
-        split_info = infos.splits[split]
-        num_examples = split_info.num_examples if hasattr(split_info, "num_examples") else None
-        self._streaming = num_examples is None or num_examples > HF_ROWS_MAX_TO_DOWNLOAD
+        repo, config, split, streaming = identifier.split("@")
+        self._streaming = streaming == "streaming"
         self._dataset = load_dataset(repo, config, split=split, streaming=self._streaming)
         if self._streaming:
             self._dataset = self._dataset.take(HF_ROWS_TO_TAKE_STREAMING)

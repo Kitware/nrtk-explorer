@@ -47,11 +47,20 @@ class Engine(Applet):
             "--dataset",
             nargs="+",
             default=DEFAULT_DATASETS,
-            help="Path of the json file describing the image dataset",
+            help="Path to the JSON file describing the image dataset",
+        )
+
+        self.server.cli.add_argument(
+            "--download",
+            action="store_true",
+            default=False,
+            help="Download Hugging Face Hub datasets instead of streaming them",
         )
 
         known_args, _ = self.server.cli.parse_known_args()
-        dataset_identifiers = expand_hugging_face_datasets(known_args.dataset)
+        dataset_identifiers = expand_hugging_face_datasets(
+            known_args.dataset, not known_args.download
+        )
         self.input_paths = dataset_identifiers
         self.state.current_dataset = self.input_paths[0]
 

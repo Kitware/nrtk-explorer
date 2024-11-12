@@ -98,51 +98,33 @@ class HuggingFaceDataset:
 
         infos = get_dataset_infos(repo_name)
         selected_info = infos[selected_config_name]
-        num_examples = selected_info.splits[selected_split_name].num_examples
-        self._streaming = num_examples > HF_ROWS_MAX_TO_DOWNLOAD
+        split = selected_info.splits[selected_split_name]
+        self._streaming = (
+            getattr(split, "num_examples", HF_ROWS_MAX_TO_DOWNLOAD + 1) > HF_ROWS_MAX_TO_DOWNLOAD
+        )
 
-        dataset = load_dataset(
+        self._dataset = load_dataset(
             repo_name, selected_config_name, split=selected_split_name, streaming=self._streaming
         )
 
         if self._streaming:
-            self._dataset = dataset.take(HF_ROWS_TO_TAKE_STREAMING)
-        else:
-            self._dataset = dataset
-        self._metadata = self._dataset.remove_columns(["image"])
+            self._dataset = self._dataset.take(HF_ROWS_TO_TAKE_STREAMING)
 
-        imgs, row_idx_to_id, id_to_row_idx = self._load_images()
-        self.imgs = imgs
-        self._row_idx_to_id = row_idx_to_id
-        self._id_to_row_idx = id_to_row_idx
+        self.imgs = {}
+        self.anns = {}
+        self.cats = {}
+        self._id_to_row_idx = {}
 
-        self.cats = self._load_categories()
+        self._load_data()
 
-        self.anns = self._load_annotations()
+    def _load_data(self):
+        counter = 0
 
-    def _load_images(self):
-        images = {}
-        row_idx_to_id = {}
-        id_to_row_idx = {}
-        dataset = self._dataset if self._streaming else self._metadata
-        for idx, example in enumerate(dataset):
-            id = example.get("id", example.get("image_id", idx))
-            images[id] = {
-                "id": id,
-            }
-            row_idx_to_id[idx] = id
-            id_to_row_idx[id] = example["image"] if self._streaming else idx
+        def make_id():
+            nonlocal counter
+            counter += 1
+            return f"ann_{counter}"
 
-        return images, row_idx_to_id, id_to_row_idx
-
-    def get_image(self, id):
-        """Get the image given an image id."""
-        if self._streaming:
-            return self._id_to_row_idx[id]
-        row = self._id_to_row_idx[id]
-        return self._dataset[row]["image"]
-
-    def _load_categories(self):
         def extract_labels(feature):
             if isinstance(feature, ClassLabel):
                 return feature.names
@@ -156,32 +138,24 @@ class HuggingFaceDataset:
                         return extract_labels(feature[key])
             return None
 
+        features = self._dataset.features
         labels = None
-        features = self._metadata.features
-
         if "labels" in features:
             labels = extract_labels(features["labels"])
         if not labels and "objects" in features:
             labels = extract_labels(features["objects"])
-        if labels is None:
-            return {}
-        return {i: {"id": i, "name": str(name)} for i, name in enumerate(labels)}
-
-    def _load_annotations(self):
-        annotations = {}
-
-        counter = 0
-
-        def make_id():
-            nonlocal counter
-            counter += 1
-            return f"ann_{counter}"
+        if labels:
+            self.cats = {i: {"id": i, "name": str(name)} for i, name in enumerate(labels)}
 
         new_cats = set()
-        for idx, example in enumerate(self._metadata):
+        ds_iterator = self._dataset if self._streaming else self._dataset.remove_columns("image")
+        for idx, example in enumerate(ds_iterator):
+            id = example.get("id", example.get("image_id", idx))
+            self.imgs[id] = {"id": id}
+            self._id_to_row_idx[id] = example["image"] if self._streaming else idx
+
             if "objects" in example:
                 objects = example["objects"]
-                image_id = self._row_idx_to_id[idx]
                 dataset_has_ids = True
                 ids = objects.get("id", objects.get("bbox_id"))
                 if ids is None:
@@ -189,14 +163,12 @@ class HuggingFaceDataset:
                     dataset_has_ids = False
 
                 categories = objects.get("category", objects.get("label"))
-
                 for annotation_id, bbox, category_id in zip(ids, objects["bbox"], categories):
                     if category_id not in self.cats:
                         new_cats.add(category_id)
-
-                    annotations[annotation_id] = {
+                    self.anns[annotation_id] = {
                         "id": annotation_id if dataset_has_ids else None,
-                        "image_id": image_id,
+                        "image_id": id,
                         "category_id": category_id,
                         "bbox": bbox,
                     }
@@ -207,10 +179,15 @@ class HuggingFaceDataset:
                 max_existing_id += 1
                 self.cats[max_existing_id] = {"id": max_existing_id, "name": str(new_cat)}
             name_to_id = {cat["name"]: cat["id"] for cat in self.cats.values()}
-            for annotation in annotations.values():
+            for annotation in self.anns.values():
                 annotation["category_id"] = name_to_id[annotation["category_id"]]
 
-        return annotations
+    def get_image(self, id):
+        """Get the image given an image id."""
+        if self._streaming:
+            return self._id_to_row_idx[id]
+        row = self._id_to_row_idx[id]
+        return self._dataset[row]["image"]
 
 
 @lru_cache

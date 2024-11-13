@@ -17,6 +17,7 @@ from datasets import (
     get_dataset_infos,
     Sequence as SequenceDataset,
     ClassLabel,
+    Image as DatasetImage,
 )
 
 HF_ROWS_TO_TAKE_STREAMING = 300
@@ -101,6 +102,8 @@ class HuggingFaceDataset(BaseDataset):
         repo, config, split, streaming = identifier.split("@")
         self._streaming = streaming == "streaming"
         self._dataset = load_dataset(repo, config, split=split, streaming=self._streaming)
+        # transforms and base64 encoding require RGB mode
+        self._dataset.cast_column("image", DatasetImage(mode="RGB"))
         if self._streaming:
             self._dataset = self._dataset.take(HF_ROWS_TO_TAKE_STREAMING)
         self.imgs: dict[str, dict] = {}
@@ -124,7 +127,7 @@ class HuggingFaceDataset(BaseDataset):
                 return feature.names
             if isinstance(feature, SequenceDataset):
                 return extract_labels(feature.feature)
-            if isinstance(feature, list):
+            if isinstance(feature, list) and len(feature) >= 1:
                 return extract_labels(feature[0])
             if isinstance(feature, dict):
                 for key in ["category", "category_id", "label", "labels", "objects"]:
@@ -139,6 +142,7 @@ class HuggingFaceDataset(BaseDataset):
             self.cats = {i: {"id": i, "name": str(name)} for i, name in enumerate(labels)}
 
         new_cats = set()
+        # speed initial metadata process by not loading images if we can random access rows (not streaming)
         maybe_no_image = (
             self._dataset if self._streaming else self._dataset.remove_columns(["image"])
         )

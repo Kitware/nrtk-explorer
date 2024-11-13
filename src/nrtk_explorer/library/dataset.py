@@ -127,17 +127,14 @@ class HuggingFaceDataset(BaseDataset):
             if isinstance(feature, list):
                 return extract_labels(feature[0])
             if isinstance(feature, dict):
-                for key in ["category", "category_id", "label"]:
+                for key in ["category", "category_id", "label", "labels", "objects"]:
                     if key in feature:
-                        return extract_labels(feature[key])
+                        labels = extract_labels(feature[key])
+                        if labels:
+                            return labels
             return None
 
-        features = self._dataset.features
-        labels = None
-        if "labels" in features:
-            labels = extract_labels(features["labels"])
-        if not labels and "objects" in features:
-            labels = extract_labels(features["objects"])
+        labels = extract_labels(self._dataset.features)
         if labels:
             self.cats = {i: {"id": i, "name": str(name)} for i, name in enumerate(labels)}
 

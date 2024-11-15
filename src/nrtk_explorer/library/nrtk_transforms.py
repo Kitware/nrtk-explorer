@@ -164,7 +164,8 @@ class NrtkPybsmTransform(ImageTransform):
         self._perturber.sensor.D = params["D"]
         self._perturber.sensor.f = params["f"]
 
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
         aperture_description: ParameterDescription = {
             "type": "float",
             "label": "Effective Aperture (m)",

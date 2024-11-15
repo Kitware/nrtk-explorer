@@ -42,6 +42,24 @@ class ParamsWidget(HtmlElement):
         self._event_names += ["valuesChanged"]
 
 
+class TransformsWidget(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "transforms-widget",
+            **kwargs,
+        )
+        self._attr_names += [
+            "values",
+            "descriptions",
+        ]
+        self._event_names += [
+            ("add_transform", "addTransform"),
+            ("remove_transform", "removeTransform"),
+            ("type_changed", "typeChanged"),
+            ("params_changed", "paramsChanged"),
+        ]
+
+
 class FilterOptionsWidget(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(

@@ -24,3 +24,10 @@ export type ParameterDescription = {
   default?: ParameterValue
   options?: ParameterValue[]
 }
+
+export type TransformDescription = { [paramName: string]: ParameterDescription }
+
+export type TransformValue = {
+  name: string
+  parameters: { [name: string]: ParameterValue }
+}

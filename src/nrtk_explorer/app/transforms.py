@@ -112,6 +112,9 @@ class TransformsApp(Applet):
         known_args, _ = self.server.cli.parse_known_args()
         self.state.inference_models = known_args.models
         self.state.object_detection_model = self.state.inference_models[0]
+        self.state.setdefault("image_list_ids", [])
+        self.state.setdefault("dataset_ids", [])
+        self.state.setdefault("user_selected_ids", [])
 
         self.images = images or Images(server)
 
@@ -161,23 +164,24 @@ class TransformsApp(Applet):
 
         self._on_transform_fn = None
 
-        self._transforms: Dict[str, trans.ImageTransform] = {
-            "blur": trans.GaussianBlurTransform(),
-            "invert": trans.InvertTransform(),
-            "downsample": trans.DownSampleTransform(),
-            "identity": trans.IdentityTransform(),
+        self._transform_classes: Dict[str, type[trans.ImageTransform]] = {
+            "blur": trans.GaussianBlurTransform,
+            "invert": trans.InvertTransform,
+            "downsample": trans.DownSampleTransform,
+            "identity": trans.IdentityTransform,
         }
 
         if nrtk_trans.nrtk_transforms_available():
-            self._transforms["nrtk_pybsm"] = nrtk_trans.NrtkPybsmTransform()
+            self._transform_classes["nrtk_pybsm"] = nrtk_trans.NrtkPybsmTransform
 
         # Add transform from YAML definition
-        self._transforms.update(nrtk_yaml.generate_transforms())
+        self._transform_classes.update(nrtk_yaml.generate_transforms())
 
-        self._parameters_app._transforms = self._transforms
+        self._parameters_app._transform_classes = self._transform_classes
 
-        self.state.transforms = [k for k in self._transforms.keys()]
-        self.state.current_transform = self.state.transforms[0]
+        # Initialize the transforms pipeline to the identity
+        self._parameters_app._default_transform = "blur"
+        self._parameters_app.on_add_transform()
 
         init_visible_columns(self.state)
 
@@ -260,7 +264,8 @@ class TransformsApp(Applet):
         if not self.state.transform_enabled:
             return
 
-        transform = self._transforms[self.state.current_transform]
+        transforms = list(map(lambda t: t["instance"], self.context.transforms))
+        transform = trans.ChainedImageTransform(transforms)
 
         id_to_matching_size_img = {}
         for id in dataset_ids:
@@ -399,9 +404,7 @@ class TransformsApp(Applet):
 
     def settings_widget(self):
         with html.Div(classes="col"):
-            self._parameters_app.transform_select_ui()
-            with html.Div(classes="q-pa-md q-ma-md"):
-                self._parameters_app.transform_params_ui()
+            self._parameters_app.transforms_ui()
 
     def apply_ui(self):
         with html.Div():

@@ -35,7 +35,8 @@ class Images:
     def _load_image(self, dataset_id: str):
         img = self.server.context.dataset.get_image(int(dataset_id))
         img.load()  # Avoid OSError(24, 'Too many open files')
-        return img
+        # transforms and base64 encoding require RGB mode
+        return img.convert("RGB") if img.mode != "RGB" else img
 
     def get_image(self, dataset_id: str, **kwargs):
         """For cache side effects pass on_add_item and on_clear_item callbacks as kwargs"""

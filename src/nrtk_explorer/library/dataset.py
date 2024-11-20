@@ -25,14 +25,9 @@ HF_ROWS_TO_TAKE_STREAMING = 300
 
 class BaseDataset(ABC):
     @abstractmethod
-    def _get_image(self, id: int):
-        pass
-
     def get_image(self, id: int):
         """Get the image given an image id."""
-        img = self._get_image(id)
-        # transforms and base64 encoding require RGB mode
-        return img.convert("RGB") if img.mode != "RGB" else img
+        pass
 
 
 class JsonDataset(BaseDataset):
@@ -51,7 +46,7 @@ class JsonDataset(BaseDataset):
         file_name = self.imgs[selected_id]["file_name"]
         return str(dataset_dir / file_name)
 
-    def _get_image(self, id: int):
+    def get_image(self, id: int):
         image_fpath = self._get_image_fpath(id)
         return Image.open(image_fpath)
 
@@ -61,7 +56,7 @@ def make_coco_dataset(path: str):
         import kwcoco
 
         class CocoDataset(kwcoco.CocoDataset, BaseDataset):
-            def _get_image(self, id: int):
+            def get_image(self, id: int):
                 image_fpath = self.get_image_fpath(id)
                 return Image.open(image_fpath)
 
@@ -189,7 +184,7 @@ class HuggingFaceDataset(BaseDataset):
             for annotation in self.anns.values():
                 annotation["category_id"] = name_to_id[annotation["category_id"]]
 
-    def _get_image(self, id):
+    def get_image(self, id):
         if self._streaming:
             return self.imgs[id]["image"]
         else:

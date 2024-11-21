@@ -337,8 +337,19 @@ class TransformsApp(Applet):
         ground_truth_annotations = self.ground_truth_annotations.get_annotations(
             dataset_ids
         ).values()
+
+        def ensure_bbox(annotation, image):
+            if "bbox" not in annotation:
+                annotation["bbox"] = [0, 0, image.width, image.height]
+            return annotation
+
+        ground_truth_with_bbox = [
+            [ensure_bbox(annotation, image) for annotation in annotations]
+            for annotations, image in zip(ground_truth_annotations, image_id_to_image.values())
+        ]
+
         ground_truth_predictions = convert_from_ground_truth_to_second_arg(
-            ground_truth_annotations, self.context.dataset
+            ground_truth_with_bbox, self.context.dataset
         )
         scores = compute_score(
             dataset_ids,

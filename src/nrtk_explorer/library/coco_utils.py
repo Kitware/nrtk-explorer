@@ -2,7 +2,6 @@ from smqtk_image_io.bbox import AxisAlignedBoundingBox
 from nrtk.impls.score_detections.class_agnostic_pixelwise_iou_scorer import (
     ClassAgnosticPixelwiseIoUScorer,
 )
-from typing import Sequence
 
 # This module contains functions to convert ground truth annotations and predictions to COCOScorer format
 # COCOScorer is a library that computes the COCO metrics for object detection tasks.
@@ -79,7 +78,7 @@ def convert_from_predictions_to_first_arg(predictions, dataset, ids):
 def convert_from_predictions_to_second_arg(predictions):
     """Convert predictions to COCOScorer format"""
     annotations_predictions = list()
-    for img_predictions in predictions.values():
+    for img_predictions in predictions:
         current_annotations = list()
         for prediction in img_predictions:
             if prediction:
@@ -114,8 +113,23 @@ def partition(pred, iterable):
     return true_result, false_result
 
 
-def compute_score(ids: Sequence[str], actual, predicted):
+def image_id_to_dataset_id(image_id):
+    return image_id.split("_")[-1]
+
+
+def keys_to_dataset_ids(image_dict):
+    """Convert keys to dataset ids."""
+    return {image_id_to_dataset_id(key): value for key, value in image_dict.items()}
+
+
+def compute_score(dataset, actual_info, predicted_info):
     """Compute score for image ids."""
+
+    actual = keys_to_dataset_ids(actual_info["annotations"])
+    predicted = keys_to_dataset_ids(predicted_info["annotations"])
+    ids = list(actual.keys())
+
+    pairs = [(actual[key], predicted[key], key) for key in ids]
 
     # separate images with no predictions in actual argument
     # as score function expects at least one prediction
@@ -123,22 +137,39 @@ def compute_score(ids: Sequence[str], actual, predicted):
         actual_predictions = prediction_pair[0]
         return len(actual_predictions) == 0
 
-    no_predictions, has_predictions = partition(is_empty, zip(actual, predicted, ids))
+    no_annotations, has_annotations = partition(is_empty, pairs)
 
-    both_images_no_prediction, one_has_prediction = partition(
-        lambda pair: len(pair[1]) == 0, no_predictions
+    both_images_no_annotation, one_has_annotation = partition(
+        lambda pair: len(pair[1]) == 0, no_annotations
     )
     scores = []
-    for _, __, id in both_images_no_prediction:
+    for _, __, id in both_images_no_annotation:
         scores.append((id, 1.0))
-    for _, __, id in one_has_prediction:
+    for _, __, id in one_has_annotation:
         scores.append((id, 0.0))
 
-    if len(has_predictions) == 0:
+    if len(has_annotations) == 0:
         return scores
 
-    actual, predicted, ids = zip(*has_predictions)
-    score_output = ClassAgnosticPixelwiseIoUScorer().score(actual, predicted)
+    actual, predicted, ids = zip(*has_annotations)
+
+    if actual_info["type"] == "predictions":
+        actual_converted = convert_from_predictions_to_first_arg(
+            actual,
+            dataset,
+            ids,
+        )
+    elif actual_info["type"] == "truth":
+        actual_converted = convert_from_ground_truth_to_first_arg(actual)
+
+    if predicted_info["type"] == "predictions":
+        predicted_converted = convert_from_predictions_to_second_arg(
+            predicted,
+        )
+    elif predicted_info["type"] == "truth":
+        predicted_converted = convert_from_ground_truth_to_second_arg(predicted, dataset)
+
+    score_output = ClassAgnosticPixelwiseIoUScorer().score(actual_converted, predicted_converted)
     for id, score in zip(ids, score_output):
         scores.append((id, score))
 

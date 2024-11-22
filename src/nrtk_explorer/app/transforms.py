@@ -15,10 +15,6 @@ from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
 from nrtk_explorer.library.coco_utils import (
-    convert_from_ground_truth_to_first_arg,
-    convert_from_ground_truth_to_second_arg,
-    convert_from_predictions_to_second_arg,
-    convert_from_predictions_to_first_arg,
     compute_score,
 )
 from nrtk_explorer.app.trame_utils import change_checker, delete_state
@@ -277,11 +273,16 @@ class TransformsApp(Applet):
 
         # depends on original images predictions
         if self.state.predictions_original_images_enabled:
-            predictions = convert_from_predictions_to_second_arg(annotations)
             scores = compute_score(
-                dataset_ids,
-                self.predictions_original_images,
-                predictions,
+                self.context.dataset,
+                {
+                    "annotations": self.predictions_original_images,
+                    "type": "predictions",
+                },
+                {
+                    "annotations": annotations,
+                    "type": "predictions",
+                },
             )
             for id, score in scores:
                 update_image_meta(
@@ -290,16 +291,17 @@ class TransformsApp(Applet):
                     {"original_detection_to_transformed_detection_score": score},
                 )
 
-            ground_truth_annotations = self.ground_truth_annotations.get_annotations(
-                dataset_ids
-            ).values()
-            ground_truth_predictions = convert_from_ground_truth_to_first_arg(
-                ground_truth_annotations
-            )
+            ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
             scores = compute_score(
-                dataset_ids,
-                ground_truth_predictions,
-                predictions,
+                self.context.dataset,
+                {
+                    "annotations": ground_truth_annotations,
+                    "type": "truth",
+                },
+                {
+                    "annotations": annotations,
+                    "type": "predictions",
+                },
             )
             for id, score in scores:
                 update_image_meta(
@@ -325,36 +327,22 @@ class TransformsApp(Applet):
             dataset_id_to_image_id(id): self.images.get_image_without_cache_eviction(id)
             for id in dataset_ids
         }
-        annotations = self.original_detection_annotations.get_annotations(
+        self.predictions_original_images = self.original_detection_annotations.get_annotations(
             self.detector, image_id_to_image
         )
-        self.predictions_original_images = convert_from_predictions_to_first_arg(
-            annotations,
-            self.context.dataset,
-            dataset_ids,
-        )
 
-        ground_truth_annotations = self.ground_truth_annotations.get_annotations(
-            dataset_ids
-        ).values()
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
 
-        def ensure_bbox(annotation, image):
-            if "bbox" not in annotation:
-                annotation["bbox"] = [0, 0, image.width, image.height]
-            return annotation
-
-        ground_truth_with_bbox = [
-            [ensure_bbox(annotation, image) for annotation in annotations]
-            for annotations, image in zip(ground_truth_annotations, image_id_to_image.values())
-        ]
-
-        ground_truth_predictions = convert_from_ground_truth_to_second_arg(
-            ground_truth_with_bbox, self.context.dataset
-        )
         scores = compute_score(
-            dataset_ids,
-            self.predictions_original_images,
-            ground_truth_predictions,
+            self.context.dataset,
+            {
+                "annotations": ground_truth_annotations,
+                "type": "truth",
+            },
+            {
+                "annotations": self.predictions_original_images,
+                "type": "predictions",
+            },
         )
         for dataset_id, score in scores:
             update_image_meta(

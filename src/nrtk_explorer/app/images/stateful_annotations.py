@@ -19,25 +19,31 @@ def delete_annotation_from_state(state: Any, image_id: str):
 def prediction_to_annotations(state, predictions):
     annotations = []
     for prediction in predictions:
-        # if no matching category in dataset JSON, category_id will be None
-        category_id = None
-        for cat_id, cat in state.annotation_categories.items():
-            if cat["name"] == prediction["label"]:
-                category_id = cat_id
-
-        bbox = prediction["box"]
-        annotations.append(
-            {
-                "category_id": category_id,
-                "label": prediction["label"],
-                "bbox": [
-                    bbox["xmin"],
-                    bbox["ymin"],
-                    bbox["xmax"] - bbox["xmin"],
-                    bbox["ymax"] - bbox["ymin"],
-                ],
-            }
+        # find matching category id if it exists
+        category_id = next(
+            (
+                cat_id
+                for cat_id, cat in state.annotation_categories.items()
+                if cat["name"] == prediction["label"]
+            ),
+            None,
         )
+
+        annotation = {"category_id": category_id}
+
+        if "label" in prediction:
+            annotation["label"] = prediction["label"]
+
+        if "box" in prediction:
+            bbox = prediction["box"]
+            annotation["bbox"] = [
+                bbox["xmin"],
+                bbox["ymin"],
+                bbox["xmax"] - bbox["xmin"],
+                bbox["ymax"] - bbox["ymin"],
+            ]
+
+        annotations.append(annotation)
     return annotations
 
 

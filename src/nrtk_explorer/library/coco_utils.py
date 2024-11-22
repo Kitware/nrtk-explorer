@@ -1,3 +1,4 @@
+from typing import List, Dict, Tuple
 from smqtk_image_io.bbox import AxisAlignedBoundingBox
 from nrtk.impls.score_detections.class_agnostic_pixelwise_iou_scorer import (
     ClassAgnosticPixelwiseIoUScorer,
@@ -122,6 +123,78 @@ def keys_to_dataset_ids(image_dict):
     return {image_id_to_dataset_id(key): value for key, value in image_dict.items()}
 
 
+def make_get_cat_ids(dataset):
+    """Get category ids from annotations."""
+    label_to_id = {cat["name"]: cat["id"] for cat in dataset.cats.values()}
+
+    def get_cat_id(annotation):
+        if "category_id" in annotation:
+            return annotation["category_id"]
+        return label_to_id.get(annotation["label"], None)
+
+    return get_cat_id
+
+
+def make_ensure_cat_ids(dataset):
+    """Ensure category_id exists in annotations."""
+    get_cat_id = make_get_cat_ids(dataset)
+
+    def ensure_cat_id(annotations_set):
+        return [
+            [{**annotation, "category_id": get_cat_id(annotation)} for annotation in annotations]
+            for annotations in annotations_set
+        ]
+
+    return ensure_cat_id
+
+
+def calculate_category_match_score(actual: List[Dict], predicted: List[Dict]) -> float:
+    """
+    Calculate matching score between actual and predicted category annotations.
+
+    Args:
+        actual: List of actual annotation dictionaries with category_id
+        predicted: List of predicted annotation dictionaries with category_id
+
+    Returns:
+        float: Matching score between 0.0 and 1.0
+    """
+    actual_cat_ids = set([annotation["category_id"] for annotation in actual])
+    predicted_cat_ids = set([annotation["category_id"] for annotation in predicted])
+
+    matching_cat_ids = sum(
+        1 for cat_id in predicted_cat_ids if cat_id in actual_cat_ids and cat_id is not None
+    )
+
+    total_cat_ids = len(actual_cat_ids) + len(predicted_cat_ids)
+    return matching_cat_ids / total_cat_ids if total_cat_ids > 0 else 0.0
+
+
+def calculate_category_matching_scores(
+    dataset: Dict, actual: List[Dict], predicted: List[Dict], ids: List[str]
+) -> List[Tuple[str, float]]:
+    """
+    Calculate matching scores between actual and predicted category annotations.
+
+    Args:
+        dataset: The COCO dataset dictionary
+        actual: List of actual annotations
+        predicted: List of predicted annotations
+        ids: List of image IDs
+
+    Returns:
+        List of tuples containing (image_id, matching_score)
+    """
+    ensure_cat_id = make_ensure_cat_ids(dataset)
+    actual_with_cat_ids = ensure_cat_id(actual)
+    predicted_with_cat_ids = ensure_cat_id(predicted)
+
+    return [
+        (id, calculate_category_match_score(actual, predicted))
+        for actual, predicted, id in zip(actual_with_cat_ids, predicted_with_cat_ids, ids)
+    ]
+
+
 def compute_score(dataset, actual_info, predicted_info):
     """Compute score for image ids."""
 
@@ -152,6 +225,16 @@ def compute_score(dataset, actual_info, predicted_info):
         return scores
 
     actual, predicted, ids = zip(*has_annotations)
+
+    all_annotations_have_bbox = all(
+        "bbox" in annotation
+        for annotation_list in actual + predicted
+        for annotation in annotation_list
+    )
+
+    if not all_annotations_have_bbox:
+        s = calculate_category_matching_scores(dataset, actual, predicted, ids)
+        return scores + s
 
     if actual_info["type"] == "predictions":
         actual_converted = convert_from_predictions_to_first_arg(

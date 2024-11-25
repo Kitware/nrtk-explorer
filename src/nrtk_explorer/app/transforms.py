@@ -14,7 +14,7 @@ from nrtk_explorer.library import object_detector
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
-from nrtk_explorer.library.coco_utils import (
+from nrtk_explorer.library.scoring import (
     compute_score,
 )
 from nrtk_explorer.app.trame_utils import change_checker, delete_state
@@ -271,41 +271,23 @@ class TransformsApp(Applet):
             )
         await self.server.network_completion
 
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
+        scores = compute_score(self.context.dataset, ground_truth_annotations, annotations)
+        for id, score in scores:
+            update_image_meta(
+                self.state, id, {"ground_truth_to_transformed_detection_score": score}
+            )
+
         # depends on original images predictions
         if self.state.predictions_original_images_enabled:
             scores = compute_score(
-                self.context.dataset,
-                {
-                    "annotations": self.predictions_original_images,
-                    "type": "predictions",
-                },
-                {
-                    "annotations": annotations,
-                    "type": "predictions",
-                },
+                self.context.dataset, self.predictions_original_images, annotations
             )
             for id, score in scores:
                 update_image_meta(
                     self.state,
                     id,
                     {"original_detection_to_transformed_detection_score": score},
-                )
-
-            ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
-            scores = compute_score(
-                self.context.dataset,
-                {
-                    "annotations": ground_truth_annotations,
-                    "type": "truth",
-                },
-                {
-                    "annotations": annotations,
-                    "type": "predictions",
-                },
-            )
-            for id, score in scores:
-                update_image_meta(
-                    self.state, id, {"ground_truth_to_transformed_detection_score": score}
                 )
 
         id_to_image = {
@@ -334,15 +316,7 @@ class TransformsApp(Applet):
         ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
 
         scores = compute_score(
-            self.context.dataset,
-            {
-                "annotations": ground_truth_annotations,
-                "type": "truth",
-            },
-            {
-                "annotations": self.predictions_original_images,
-                "type": "predictions",
-            },
+            self.context.dataset, ground_truth_annotations, self.predictions_original_images
         )
         for dataset_id, score in scores:
             update_image_meta(

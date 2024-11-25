@@ -30,7 +30,13 @@ class BaseDataset(ABC):
         pass
 
 
-class JsonDataset(BaseDataset):
+class CategoryIndex:
+    def build_cat_index(self):
+        # follows kwcoco.name_to_cat
+        self.name_to_cat = {cat["name"]: cat for cat in self.cats.values()}
+
+
+class JsonDataset(BaseDataset, CategoryIndex):
     """JSON-based COCO datasets."""
 
     def __init__(self, path: str):
@@ -40,6 +46,7 @@ class JsonDataset(BaseDataset):
         self.cats = {cat["id"]: cat for cat in self.data["categories"]}
         self.anns = {ann["id"]: ann for ann in self.data["annotations"]}
         self.imgs = {img["id"]: img for img in self.data["images"]}
+        self.build_cat_index()
 
     def _get_image_fpath(self, selected_id: int):
         dataset_dir = Path(self.fpath).parent
@@ -94,7 +101,7 @@ def find_column_name(features, column_names):
     return next((key for key in column_names if key in features), None)
 
 
-class HuggingFaceDataset(BaseDataset):
+class HuggingFaceDataset(BaseDataset, CategoryIndex):
     """Interface for Hugging Face datasets with a similar API to JsonDataset."""
 
     def __init__(self, identifier: str):
@@ -109,6 +116,7 @@ class HuggingFaceDataset(BaseDataset):
         if self._streaming:
             self._dataset = self._dataset.take(HF_ROWS_TO_TAKE_STREAMING)
         self._load_data()
+        self.build_cat_index()
 
     def _load_data(self):
         image_key = find_column_name(self._dataset.features, ["image", "img"])

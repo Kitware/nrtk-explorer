@@ -3,7 +3,7 @@ from functools import lru_cache, partial
 from PIL import Image
 from nrtk_explorer.app.images.cache import LruCache
 from nrtk_explorer.library.object_detector import ObjectDetector
-from nrtk_explorer.library.coco_utils import partition
+from nrtk_explorer.library.scoring import partition
 
 
 ANNOTATION_CACHE_SIZE = 1000
@@ -81,8 +81,7 @@ class DetectionAnnotations:
             )
 
         predictions.update(**cached_predictions)
-        # match input order because of scoring code assumptions
-        return {id: predictions[id] for id in id_to_image.keys()}
+        return predictions
 
     def cache_clear(self):
         self.cache.clear()

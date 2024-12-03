@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Union, Callable
+from typing import Any, Union, Callable, TypedDict, List
 from .annotations import GroundTruthAnnotations, DetectionAnnotations
 from trame.decorators import TrameApp, change
 from nrtk_explorer.app.images.image_ids import (
@@ -16,9 +16,26 @@ def delete_annotation_from_state(state: Any, image_id: str):
     delete_state(state, image_id_to_result_id(image_id))
 
 
-def prediction_to_annotations(state, predictions):
-    annotations = []
-    for prediction in predictions:
+# from hugging face transformers.pipeline output
+class Prediction(TypedDict, total=False):
+    box: List[float]
+    label: str
+    score: float
+
+
+class Annotation(TypedDict, total=False):
+    category_id: int
+    label: str
+    score: float
+    bbox: List[float]
+
+
+def to_annotation(state: Any, prediction: Prediction) -> Annotation:
+
+    annotation = {}
+
+    if "label" in prediction:
+        annotation["label"] = prediction["label"]
         # find matching category id if it exists
         category_id = next(
             (
@@ -28,27 +45,27 @@ def prediction_to_annotations(state, predictions):
             ),
             None,
         )
+        annotation["category_id"] = category_id
 
-        annotation = {"category_id": category_id}
+    if "score" in prediction:
+        annotation["score"] = prediction["score"]
 
-        if "label" in prediction:
-            annotation["label"] = prediction["label"]
+    if "box" in prediction:
+        bbox = prediction["box"]
+        annotation["bbox"] = [
+            bbox["xmin"],
+            bbox["ymin"],
+            bbox["xmax"] - bbox["xmin"],
+            bbox["ymax"] - bbox["ymin"],
+        ]
 
-        if "box" in prediction:
-            bbox = prediction["box"]
-            annotation["bbox"] = [
-                bbox["xmin"],
-                bbox["ymin"],
-                bbox["xmax"] - bbox["xmin"],
-                bbox["ymax"] - bbox["ymin"],
-            ]
-
-        annotations.append(annotation)
-    return annotations
+    return annotation
 
 
-def add_prediction_to_state(state: Any, image_id: str, prediction: Any):
-    state[image_id_to_result_id(image_id)] = prediction_to_annotations(state, prediction)
+def add_predictions_to_state(state: Any, image_id: str, predictions: Any):
+    state[image_id_to_result_id(image_id)] = [
+        to_annotation(state, prediction) for prediction in predictions
+    ]
 
 
 AnnotationsFactoryConstructorType = Union[
@@ -89,5 +106,5 @@ def make_stateful_predictor(server):
     return StatefulAnnotations(
         DetectionAnnotations,
         server,
-        add_to_cache_callback=partial(add_prediction_to_state, server.state),
+        add_to_cache_callback=partial(add_predictions_to_state, server.state),
     )

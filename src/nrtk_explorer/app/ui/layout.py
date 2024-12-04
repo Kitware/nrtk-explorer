@@ -66,8 +66,8 @@ class NrtkDrawer(html.Div):
                     html.Span("Model Inference", classes="text-h6")
                 with card.slot_content:
                     quasar.QSelect(
-                        label="Object Detection Model",
-                        v_model=("object_detection_model", "facebook/detr-resnet-50"),
+                        label="Inference Model",
+                        v_model=("inference_model", "facebook/detr-resnet-50"),
                         options=("inference_models", []),
                         filled=True,
                         emit_value=True,

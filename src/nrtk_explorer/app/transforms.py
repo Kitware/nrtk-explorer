@@ -106,7 +106,7 @@ class TransformsApp(Applet):
 
         known_args, _ = self.server.cli.parse_known_args()
         self.state.inference_models = known_args.models
-        self.state.object_detection_model = self.state.inference_models[0]
+        self.state.inference_model = self.state.inference_models[0]
         self.state.setdefault("image_list_ids", [])
         self.state.setdefault("dataset_ids", [])
         self.state.setdefault("user_selected_ids", [])
@@ -204,17 +204,15 @@ class TransformsApp(Applet):
         self.visible_dataset_ids = []  # set by ImageList via self.on_scroll callback
 
     def on_server_ready(self, *args, **kwargs):
-        self.state.change("object_detection_model")(self.on_object_detection_model_change)
-        self.on_object_detection_model_change()
+        self.state.change("inference_model")(self.on_inference_model_change)
+        self.on_inference_model_change()
         self.state.change("current_dataset")(self._cancel_update_images)
         self.state.change("current_dataset")(self.reset_detector)
 
-    def on_object_detection_model_change(self, **kwargs):
+    def on_inference_model_change(self, **kwargs):
         self.original_detection_annotations.cache_clear()
         self.transformed_detection_annotations.cache_clear()
-        self.detector = object_detector.ObjectDetector(
-            model_name=self.state.object_detection_model
-        )
+        self.detector = object_detector.ObjectDetector(model_name=self.state.inference_model)
         self._start_update_images()
 
     def reset_detector(self, **kwargs):

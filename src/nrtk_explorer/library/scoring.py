@@ -142,7 +142,7 @@ def to_nrtk_score_shape(annotation):
     )
 
 
-def compute_score(dataset, actual, predicted):
+def compute_score(dataset, actual, predicted, score_threshold):
     """Compute score for image ids."""
 
     actual = keys_to_dataset_ids(actual)
@@ -150,6 +150,15 @@ def compute_score(dataset, actual, predicted):
     ids = list(actual.keys())
 
     pairs = [(actual[key], predicted[key], key) for key in ids]
+    # remove scores below threshold
+    pairs = [
+        (
+            [anno for anno in actual_annos if anno.get("score", 1.0) >= score_threshold],
+            [anno for anno in predicted_annos if anno.get("score", 1.0) >= score_threshold],
+            key,
+        )
+        for actual_annos, predicted_annos, key in pairs
+    ]
 
     # separate images with no predictions in actual argument
     # as score function expects at least one prediction

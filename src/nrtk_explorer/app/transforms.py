@@ -208,6 +208,7 @@ class TransformsApp(Applet):
         self.on_inference_model_change()
         self.state.change("current_dataset")(self._cancel_update_images)
         self.state.change("current_dataset")(self.reset_detector)
+        self.state.change("confidence_score_threshold")(self._start_update_images)
 
     def on_inference_model_change(self, **kwargs):
         self.original_detection_annotations.cache_clear()
@@ -270,7 +271,12 @@ class TransformsApp(Applet):
         await self.server.network_completion
 
         ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
-        scores = compute_score(self.context.dataset, ground_truth_annotations, annotations)
+        scores = compute_score(
+            self.context.dataset,
+            ground_truth_annotations,
+            annotations,
+            self.state.confidence_score_threshold,
+        )
         for id, score in scores:
             update_image_meta(
                 self.state, id, {"ground_truth_to_transformed_detection_score": score}
@@ -279,7 +285,10 @@ class TransformsApp(Applet):
         # depends on original images predictions
         if self.state.predictions_original_images_enabled:
             scores = compute_score(
-                self.context.dataset, self.predictions_original_images, annotations
+                self.context.dataset,
+                self.predictions_original_images,
+                annotations,
+                self.state.confidence_score_threshold,
             )
             for id, score in scores:
                 update_image_meta(
@@ -314,7 +323,10 @@ class TransformsApp(Applet):
         ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
 
         scores = compute_score(
-            self.context.dataset, ground_truth_annotations, self.predictions_original_images
+            self.context.dataset,
+            ground_truth_annotations,
+            self.predictions_original_images,
+            self.state.confidence_score_threshold,
         )
         for dataset_id, score in scores:
             update_image_meta(
@@ -344,7 +356,7 @@ class TransformsApp(Applet):
         if hasattr(self, "_update_task"):
             self._update_task.cancel()
 
-    def _start_update_images(self):
+    def _start_update_images(self, **kwargs):
         self._cancel_update_images()
         self._update_task = asynchronous.create_task(self._update_images(self.visible_dataset_ids))
 

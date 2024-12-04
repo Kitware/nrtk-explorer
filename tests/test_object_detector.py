@@ -11,7 +11,7 @@ def test_detector_small():
     assert len(img) == len(sample.keys())
 
 
-def test_nrkt_scorer():
+def test_scorer():
     ds = get_dataset(DATASET)
     sample = get_images()
     detector = object_detector.ObjectDetector(model_name="facebook/detr-resnet-50")
@@ -26,7 +26,7 @@ def test_nrkt_scorer():
     for img in ds.imgs.values():
         ground_truth_annotations[img["id"]] = dataset_annotations[img["id"]]
 
-    score_output = compute_score(ds, ground_truth_annotations, predictions)
+    score_output = compute_score(ds, ground_truth_annotations, predictions, 0)
 
     image_count = len(sample.keys())
     assert len(predictions) == image_count

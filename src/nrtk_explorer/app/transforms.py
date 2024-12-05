@@ -14,11 +14,7 @@ from nrtk_explorer.library import object_detector
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
-from nrtk_explorer.library.coco_utils import (
-    convert_from_ground_truth_to_first_arg,
-    convert_from_ground_truth_to_second_arg,
-    convert_from_predictions_to_second_arg,
-    convert_from_predictions_to_first_arg,
+from nrtk_explorer.library.scoring import (
     compute_score,
 )
 from nrtk_explorer.app.trame_utils import change_checker, delete_state
@@ -110,7 +106,7 @@ class TransformsApp(Applet):
 
         known_args, _ = self.server.cli.parse_known_args()
         self.state.inference_models = known_args.models
-        self.state.object_detection_model = self.state.inference_models[0]
+        self.state.inference_model = self.state.inference_models[0]
         self.state.setdefault("image_list_ids", [])
         self.state.setdefault("dataset_ids", [])
         self.state.setdefault("user_selected_ids", [])
@@ -208,17 +204,16 @@ class TransformsApp(Applet):
         self.visible_dataset_ids = []  # set by ImageList via self.on_scroll callback
 
     def on_server_ready(self, *args, **kwargs):
-        self.state.change("object_detection_model")(self.on_object_detection_model_change)
-        self.on_object_detection_model_change()
+        self.state.change("inference_model")(self.on_inference_model_change)
+        self.on_inference_model_change()
         self.state.change("current_dataset")(self._cancel_update_images)
         self.state.change("current_dataset")(self.reset_detector)
+        self.state.change("confidence_score_threshold")(self._start_update_images)
 
-    def on_object_detection_model_change(self, **kwargs):
+    def on_inference_model_change(self, **kwargs):
         self.original_detection_annotations.cache_clear()
         self.transformed_detection_annotations.cache_clear()
-        self.detector = object_detector.ObjectDetector(
-            model_name=self.state.object_detection_model
-        )
+        self.detector = object_detector.ObjectDetector(model_name=self.state.inference_model)
         self._start_update_images()
 
     def reset_detector(self, **kwargs):
@@ -275,35 +270,31 @@ class TransformsApp(Applet):
             )
         await self.server.network_completion
 
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
+        scores = compute_score(
+            self.context.dataset,
+            ground_truth_annotations,
+            annotations,
+            self.state.confidence_score_threshold,
+        )
+        for id, score in scores:
+            update_image_meta(
+                self.state, id, {"ground_truth_to_transformed_detection_score": score}
+            )
+
         # depends on original images predictions
         if self.state.predictions_original_images_enabled:
-            predictions = convert_from_predictions_to_second_arg(annotations)
             scores = compute_score(
-                dataset_ids,
+                self.context.dataset,
                 self.predictions_original_images,
-                predictions,
+                annotations,
+                self.state.confidence_score_threshold,
             )
             for id, score in scores:
                 update_image_meta(
                     self.state,
                     id,
                     {"original_detection_to_transformed_detection_score": score},
-                )
-
-            ground_truth_annotations = self.ground_truth_annotations.get_annotations(
-                dataset_ids
-            ).values()
-            ground_truth_predictions = convert_from_ground_truth_to_first_arg(
-                ground_truth_annotations
-            )
-            scores = compute_score(
-                dataset_ids,
-                ground_truth_predictions,
-                predictions,
-            )
-            for id, score in scores:
-                update_image_meta(
-                    self.state, id, {"ground_truth_to_transformed_detection_score": score}
                 )
 
         id_to_image = {
@@ -325,36 +316,17 @@ class TransformsApp(Applet):
             dataset_id_to_image_id(id): self.images.get_image_without_cache_eviction(id)
             for id in dataset_ids
         }
-        annotations = self.original_detection_annotations.get_annotations(
+        self.predictions_original_images = self.original_detection_annotations.get_annotations(
             self.detector, image_id_to_image
         )
-        self.predictions_original_images = convert_from_predictions_to_first_arg(
-            annotations,
-            self.context.dataset,
-            dataset_ids,
-        )
 
-        ground_truth_annotations = self.ground_truth_annotations.get_annotations(
-            dataset_ids
-        ).values()
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
 
-        def ensure_bbox(annotation, image):
-            if "bbox" not in annotation:
-                annotation["bbox"] = [0, 0, image.width, image.height]
-            return annotation
-
-        ground_truth_with_bbox = [
-            [ensure_bbox(annotation, image) for annotation in annotations]
-            for annotations, image in zip(ground_truth_annotations, image_id_to_image.values())
-        ]
-
-        ground_truth_predictions = convert_from_ground_truth_to_second_arg(
-            ground_truth_with_bbox, self.context.dataset
-        )
         scores = compute_score(
-            dataset_ids,
+            self.context.dataset,
+            ground_truth_annotations,
             self.predictions_original_images,
-            ground_truth_predictions,
+            self.state.confidence_score_threshold,
         )
         for dataset_id, score in scores:
             update_image_meta(
@@ -384,7 +356,7 @@ class TransformsApp(Applet):
         if hasattr(self, "_update_task"):
             self._update_task.cancel()
 
-    def _start_update_images(self):
+    def _start_update_images(self, **kwargs):
         self._cancel_update_images()
         self._update_task = asynchronous.create_task(self._update_images(self.visible_dataset_ids))
 

@@ -39,10 +39,11 @@ class NrtkDrawer(html.Div):
                         max=("num_images_max", 25),
                         disable=("num_images_disabled", True),
                         step=(1,),
+                        classes="q-pt-sm",
                     )
                     html.P(
                         "{{num_images}}/{{num_images_max}} images",
-                        classes="text-caption text-center",
+                        classes="text-center",
                     )
                     quasar.QToggle(
                         v_model=("random_sampling", False),
@@ -66,12 +67,23 @@ class NrtkDrawer(html.Div):
                     html.Span("Model Inference", classes="text-h6")
                 with card.slot_content:
                     quasar.QSelect(
-                        label="Object Detection Model",
-                        v_model=("object_detection_model", "facebook/detr-resnet-50"),
+                        label="Inference Model",
+                        v_model=("inference_model", "facebook/detr-resnet-50"),
                         options=("inference_models", []),
                         filled=True,
                         emit_value=True,
                         map_options=True,
+                    )
+                    quasar.QSlider(
+                        v_model=("confidence_score_threshold", 0.01),
+                        min=(0,),
+                        max=(1.0,),
+                        step=(0.01,),
+                        classes="q-pt-sm",
+                    )
+                    html.P(
+                        "Confidence score threshold: {{confidence_score_threshold}}",
+                        classes="text-center",
                     )
 
             # Transforms

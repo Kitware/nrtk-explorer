@@ -3,6 +3,7 @@ from smqtk_image_io.bbox import AxisAlignedBoundingBox
 from nrtk.impls.score_detections.class_agnostic_pixelwise_iou_scorer import (
     ClassAgnosticPixelwiseIoUScorer,
 )
+from .annotations import get_cat_id
 
 
 # Example usage:
@@ -28,15 +29,6 @@ def image_id_to_dataset_id(image_id):
 def keys_to_dataset_ids(image_dict):
     """Convert keys to dataset ids."""
     return {image_id_to_dataset_id(key): value for key, value in image_dict.items()}
-
-
-def get_cat_id(dataset, annotation):
-    if "category_id" in annotation:
-        return annotation["category_id"]
-    cat = dataset.name_to_cat.get(annotation["label"], None)
-    if not cat:
-        return None
-    return cat["id"]
 
 
 def get_label(dataset, annotation):

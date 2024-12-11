@@ -107,6 +107,7 @@ class ImageWithSpinner(html.Div):
                 selected=selected,
                 hover=hover,
                 container_selector=container_selector,
+                score_threshold=("confidence_score_threshold",),
             )
             quasar.QInnerLoading(
                 showing=(f"!{src[0]} || (show_annotations_on_images && !{annotations[0]}.value)",)

@@ -2,6 +2,7 @@ from functools import partial
 from typing import Any, Union, Callable
 from .annotations import GroundTruthAnnotations, DetectionAnnotations
 from trame.decorators import TrameApp, change
+from nrtk_explorer.library.annotations import to_annotation
 from nrtk_explorer.app.images.image_ids import (
     image_id_to_result_id,
 )
@@ -16,33 +17,10 @@ def delete_annotation_from_state(state: Any, image_id: str):
     delete_state(state, image_id_to_result_id(image_id))
 
 
-def prediction_to_annotations(state, predictions):
-    annotations = []
-    for prediction in predictions:
-        # if no matching category in dataset JSON, category_id will be None
-        category_id = None
-        for cat_id, cat in state.annotation_categories.items():
-            if cat["name"] == prediction["label"]:
-                category_id = cat_id
-
-        bbox = prediction["box"]
-        annotations.append(
-            {
-                "category_id": category_id,
-                "label": prediction["label"],
-                "bbox": [
-                    bbox["xmin"],
-                    bbox["ymin"],
-                    bbox["xmax"] - bbox["xmin"],
-                    bbox["ymax"] - bbox["ymin"],
-                ],
-            }
-        )
-    return annotations
-
-
-def add_prediction_to_state(state: Any, image_id: str, prediction: Any):
-    state[image_id_to_result_id(image_id)] = prediction_to_annotations(state, prediction)
+def add_predictions_to_state(context: Any, state: Any, image_id: str, predictions: Any):
+    state[image_id_to_result_id(image_id)] = [
+        to_annotation(context.dataset, prediction) for prediction in predictions
+    ]
 
 
 AnnotationsFactoryConstructorType = Union[
@@ -67,7 +45,7 @@ class StatefulAnnotations:
             add_to_cache_callback, delete_from_cache_callback
         )
 
-    @change("current_dataset", "object_detection_model")
+    @change("current_dataset", "inference_model")
     def _cache_clear(self, **kwargs):
         self.annotations_factory.cache_clear()
 
@@ -83,5 +61,5 @@ def make_stateful_predictor(server):
     return StatefulAnnotations(
         DetectionAnnotations,
         server,
-        add_to_cache_callback=partial(add_prediction_to_state, server.state),
+        add_to_cache_callback=partial(add_predictions_to_state, server.context, server.state),
     )

@@ -43,7 +43,7 @@ dependencies = [
     "datasets[vision]",
     "umap-learn",
     "nrtk[headless]>=0.12.0",
-    "trame-annotations",
+    "trame-annotations>=0.4.0",
 ]
 
 [project.optional-dependencies]

@@ -31,8 +31,8 @@ class Transform(abc.ABC, Generic[T, S]):
     def set_parameters(self, params: Dict[str, Any]):
         raise NotImplementedError()
 
-    @abc.abstractmethod
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -44,6 +44,35 @@ class ImageTransform(Transform[Image, Image]):
     pass
 
 
+class ChainedImageTransform(ImageTransform):
+    def __init__(self, transforms: list[ImageTransform]):
+        self.transforms = transforms
+
+    def execute(self, input: Image, *input_args: Any) -> Image:
+        output = input
+
+        for transform in self.transforms:
+            output = transform.execute(output, *input_args)
+
+        return output
+
+    def get_parameters(self) -> Dict[str, Any]:
+        raise NotImplementedError(
+            "Set/Get parameters on the individual transforms making up the ChainedImageTransform"
+        )
+
+    def set_parameters(self, params: Dict[str, Any]):
+        raise NotImplementedError(
+            "Set/Get parameters on the individual transforms making up the ChainedImageTransform"
+        )
+
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
+        raise NotImplementedError(
+            "Set/Get parameters on the individual transforms making up the ChainedImageTransform"
+        )
+
+
 class IdentityTransform(ImageTransform):
     def get_parameters(self) -> Dict[str, Any]:
         return {}
@@ -51,7 +80,8 @@ class IdentityTransform(ImageTransform):
     def set_parameters(self, params: Dict[str, Any]):
         pass
 
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
         return {}
 
     def execute(self, input: Image, *input_args: Any) -> Image:
@@ -70,7 +100,8 @@ class GaussianBlurTransform(ImageTransform):
     def set_parameters(self, params: Dict[str, Any]):
         self._radius = params.get("radius", GaussianBlurTransform.default_radius)
 
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
         radius_description: ParameterDescription = {
             "type": "integer",
             "default": GaussianBlurTransform.default_radius,
@@ -94,7 +125,8 @@ class InvertTransform(ImageTransform):
     def set_parameters(self, params: Dict[str, Any]):
         pass
 
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
         return {}
 
     def execute(self, input: Image, *input_args: Any) -> Image:
@@ -108,7 +140,8 @@ class DownSampleTransform(ImageTransform):
     def set_parameters(self, params: Dict[str, Any]):
         pass
 
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
         return {}
 
     def execute(self, input: Image, *input_args: Any) -> Image:
@@ -146,7 +179,8 @@ class TestTransform(ImageTransform):
         self._boolean_value = params.get("boolean_param", TestTransform.default_boolean)
         self._select_value = params.get("select_param", TestTransform.default_select)
 
-    def get_parameters_description(self) -> Dict[str, ParameterDescription]:
+    @classmethod
+    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
         string_description: ParameterDescription = {
             "type": "string",
             "default": TestTransform.default_string,

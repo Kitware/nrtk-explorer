@@ -14,11 +14,7 @@ from nrtk_explorer.library import object_detector
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.parameters import ParametersApp
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
-from nrtk_explorer.library.coco_utils import (
-    convert_from_ground_truth_to_first_arg,
-    convert_from_ground_truth_to_second_arg,
-    convert_from_predictions_to_second_arg,
-    convert_from_predictions_to_first_arg,
+from nrtk_explorer.library.scoring import (
     compute_score,
 )
 from nrtk_explorer.app.trame_utils import change_checker, delete_state
@@ -27,7 +23,6 @@ from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
-from nrtk_explorer.library.dataset import get_dataset
 from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.images.stateful_annotations import (
     make_stateful_annotations,
@@ -37,8 +32,15 @@ from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.ui.image_list import (
     TRANSFORM_COLUMNS,
     ORIGINAL_COLUMNS,
-    init_visibile_columns,
+    init_visible_columns,
 )
+
+
+INFERENCE_MODELS_DEFAULT = [
+    "facebook/detr-resnet-50",
+    "hustvl/yolos-tiny",
+    "valentinafeve/yolos-fashionpedia",
+]
 
 
 logger = logging.getLogger(__name__)
@@ -95,6 +97,20 @@ class TransformsApp(Applet):
     ):
         super().__init__(server)
 
+        self.server.cli.add_argument(
+            "--models",
+            nargs="+",
+            default=INFERENCE_MODELS_DEFAULT,
+            help="Space separated list of inference models",
+        )
+
+        known_args, _ = self.server.cli.parse_known_args()
+        self.state.inference_models = known_args.models
+        self.state.inference_model = self.state.inference_models[0]
+        self.state.setdefault("image_list_ids", [])
+        self.state.setdefault("dataset_ids", [])
+        self.state.setdefault("user_selected_ids", [])
+
         self.images = images or Images(server)
 
         ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(server)
@@ -143,26 +159,26 @@ class TransformsApp(Applet):
 
         self._on_transform_fn = None
 
-        self._transforms: Dict[str, trans.ImageTransform] = {
-            "blur": trans.GaussianBlurTransform(),
-            "invert": trans.InvertTransform(),
-            "downsample": trans.DownSampleTransform(),
-            "identity": trans.IdentityTransform(),
+        self._transform_classes: Dict[str, type[trans.ImageTransform]] = {
+            "blur": trans.GaussianBlurTransform,
+            "invert": trans.InvertTransform,
+            "downsample": trans.DownSampleTransform,
+            "identity": trans.IdentityTransform,
         }
 
         if nrtk_trans.nrtk_transforms_available():
-            self._transforms["nrtk_blur"] = nrtk_trans.NrtkGaussianBlurTransform()
-            self._transforms["nrtk_pybsm"] = nrtk_trans.NrtkPybsmTransform()
+            self._transform_classes["nrtk_pybsm"] = nrtk_trans.NrtkPybsmTransform
 
         # Add transform from YAML definition
-        self._transforms.update(nrtk_yaml.generate_transforms())
+        self._transform_classes.update(nrtk_yaml.generate_transforms())
 
-        self._parameters_app._transforms = self._transforms
+        self._parameters_app._transform_classes = self._transform_classes
 
-        self.state.transforms = [k for k in self._transforms.keys()]
-        self.state.current_transform = self.state.transforms[0]
+        # Initialize the transforms pipeline to the identity
+        self._parameters_app._default_transform = "blur"
+        self._parameters_app.on_add_transform()
 
-        init_visibile_columns(self.state)
+        init_visible_columns(self.state)
 
         # On annotations enabled, run whole pipeline to possibly compute transforms. Why? Transforms compute scores are based on original images
         self.annotations_enable_control = ProcessingStep(
@@ -187,22 +203,17 @@ class TransformsApp(Applet):
 
         self.visible_dataset_ids = []  # set by ImageList via self.on_scroll callback
 
-    @property
-    def get_image_fpath(self):
-        return self.server.controller.get_image_fpath
-
     def on_server_ready(self, *args, **kwargs):
-        self.state.change("object_detection_model")(self.on_object_detection_model_change)
-        self.on_object_detection_model_change()
+        self.state.change("inference_model")(self.on_inference_model_change)
+        self.on_inference_model_change()
         self.state.change("current_dataset")(self._cancel_update_images)
         self.state.change("current_dataset")(self.reset_detector)
+        self.state.change("confidence_score_threshold")(self._start_update_images)
 
-    def on_object_detection_model_change(self, **kwargs):
+    def on_inference_model_change(self, **kwargs):
         self.original_detection_annotations.cache_clear()
         self.transformed_detection_annotations.cache_clear()
-        self.detector = object_detector.ObjectDetector(
-            model_name=self.state.object_detection_model
-        )
+        self.detector = object_detector.ObjectDetector(model_name=self.state.inference_model)
         self._start_update_images()
 
     def reset_detector(self, **kwargs):
@@ -243,7 +254,8 @@ class TransformsApp(Applet):
         if not self.state.transform_enabled:
             return
 
-        transform = self._transforms[self.state.current_transform]
+        transforms = list(map(lambda t: t["instance"], self.context.transforms))
+        transform = trans.ChainedImageTransform(transforms)
 
         id_to_matching_size_img = {}
         for id in dataset_ids:
@@ -258,35 +270,31 @@ class TransformsApp(Applet):
             )
         await self.server.network_completion
 
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
+        scores = compute_score(
+            self.context.dataset,
+            ground_truth_annotations,
+            annotations,
+            self.state.confidence_score_threshold,
+        )
+        for id, score in scores:
+            update_image_meta(
+                self.state, id, {"ground_truth_to_transformed_detection_score": score}
+            )
+
         # depends on original images predictions
         if self.state.predictions_original_images_enabled:
-            predictions = convert_from_predictions_to_second_arg(annotations)
             scores = compute_score(
-                dataset_ids,
+                self.context.dataset,
                 self.predictions_original_images,
-                predictions,
+                annotations,
+                self.state.confidence_score_threshold,
             )
             for id, score in scores:
                 update_image_meta(
                     self.state,
                     id,
                     {"original_detection_to_transformed_detection_score": score},
-                )
-
-            ground_truth_annotations = self.ground_truth_annotations.get_annotations(
-                dataset_ids
-            ).values()
-            ground_truth_predictions = convert_from_ground_truth_to_first_arg(
-                ground_truth_annotations
-            )
-            scores = compute_score(
-                dataset_ids,
-                ground_truth_predictions,
-                predictions,
-            )
-            for id, score in scores:
-                update_image_meta(
-                    self.state, id, {"ground_truth_to_transformed_detection_score": score}
                 )
 
         id_to_image = {
@@ -308,26 +316,17 @@ class TransformsApp(Applet):
             dataset_id_to_image_id(id): self.images.get_image_without_cache_eviction(id)
             for id in dataset_ids
         }
-        annotations = self.original_detection_annotations.get_annotations(
+        self.predictions_original_images = self.original_detection_annotations.get_annotations(
             self.detector, image_id_to_image
         )
-        dataset = get_dataset(self.state.current_dataset)
-        self.predictions_original_images = convert_from_predictions_to_first_arg(
-            annotations,
-            dataset,
-            dataset_ids,
-        )
 
-        ground_truth_annotations = self.ground_truth_annotations.get_annotations(
-            dataset_ids
-        ).values()
-        ground_truth_predictions = convert_from_ground_truth_to_second_arg(
-            ground_truth_annotations, self.context.dataset
-        )
+        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
+
         scores = compute_score(
-            dataset_ids,
+            self.context.dataset,
+            ground_truth_annotations,
             self.predictions_original_images,
-            ground_truth_predictions,
+            self.state.confidence_score_threshold,
         )
         for dataset_id, score in scores:
             update_image_meta(
@@ -357,7 +356,7 @@ class TransformsApp(Applet):
         if hasattr(self, "_update_task"):
             self._update_task.cancel()
 
-    def _start_update_images(self):
+    def _start_update_images(self, **kwargs):
         self._cancel_update_images()
         self._update_task = asynchronous.create_task(self._update_images(self.visible_dataset_ids))
 
@@ -382,9 +381,7 @@ class TransformsApp(Applet):
 
     def settings_widget(self):
         with html.Div(classes="col"):
-            self._parameters_app.transform_select_ui()
-            with html.Div(classes="q-pa-md q-ma-md"):
-                self._parameters_app.transform_params_ui()
+            self._parameters_app.transforms_ui()
 
     def apply_ui(self):
         with html.Div():

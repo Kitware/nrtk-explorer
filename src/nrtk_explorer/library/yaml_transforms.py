@@ -32,7 +32,7 @@ def generate_transforms():
     transforms = {}
     for k, v in TRANSFORM_DEFINITIONS.items():
         with contextlib.suppress(ModuleNotFoundError):
-            transforms[k] = GenericPerturber(v)
+            transforms[k] = MetaYamlPerturber(k, (), {}, v)
 
     return transforms
 
@@ -75,7 +75,7 @@ def set_value(obj, attr_path, value):
 # -----------------------------------------------------------------------------
 
 
-def create_perturber_instance(klass, kwargs):
+def get_perturber_constructor(klass, kwargs):
     klass = get(klass)
 
     if isinstance(kwargs, str):
@@ -87,21 +87,50 @@ def create_perturber_instance(klass, kwargs):
     if not isinstance(kwargs, dict):
         raise ValueError(f"kwarg must lead to a dict but got {type(kwargs)}")
 
-    return klass(**kwargs)
+    return klass, kwargs
 
 
 # -----------------------------------------------------------------------------
 
 
-class GenericPerturber:
-    def __init__(self, config):
-        self.description = config.get("description")
-        self.exec_args = config.get("exec_default_args", [])
+class MetaYamlPerturber(type):
+    @classmethod
+    def __prepare__(metacls, name, bases, config=None):
+        return super().__prepare__(name, bases, config=config)
 
-        # klass
-        klass = config.get("perturber")
-        kwargs = config.get("perturber_kwargs", {})
-        self._perturber = create_perturber_instance(klass, kwargs)
+    def __new__(metacls, name, bases, namespace, config=None):
+        return super().__new__(metacls, name, bases, namespace)
+
+    def __init__(cls, name, bases, namespace, config=None):
+        if config is None:
+            raise TypeError("MetaYamlPerturber: configuration is missing.")
+
+        # add class variables
+        setattr(cls, "description", config.get("description"))
+        setattr(cls, "exec_args", config.get("exec_default_args", []))
+        perturber_class, perturber_kwargs = get_perturber_constructor(
+            config.get("perturber"), config.get("perturber_kwargs", {})
+        )
+        setattr(cls, "perturber_class", perturber_class)
+        setattr(cls, "perturber_kwargs", perturber_kwargs)
+
+        # class methods
+        setattr(cls, "__init__", MetaYamlPerturber.instance_init)
+        setattr(cls, MetaYamlPerturber.get_parameters.__name__, MetaYamlPerturber.get_parameters)
+        setattr(cls, MetaYamlPerturber.set_parameters.__name__, MetaYamlPerturber.set_parameters)
+        setattr(cls, MetaYamlPerturber.execute.__name__, MetaYamlPerturber.execute)
+        setattr(
+            cls,
+            MetaYamlPerturber.get_parameters_description.__name__,
+            classmethod(MetaYamlPerturber.get_parameters_description),
+        )
+
+        super().__init__(name, bases, namespace)
+
+    # Methods that will be defined on the dynamic YamlPerturber classes
+
+    def instance_init(self):
+        self._perturber = self.perturber_class(**self.perturber_kwargs)
 
     def get_parameters(self):
         params = {}
@@ -115,8 +144,8 @@ class GenericPerturber:
             attr_path = self.description.get(k).get("_path", [k])
             set_value(self._perturber, attr_path, v)
 
-    def get_parameters_description(self):
-        return self.description
+    def get_parameters_description(cls):
+        return cls.description
 
     def execute(self, input, *input_args):
         if len(input_args) == 0:

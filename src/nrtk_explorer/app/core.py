@@ -4,7 +4,7 @@ from typing import Iterable
 from trame.widgets import html
 from trame_server.utils.namespace import Translator
 from nrtk_explorer.library.filtering import FilterProtocol
-from nrtk_explorer.library.dataset import get_dataset, get_image_fpath
+from nrtk_explorer.library.dataset import get_dataset, expand_hugging_face_datasets
 from nrtk_explorer.library.debounce import debounce
 
 from nrtk_explorer.app.images.images import Images
@@ -47,14 +47,23 @@ class Engine(Applet):
             "--dataset",
             nargs="+",
             default=DEFAULT_DATASETS,
-            help="Path of the json file describing the image dataset",
+            help="Path to the JSON file describing the image dataset",
+        )
+
+        self.server.cli.add_argument(
+            "--download",
+            action="store_true",
+            default=False,
+            help="Download Hugging Face Hub datasets instead of streaming them",
         )
 
         known_args, _ = self.server.cli.parse_known_args()
-        self.input_paths = known_args.dataset
+        dataset_identifiers = expand_hugging_face_datasets(
+            known_args.dataset, not known_args.download
+        )
+        self.input_paths = dataset_identifiers
         self.state.current_dataset = self.input_paths[0]
 
-        self.ctrl.get_image_fpath = lambda i: get_image_fpath(i, self.state.current_dataset)
         images = Images(server=self.server)
 
         self._transforms_app = TransformsApp(
@@ -107,7 +116,7 @@ class Engine(Applet):
 
     def on_dataset_change(self, **kwargs):
         self.state.dataset_ids = []  # sampled images
-        self.context.dataset = get_dataset(self.state.current_dataset, force_reload=True)
+        self.context.dataset = get_dataset(self.state.current_dataset)
         self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.num_images = min(self.state.num_images_max, NUM_IMAGES_DEFAULT)
         self.state.dirty("num_images")  # Trigger resample_images()

@@ -9,25 +9,6 @@ class HtmlElement(AbstractElement):
             self.server.enable_module(module)
 
 
-class ImageDetection(HtmlElement):
-    def __init__(self, **kwargs):
-        super().__init__(
-            "image-detection",
-            **kwargs,
-        )
-        self._attr_names += [
-            "identifier",
-            "src",
-            "annotations",
-            "categories",
-            "selected",
-            "containerSelector",
-        ]
-        self._event_names += [
-            "hover",
-        ]
-
-
 class ScatterPlot(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(
@@ -59,6 +40,24 @@ class ParamsWidget(HtmlElement):
             "descriptions",
         ]
         self._event_names += ["valuesChanged"]
+
+
+class TransformsWidget(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "transforms-widget",
+            **kwargs,
+        )
+        self._attr_names += [
+            "values",
+            "descriptions",
+        ]
+        self._event_names += [
+            ("add_transform", "addTransform"),
+            ("remove_transform", "removeTransform"),
+            ("type_changed", "typeChanged"),
+            ("params_changed", "paramsChanged"),
+        ]
 
 
 class FilterOptionsWidget(HtmlElement):

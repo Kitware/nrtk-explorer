@@ -1,5 +1,5 @@
 import base64
-import io
+from io import BytesIO
 from PIL import Image
 from trame.decorators import TrameApp, change, controller
 from nrtk_explorer.app.images.image_ids import (
@@ -13,7 +13,7 @@ from nrtk_explorer.library.transforms import ImageTransform
 
 def convert_to_base64(img: Image.Image) -> str:
     """Convert image to base64 string"""
-    buf = io.BytesIO()
+    buf = BytesIO()
     img.save(buf, format="png")
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
@@ -33,8 +33,10 @@ class Images:
         )
 
     def _load_image(self, dataset_id: str):
-        image_path = self.server.controller.get_image_fpath(int(dataset_id))
-        return Image.open(image_path)
+        img = self.server.context.dataset.get_image(int(dataset_id))
+        img.load()  # Avoid OSError(24, 'Too many open files')
+        # transforms and base64 encoding require RGB mode
+        return img.convert("RGB") if img.mode != "RGB" else img
 
     def get_image(self, dataset_id: str, **kwargs):
         """For cache side effects pass on_add_item and on_clear_item callbacks as kwargs"""

@@ -11,8 +11,8 @@ is built using [trame][1] by the [kitware][2] team.
 
 - Explore image datasets in COCO format.
 - Apply parametrized image degradation (such as blur) to the images.
-- Benchmark dataset resilience with a differential PCA|UMAP analysis of the
-  embeddings of the images and its transformation.
+- Benchmark dataset resilience with a differential PCA|UMAP analysis on the
+  embeddings of the images and their transformations.
 - Evaluate object detection DL models in both the source images and its
   transformations.
 - When possible it will attempt to utilize the user GPU as much as possible to
@@ -28,25 +28,41 @@ pip install nrtk-explorer
 
 ## Usage
 
-```bash
-# get some sample data
-git clone https://github.com/vicentebolea/nrtk_explorer_datasets.git
+Explore Hugging Face hosted [dataset](https://huggingface.co/datasets/rafaelpadilla/coco2017):
 
-# Run the application on given dataset
-nrtk-explorer --dataset ./nrtk_explorer_datasets/OIRDS_v1_0/oirds.json
+```bash
+nrtk-explorer --dataset rafaelpadilla/coco2017
 ```
 
-![nrtk explorer usage](https://github.com/user-attachments/assets/86a61485-471c-4b94-872e-943cb9da52a1)
+Compare inference results for Hugging Face hosted models:
 
-Some COCO image datasets available at: https://github.com/vicentebolea/nrtk_explorer_datasets/
+```bash
+nrtk-explorer --dataset cppe-5 --models qubvel-hf/detr-resnet-50-finetuned-10k-cppe5 ashaduzzaman/detr_finetuned_cppe5
+```
+
+2 COCO format datasets are available at: https://github.com/vicentebolea/nrtk_explorer_datasets/
+
+```bash
+git clone https://github.com/vicentebolea/nrtk_explorer_datasets.git
+nrtk-explorer --dataset ./nrtk_explorer_datasets/coco-od-2017/mini_val2017.json ./nrtk_explorer_datasets/OIRDS_v1_0/oirds.json
+```
 
 ## CLI flags and options
 
-- `-h|--help` show the help for the command line options, it inherit trame
+- `--dataset` specify the path to a [COCO dataset](https://roboflow.com/formats/coco-json) JSON file,
+  a [Hugging Face dataset](https://huggingface.co/datasets?task_categories=task_categories:object-detection) repository name,
+  or a directory loadable by the [Dataset](https://huggingface.co/docs/datasets/index) library.
+  You can specify multiple datasets using a space as the
+  separator. Example: `nrtk-explorer --dataset ../foo-dir/coco.json cppe-5`
+- `--download` Cache Hugging Face Hub datasets locally instead of streaming them.
+  When datasets are streamed, nrtk-explorer limits the number of loaded images.
+- `--models` specify the Hugging Face Hub [object detection](https://huggingface.co/models?pipeline_tag=object-detection&library=transformers&sort=trending)
+  repository name or a directory loadable by the [Transformers](https://huggingface.co/docs/transformers/index) library. Load multiple models using space as the separator.  
+  Example: `nrtk-explorer --models hustvl/yolos-tiny facebook/detr-resnet-50`
+- `-h|--help` show the help for the command line options. nrtk-explorer inherits the trame
   command line options and flags.
-- `--dataset` specify the path to a json file describing a COCO
-  image dataset. You can specify multiple COCO datasets using a comma `,` as a
-  separator. Example usage: `nrtk_explorer --dataset /foo-dir/coco.json, ../bar-dir/baz.json`
+
+![nrtk explorer usage](https://github.com/user-attachments/assets/86a61485-471c-4b94-872e-943cb9da52a1)
 
 ## Contribute to NRTK_EXPLORER
 
@@ -62,12 +78,12 @@ pytest .
 
 For more details on setting up a development environment see [DEVELOPMENT docs](docs/source/manual/DEVELOPMENT.rst).
 
-[1]: https://trame.readthedocs.io/en/latest/
-[2]: https://www.kitware.com/
-[3]: https://cocodataset.org/
-
 ### Create release
 
 1. Merge `main` to `release` with a _merge commit_.
 2. Run "Create Release" workflow with workflow from `release` branch.
 3. Merge `release` to `main` with a _merge commit_.
+
+[1]: https://trame.readthedocs.io/en/latest/
+[2]: https://www.kitware.com/
+[3]: https://cocodataset.org/

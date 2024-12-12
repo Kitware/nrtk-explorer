@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { toRefs } from 'vue'
-
 import type { ParameterValue, ParameterDescription } from '../types'
 
 interface Props {
@@ -17,15 +15,13 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<Events>()
 
-const { modelValue, description } = toRefs(props)
-
 function onValueChange(newValue: any) {
-  if (description.value.type == 'float') {
+  if (props.description.type == 'float') {
     newValue = parseFloat(newValue)
     if (Number.isNaN(newValue)) {
       return
     }
-  } else if (description.value.type == 'integer') {
+  } else if (props.description.type == 'integer') {
     newValue = parseInt(newValue)
     if (Number.isNaN(newValue)) {
       return
@@ -40,7 +36,9 @@ function onValueChange(newValue: any) {
   <div>
     <q-select
       v-if="description.options"
-      filled
+      outlined
+      dense
+      options-dense
       stack-label
       map-options
       :model-value="modelValue"
@@ -50,14 +48,16 @@ function onValueChange(newValue: any) {
     />
     <q-checkbox
       v-else-if="description.type === 'boolean'"
-      filled
+      outlined
+      dense
       :model-value="modelValue"
       :label="description.label"
       @update:model-value="onValueChange"
     />
     <q-input
       v-else
-      filled
+      outlined
+      dense
       stack-label
       :model-value="modelValue"
       :label="description.label"

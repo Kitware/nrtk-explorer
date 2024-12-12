@@ -2,6 +2,111 @@
 
 
 
+## v0.6.0 (2024-12-12)
+
+### Chore
+
+* chore(pyproject.toml): set trame-annotations min to 0.4.0 ([`b45bf2c`](https://github.com/Kitware/nrtk-explorer/commit/b45bf2c4b605d90d8bf0f2bd0db041dec24d871d))
+
+### Documentation
+
+* docs(nebari): describe and test nebari setup ([`227b65d`](https://github.com/Kitware/nrtk-explorer/commit/227b65d447d6abb21ca9a41ab874a2a846c87bad))
+
+### Feature
+
+* feat: add confidence score threshold ([`b75b50c`](https://github.com/Kitware/nrtk-explorer/commit/b75b50c30fcc008a39e2c133c914b4fb8b666632))
+
+* feat(stateful_annotations): put annotation score on state ([`e2366a8`](https://github.com/Kitware/nrtk-explorer/commit/e2366a854ff8afc73fffb3a219063657c43dad67))
+
+* feat(coco_utils): add scoring for classification model ([`32660f6`](https://github.com/Kitware/nrtk-explorer/commit/32660f63be4e76b4705b5f9c9c60d576cdc2e118))
+
+* feat(stateful_annotations): support non bbox predictions ([`be88218`](https://github.com/Kitware/nrtk-explorer/commit/be88218b233cf4e5620be85c108dfd9cfc919271))
+
+* feat: support classification datasets ([`5428c1c`](https://github.com/Kitware/nrtk-explorer/commit/5428c1c0428abf18fbac6d01bb036b7761e8bb8d))
+
+* feat(transforms): add ability to add multiple transforms ([`3d58599`](https://github.com/Kitware/nrtk-explorer/commit/3d585998f2c7c7a23333a1e242a59b00c8c8f295))
+
+* feat(dataset): add download CLI argument for HF datasets
+
+Defaulting to streaming download for HF datasets, but now you can specify
+`--download` to download the dataset to disk before loading it. ([`f3a84e1`](https://github.com/Kitware/nrtk-explorer/commit/f3a84e13e9fca345a9f1bbf7436db74452c2c7b3))
+
+* feat(dataset): add streaming option to HF datasets ([`1818745`](https://github.com/Kitware/nrtk-explorer/commit/18187454b9a9c19216831d9345daa55d6582e9a1))
+
+* feat(dataset): expand HF dataset splits as new datasets ([`c613029`](https://github.com/Kitware/nrtk-explorer/commit/c61302916d78ad0491a3202f0d1f6b54dbcd6add))
+
+* feat(dataset): load hugging face datasets
+
+Wraps a HF dataset into our Coco like dataset API. ([`3344920`](https://github.com/Kitware/nrtk-explorer/commit/3344920d32c702fe6d5c5af8a60cf8902bcc8989))
+
+* feat(transforms): add CLI arg for inference models ([`9f4a5e0`](https://github.com/Kitware/nrtk-explorer/commit/9f4a5e03e0b981eed99dcb470b10667cf5820151))
+
+* feat(ImageDetection): use component from trame-annotations ([`c4cecc6`](https://github.com/Kitware/nrtk-explorer/commit/c4cecc68a7fad656c1dad19587c808ddad2bb068))
+
+### Fix
+
+* fix(pyproject): avoid broken pybsm version
+
+Also update scikit-learn
+
+closes #150 ([`c914e6c`](https://github.com/Kitware/nrtk-explorer/commit/c914e6cb36b46b44ad5c35c57b726478f29049f4))
+
+* fix(images): avoid OSError - to many open files
+
+Closes #145 ([`fd8d43d`](https://github.com/Kitware/nrtk-explorer/commit/fd8d43d991ea54a6a4e8e9074144f3be39f577d2))
+
+* fix(dataset): add types ([`d24e9e5`](https://github.com/Kitware/nrtk-explorer/commit/d24e9e5f400be26ad06fc16ba035412e93ec9de3))
+
+* fix(dataset): add get_image to KWCocoDataset ([`389403d`](https://github.com/Kitware/nrtk-explorer/commit/389403dc21557796980baac8994bfe446f23fa75))
+
+* fix(dataset): support list/row first datasets ([`6c9567b`](https://github.com/Kitware/nrtk-explorer/commit/6c9567b4d0e49725fec7858c1b322b01005fc82c))
+
+* fix(dataset): transforms require RGB mode images ([`5c176d7`](https://github.com/Kitware/nrtk-explorer/commit/5c176d7d6fa84972582a600c0c9b2121f0881d75))
+
+* fix(dataset): less picky about dataset feature shape ([`9983b21`](https://github.com/Kitware/nrtk-explorer/commit/9983b2161ec0aec0aea60bf41d310f2011b93de8))
+
+* fix(dataset): support more HF datasets
+
+* Fix converting CMYK image formats to PNG.
+* Remove use of get_image_fpath in app. ([`261191e`](https://github.com/Kitware/nrtk-explorer/commit/261191e7e44a2631589c27d0bbf7b637c60d9ea1))
+
+### Performance
+
+* perf(dataset): convert image mode to RGB on HF dataset load ([`752b56f`](https://github.com/Kitware/nrtk-explorer/commit/752b56ff47d2abfa102e654ba4c5197fbe12a314))
+
+* perf(dataset): loop through dataset once ([`a451b97`](https://github.com/Kitware/nrtk-explorer/commit/a451b970392e697537160ce52f5acc91063218a2))
+
+### Refactor
+
+* refactor: add annotations lib module ([`f3b76c4`](https://github.com/Kitware/nrtk-explorer/commit/f3b76c4029a39e3d9f02586815817443abe6ade8))
+
+* refactor: rename object_detection_model to inference_model ([`ca3f7b4`](https://github.com/Kitware/nrtk-explorer/commit/ca3f7b4c609e16688c639043e69bbfcf4a9db7c4))
+
+* refactor(coco_utils): make normalized annotation struct ([`ae6279e`](https://github.com/Kitware/nrtk-explorer/commit/ae6279eb95b28a57ef879c1d4a4dd712826dfbf7))
+
+* refactor(transforms): move score logic to coco_utils ([`b61bd34`](https://github.com/Kitware/nrtk-explorer/commit/b61bd349b574ac625224ab03ba249583e3b0be06))
+
+* refactor(images): move img.mode(&#34;RBG&#34;) to image loader ([`be817b9`](https://github.com/Kitware/nrtk-explorer/commit/be817b96a8ffd3be77f07b8b90c8ed34f46c16aa))
+
+* refactor(dataset): simplify extract_labels ([`9d7c2ee`](https://github.com/Kitware/nrtk-explorer/commit/9d7c2eeb3215c6adaa6b52df196d945e974f3bb7))
+
+* refactor(dataset): share common code between dataset classes ([`6b6b381`](https://github.com/Kitware/nrtk-explorer/commit/6b6b381eccd5b8ac4d1f6f0b2b4853fd53e25e5e))
+
+* refactor(dataset): rename JsonDataset ([`7d4022b`](https://github.com/Kitware/nrtk-explorer/commit/7d4022b09cf66617aca5d353f69826c47dbec0c9))
+
+* refactor(transforms): fix spelling visibile -&gt; visible ([`d2fd39d`](https://github.com/Kitware/nrtk-explorer/commit/d2fd39dc64dbac07a3a2038526197cdf81b2cae8))
+
+### Unknown
+
+* Merge pull request #153 from Kitware/main
+
+Cut PiPy 0.6.0 release ([`a1df9a5`](https://github.com/Kitware/nrtk-explorer/commit/a1df9a5a0c31c3d3b14f1755845c92a4863b77bb))
+
+* doc(README): add HF dataset CLI arg and more usage examples ([`38393e1`](https://github.com/Kitware/nrtk-explorer/commit/38393e1109dd054904fde466b458e8cfed609fc0))
+
+* Add a wide variety of nrtk transforms (PIL, cv2, skimage, pybsm) ([`b5ca99c`](https://github.com/Kitware/nrtk-explorer/commit/b5ca99c3e909d134982a2bb98717f64c218329b7))
+
+
 ## v0.5.0 (2024-10-21)
 
 ### Ci

@@ -2,6 +2,9 @@ name: Create Release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - release
 
 jobs:
   release:
@@ -45,3 +48,11 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.release.outputs.tag }}
+
+      - name: Merge release -> main
+        uses: devmasx/merge-branch@master
+        with:
+          type: now
+          target_branch: main
+          message: Merge release into main
+          github_token: ${{ secrets.GITHUB_TOKEN }}

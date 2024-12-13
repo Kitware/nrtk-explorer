@@ -5,7 +5,7 @@ Example:
     dataset = get_dataset("path/to/dataset.json")
 """
 
-from typing import Sequence as SequenceType
+from typing import Sequence as SequenceType, Union
 from abc import ABC, abstractmethod
 import os
 from functools import lru_cache
@@ -70,6 +70,25 @@ def make_coco_dataset(path: str):
         return CocoDataset(path)
     except ImportError:
         return JsonDataset(path)
+
+
+def discover_datasets(repository: Union[Path, None]) -> list[Path]:
+    datasets: list[Path] = []
+
+    if repository is None:
+        return datasets
+
+    for item in repository.iterdir():
+        if item.is_dir():
+            for file in item.iterdir():
+                if file.is_file() and file.suffix == ".json" and is_coco_dataset(str(file)):
+                    datasets.append(file)
+
+    return datasets
+
+
+def dataset_select_options(datasets: list[str]):
+    return [{"label": Path(ds).name, "value": ds} for ds in datasets]
 
 
 def is_coco_dataset(path: str):

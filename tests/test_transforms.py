@@ -14,6 +14,6 @@ def test_gaussian_blur():
 
 def test_pybsm():
     transforms = generate_transforms()
-    pybsm = transforms["nrtk_pybsm_2"]()
+    pybsm = transforms["nrtk_pybsm"]()
     pybsm.set_parameters({"D": 0.25, "f": 4.0})
     pybsm.execute(get_image())

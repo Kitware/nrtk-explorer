@@ -1,33 +1,14 @@
-from typing import Any, Dict, Optional, TYPE_CHECKING
-
 import numpy as np
 import logging
-from PIL import Image as ImageModule
-from PIL.Image import Image
-from nrtk_explorer.library.transforms import ImageTransform, ParameterDescription
-
-ENABLED_NRTK_TRANSFORMS = True
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 try:
     from pybsm.otf import dark_current_from_density
-    from nrtk.impls.perturb_image.pybsm.perturber import PybsmPerturber, PybsmSensor, PybsmScenario
+    from nrtk.impls.perturb_image.pybsm.perturber import PybsmSensor, PybsmScenario
 except ImportError:
     logger.info("Disabling NRTK transforms due to missing library/failing imports")
-    ENABLED_NRTK_TRANSFORMS = False
-
-if TYPE_CHECKING:
-    PybsmPerturberType = PybsmPerturber
-else:
-    PybsmPerturberType = None
-
-PybsmPerturberArg = Optional[PybsmPerturberType]
-
-
-def nrtk_transforms_available():
-    return ENABLED_NRTK_TRANSFORMS
 
 
 # copied from https://github.com/Kitware/nrtk/blob/main/tests/impls/test_pybsm_utils.py
@@ -144,54 +125,3 @@ def create_sample_scenario():
 
 def create_sample_sensor_and_scenario():
     return dict(sensor=create_sample_sensor(), scenario=create_sample_scenario())
-
-
-class NrtkPybsmTransform(ImageTransform):
-    def __init__(self, perturber: PybsmPerturberArg = None):
-        if perturber is None:
-            kwargs = create_sample_sensor_and_scenario()
-            perturber = PybsmPerturber(**kwargs)
-
-        self._perturber: PybsmPerturber = perturber
-
-    def get_parameters(self) -> dict[str, Any]:
-        return {
-            "D": self._perturber.sensor.D,
-            "f": self._perturber.sensor.f,
-        }
-
-    def set_parameters(self, params: Dict[str, Any]):
-        self._perturber.sensor.D = params["D"]
-        self._perturber.sensor.f = params["f"]
-
-    @classmethod
-    def get_parameters_description(cls) -> Dict[str, ParameterDescription]:
-        aperture_description: ParameterDescription = {
-            "type": "float",
-            "label": "Effective Aperture (m)",
-            "default": None,
-            "description": None,
-            "options": None,
-        }
-
-        focal_description: ParameterDescription = {
-            "type": "float",
-            "label": "Focal Length (m)",
-            "default": None,
-            "description": None,
-            "options": None,
-        }
-
-        return {
-            "D": aperture_description,
-            "f": focal_description,
-        }
-
-    def execute(self, input: Image, *input_args: Any) -> Image:
-        if len(input_args) == 0:
-            input_args = ({"img_gsd": 0.15},)
-
-        input_array = np.asarray(input)
-        output_array = self._perturber.perturb(input_array, *input_args)
-
-        return ImageModule.fromarray(output_array)

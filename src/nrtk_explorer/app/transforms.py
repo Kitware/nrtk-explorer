@@ -173,9 +173,6 @@ class TransformsApp(Applet):
             "identity": trans.IdentityTransform,
         }
 
-        if nrtk_trans.nrtk_transforms_available():
-            self._transform_classes["nrtk_pybsm"] = nrtk_trans.NrtkPybsmTransform
-
         # Add transform from YAML definition
         self._transform_classes.update(nrtk_yaml.generate_transforms())
 

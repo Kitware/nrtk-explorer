@@ -8,7 +8,6 @@ from trame.app import get_server, asynchronous
 from trame_server import Server
 
 import nrtk_explorer.library.transforms as trans
-import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 import nrtk_explorer.library.yaml_transforms as nrtk_yaml
 from nrtk_explorer.library import object_detector
 from nrtk_explorer.library.app_config import process_config

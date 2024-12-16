@@ -115,10 +115,10 @@ nrtk_pybsm_detector_otf:
       type: float
       label: Focal length (m)
 
-nrtk_pybsm_2:
+nrtk_pybsm:
   perturber: nrtk.impls.perturb_image.pybsm.perturber.PybsmPerturber
   perturber_kwargs: nrtk_explorer.library.nrtk_transforms.create_sample_sensor_and_scenario
-  exec_default_args: [{ img_gsd: 0.15 }]
+  exec_default_args: [None, { img_gsd: 0.15 }]
   description:
     D:
       _path: [sensor, D]

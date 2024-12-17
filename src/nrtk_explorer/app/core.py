@@ -6,6 +6,8 @@ from trame_server.utils.namespace import Translator
 from nrtk_explorer.library.filtering import FilterProtocol
 from nrtk_explorer.library.dataset import get_dataset, expand_hugging_face_datasets
 from nrtk_explorer.library.debounce import debounce
+from nrtk_explorer.library.app_config import process_config
+
 
 from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.embeddings import EmbeddingsApp
@@ -38,28 +40,34 @@ NUM_IMAGES_DEBOUNCE_TIME = 0.3  # seconds
 # Engine class
 # ---------------------------------------------------------
 
+config_options = {
+    "dataset": {
+        "flags": ["--dataset"],
+        "params": {
+            "nargs": "+",
+            "default": DEFAULT_DATASETS,
+            "help": "Path to the JSON file describing the image dataset",
+        },
+    },
+    "download": {
+        "flags": ["--download"],
+        "params": {
+            "action": "store_true",
+            "default": False,
+            "help": "Download Hugging Face Hub datasets instead of streaming them",
+        },
+    },
+}
+
 
 class Engine(Applet):
-    def __init__(self, server=None):
+    def __init__(self, server=None, **kwargs):
         super().__init__(server)
 
-        self.server.cli.add_argument(
-            "--dataset",
-            nargs="+",
-            default=DEFAULT_DATASETS,
-            help="Path to the JSON file describing the image dataset",
-        )
+        config = process_config(self.server.cli, config_options, **kwargs)
 
-        self.server.cli.add_argument(
-            "--download",
-            action="store_true",
-            default=False,
-            help="Download Hugging Face Hub datasets instead of streaming them",
-        )
-
-        known_args, _ = self.server.cli.parse_known_args()
         dataset_identifiers = expand_hugging_face_datasets(
-            known_args.dataset, not known_args.download
+            config["dataset"], not config["download"]
         )
         self.input_paths = dataset_identifiers
         self.state.current_dataset = self.input_paths[0]
@@ -67,7 +75,7 @@ class Engine(Applet):
         images = Images(server=self.server)
 
         self._transforms_app = TransformsApp(
-            server=self.server.create_child_server(), images=images
+            server=self.server.create_child_server(), images=images, **kwargs
         )
 
         self._embeddings_app = EmbeddingsApp(

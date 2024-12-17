@@ -73,7 +73,7 @@ def make_coco_dataset(path: str):
 
 
 def is_coco_dataset(path: str):
-    if not os.path.exists(path):
+    if not os.path.exists(path) or os.path.isdir(path):
         return False
     required_keys = ['"images"', '"categories"', '"annotations"']
     with open(path) as f:

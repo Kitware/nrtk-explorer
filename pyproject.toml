@@ -30,7 +30,7 @@ dependencies = [
     "accelerate",
     "numpy",
     "Pillow",
-    "pybsm>=0.6,<=0.9.0",
+    "pybsm>=0.6,<=0.10.1",
     "scikit-learn>=1.6.0",
     "smqtk_image_io",
     "tabulate",

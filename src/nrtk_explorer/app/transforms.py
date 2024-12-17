@@ -11,14 +11,15 @@ import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.nrtk_transforms as nrtk_trans
 import nrtk_explorer.library.yaml_transforms as nrtk_yaml
 from nrtk_explorer.library import object_detector
-from nrtk_explorer.app.applet import Applet
-from nrtk_explorer.app.parameters import ParametersApp
-from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
+from nrtk_explorer.library.app_config import process_config
 from nrtk_explorer.library.scoring import (
     compute_score,
 )
-from nrtk_explorer.app.trame_utils import change_checker, delete_state
 
+from nrtk_explorer.app.applet import Applet
+from nrtk_explorer.app.parameters import ParametersApp
+from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
+from nrtk_explorer.app.trame_utils import change_checker, delete_state
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
@@ -86,6 +87,18 @@ class ProcessingStep:
             self.enabled_callback()
 
 
+config_options = {
+    "models": {
+        "flags": ["--models"],
+        "params": {
+            "nargs": "+",
+            "default": INFERENCE_MODELS_DEFAULT,
+            "help": "Space separated list of inference models",
+        },
+    },
+}
+
+
 class TransformsApp(Applet):
     def __init__(
         self,
@@ -94,18 +107,12 @@ class TransformsApp(Applet):
         ground_truth_annotations=None,
         original_detection_annotations=None,
         transformed_detection_annotations=None,
+        **kwargs,
     ):
         super().__init__(server)
 
-        self.server.cli.add_argument(
-            "--models",
-            nargs="+",
-            default=INFERENCE_MODELS_DEFAULT,
-            help="Space separated list of inference models",
-        )
-
-        known_args, _ = self.server.cli.parse_known_args()
-        self.state.inference_models = known_args.models
+        config = process_config(self.server.cli, config_options, **kwargs)
+        self.state.inference_models = config["models"]
         self.state.inference_model = self.state.inference_models[0]
         self.state.setdefault("image_list_ids", [])
         self.state.setdefault("dataset_ids", [])

@@ -2,6 +2,42 @@
 
 
 
+## v0.7.0 (2024-12-17)
+
+### Chore
+
+* chore(ci): on push to release, run semantic-release
+
+Automatically merge release commit back to main.
+
+Delete sync_branches workflow which was erroneously merging
+back to main from release before semantic-release was run. ([`b5aa743`](https://github.com/Kitware/nrtk-explorer/commit/b5aa74320ff4e8fc7886774556b9afac3cfb3dfb))
+
+* chore(pyproject.toml): limit nrtk to 0.16.0 ([`c8285cb`](https://github.com/Kitware/nrtk-explorer/commit/c8285cbc3403db223e61ab465a995292d211a172))
+
+### Feature
+
+* feat(core): add Engine kwargs alternative to cli args ([`2eb3d0d`](https://github.com/Kitware/nrtk-explorer/commit/2eb3d0d2acea774d887a59951142a5430108912b))
+
+### Fix
+
+* fix(dataset): load local hugging face dataset ([`9ca54f6`](https://github.com/Kitware/nrtk-explorer/commit/9ca54f67404c91d5846b21ac27fb2a72262738a2))
+
+### Unknown
+
+* Merge pull request #160 from Kitware/main
+
+cut 0.7.0 ([`6e6ab8a`](https://github.com/Kitware/nrtk-explorer/commit/6e6ab8aec7654742401ec84a34e81d9243ba96d7))
+
+* Merge pull request #158 from Kitware/kwargs-config
+
+Engine kwargs as alternative to CLI args ([`ed1e971`](https://github.com/Kitware/nrtk-explorer/commit/ed1e9716bc00e79902a47076bc310e5504365768))
+
+* Merge pull request #154 from Kitware/release
+
+0.6.0 ([`a0dc46e`](https://github.com/Kitware/nrtk-explorer/commit/a0dc46e2b7e4012f6bd6f039a12b82a9b4b0ce89))
+
+
 ## v0.6.0 (2024-12-12)
 
 ### Chore
@@ -97,6 +133,8 @@ Closes #145 ([`fd8d43d`](https://github.com/Kitware/nrtk-explorer/commit/fd8d43d
 * refactor(transforms): fix spelling visibile -&gt; visible ([`d2fd39d`](https://github.com/Kitware/nrtk-explorer/commit/d2fd39dc64dbac07a3a2038526197cdf81b2cae8))
 
 ### Unknown
+
+* Merge release into main ([`3288fe2`](https://github.com/Kitware/nrtk-explorer/commit/3288fe2e6c67bb76d7521b1a978b92fac08bf1f9))
 
 * Merge pull request #153 from Kitware/main
 

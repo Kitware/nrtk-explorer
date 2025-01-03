@@ -34,11 +34,15 @@ function onChipClick(value: Category) {
 
   emit('update:modelValue', newValue)
 }
+
+const alphabetizedOptions = computed(() => {
+  return Object.values(props.options).sort((a, b) => a.name.localeCompare(b.name))
+})
 </script>
 
 <template>
   <q-chip
-    v-for="option in options"
+    v-for="option in alphabetizedOptions"
     :key="option.id"
     :color="modelValueSet.has(option.id) ? 'primary' : ''"
     :text-color="modelValueSet.has(option.id) ? 'white' : ''"

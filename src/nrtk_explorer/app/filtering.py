@@ -33,6 +33,8 @@ class FilteringApp(Applet):
         self.state.filter_categories = []
         self.state.filter_operator = "or"
         self.state.filter_not = False
+        self.select_clicked = False
+        self.state.disable_select = False
 
         self.server.controller.add("on_server_ready")(self.on_server_ready)
 
@@ -50,11 +52,28 @@ class FilteringApp(Applet):
         self.state.change("filter_categories")(self.on_filter_categories_change)
         self.state.change("filter_operator")(self.on_filter_categories_change)
 
+        # disable select button when user selects ids and enable when parameters change
+        self.state.change("user_selected_ids")(self.on_user_selected_ids)
+        self.state.change(
+            "filter_operator", "filter_not", "categories", "filter_categories", "dataset"
+        )(self.enable_select_button)
+
     def on_select_click(self):
+        self.select_clicked = True
         if self.state.filter_not:
             self._on_apply_filter(self._not_filter)
         else:
             self._on_apply_filter(self._filter)
+
+    def enable_select_button(self, **kwargs):
+        self.state.disable_select = False
+
+    def on_user_selected_ids(self, **kwargs):
+        if self.select_clicked:
+            self.select_clicked = False
+            self.state.disable_select = True
+        else:
+            self.enable_select_button()
 
     def on_filter_categories_change(self, **kwargs):
         self._filter.set_ids(self.state.filter_categories, self.state.filter_operator)
@@ -88,6 +107,7 @@ class FilteringApp(Applet):
             quasar.QBtn(
                 "Select Images",
                 click=(self.on_select_click,),
+                disable=("disable_select",),
                 flat=True,
             )
 

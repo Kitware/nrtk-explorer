@@ -148,7 +148,6 @@ class EmbeddingsApp(Applet):
 
         self.clear_points_transformations()
 
-        self.state.user_selected_ids = []
         self.state.camera_position = []
 
         with self.state:
@@ -174,8 +173,12 @@ class EmbeddingsApp(Applet):
         updated_points = {image_id_to_dataset_id(id): point for id, point in zip(ids, points)}
         self.state.points_transformations = {**self.state.points_transformations, **updated_points}
 
+    # called by category filter
     def on_select(self, image_ids):
         self.state.user_selected_ids = image_ids
+
+    def on_scatter_select(self, image_ids):
+        self.state.user_selected_ids = image_ids or self.state.dataset_ids
 
     def on_move(self, camera_position):
         self.state.camera_position = camera_position
@@ -212,7 +215,7 @@ class EmbeddingsApp(Applet):
             hover=(self.on_point_hover, "[$event]"),
             points=("points_sources", {}),
             transformedPoints=("points_transformations", {}),
-            select=(self.on_select, "[$event]"),
+            select=(self.on_scatter_select, "[$event]"),
             selectedPoints=("user_selected_ids", []),
         )
 

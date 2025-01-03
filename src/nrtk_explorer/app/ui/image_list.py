@@ -132,12 +132,9 @@ class ImageList(html.Div):
                     self.state[key] = None
         self.state.image_list_ids = dataset_ids
 
-    @change("dataset_ids", "user_selected_ids")
+    @change("user_selected_ids")
     def update_image_list_ids(self, **kwargs):
-        if len(self.state.user_selected_ids) > 0:
-            self._set_image_list_ids(self.state.user_selected_ids)
-        else:
-            self._set_image_list_ids(self.state.dataset_ids)
+        self._set_image_list_ids(self.state.user_selected_ids)
 
     @change("image_list_ids")
     def reset_view_range(self, **kwargs):

@@ -162,6 +162,7 @@ class Engine(Applet):
             selected_images = images
 
         self.state.dataset_ids = [str(img["id"]) for img in selected_images]
+        self.state.user_selected_ids = self.state.dataset_ids
 
     def _build_ui(self):
         extra_args = {}

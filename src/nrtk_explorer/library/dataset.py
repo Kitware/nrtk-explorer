@@ -10,8 +10,8 @@ from abc import ABC, abstractmethod
 import os
 from functools import lru_cache
 from pathlib import Path
-import json
 from PIL import Image
+import kwcoco
 from datasets import (
     load_dataset,
     get_dataset_infos,
@@ -36,40 +36,10 @@ class CategoryIndex:
         self.name_to_cat = {cat["name"]: cat for cat in self.cats.values()}
 
 
-class JsonDataset(BaseDataset, CategoryIndex):
-    """JSON-based COCO datasets."""
-
-    def __init__(self, path: str):
-        with open(path) as f:
-            self.data = json.load(f)
-        self.fpath = path
-        self.cats = {cat["id"]: cat for cat in self.data["categories"]}
-        self.anns = {ann["id"]: ann for ann in self.data["annotations"]}
-        self.imgs = {img["id"]: img for img in self.data["images"]}
-        self.build_cat_index()
-
-    def _get_image_fpath(self, selected_id: int):
-        dataset_dir = Path(self.fpath).parent
-        file_name = self.imgs[selected_id]["file_name"]
-        return str(dataset_dir / file_name)
-
+class CocoDataset(kwcoco.CocoDataset, BaseDataset):
     def get_image(self, id: int):
-        image_fpath = self._get_image_fpath(id)
+        image_fpath = self.get_image_fpath(id)
         return Image.open(image_fpath)
-
-
-def make_coco_dataset(path: str):
-    try:
-        import kwcoco
-
-        class CocoDataset(kwcoco.CocoDataset, BaseDataset):
-            def get_image(self, id: int):
-                image_fpath = self.get_image_fpath(id)
-                return Image.open(image_fpath)
-
-        return CocoDataset(path)
-    except ImportError:
-        return JsonDataset(path)
 
 
 def is_coco_dataset(path: str):
@@ -102,7 +72,7 @@ def find_column_name(features, column_names):
 
 
 class HuggingFaceDataset(BaseDataset, CategoryIndex):
-    """Interface for Hugging Face datasets with a similar API to JsonDataset."""
+    """Interface for Hugging Face datasets with a similar API to CocoDataset."""
 
     def __init__(self, identifier: str):
         self.imgs: dict[str, dict] = {}
@@ -244,7 +214,7 @@ def get_dataset(identifier: str):
     absolute_path = str(Path(identifier).resolve())
 
     if is_coco_dataset(absolute_path):
-        return make_coco_dataset(absolute_path)
+        return CocoDataset(absolute_path)
 
     # Assume identifier is a Hugging Face Dataset
     return HuggingFaceDataset(identifier)

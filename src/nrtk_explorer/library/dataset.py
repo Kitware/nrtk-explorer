@@ -50,6 +50,7 @@ def is_coco_dataset(path: str):
         content = f.read()
     return all(key in content for key in required_keys)
 
+
 def discover_datasets(repository: Union[Path, None]) -> list[Path]:
     datasets: list[Path] = []
 

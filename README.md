@@ -83,6 +83,7 @@ For more details on setting up a development environment see [DEVELOPMENT docs](
 1. Merge `main` to `release` with a _merge commit_.
 2. Run "Create Release" workflow with workflow from `release` branch.
 3. Merge `release` to `main` with a _merge commit_.
+4. Check package versions in Conda Feedstock [meta.yaml file](https://github.com/conda-forge/nrtk-explorer-feedstock/blob/main/recipe/meta.yaml)
 
 [1]: https://trame.readthedocs.io/en/latest/
 [2]: https://www.kitware.com/

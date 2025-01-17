@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Callable
-from collections.abc import Mapping
+from collections.abc import MutableMapping
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class LazyDict(Mapping):
+class LazyDict(MutableMapping):
     """If function provided for value, run function when value is accessed"""
 
     def __init__(self, *args, **kw):
@@ -62,6 +62,9 @@ class LazyDict(Mapping):
 
     def __setitem__(self, key, value):
         self._raw_dict[key] = value
+
+    def __delitem__(self, key):
+        del self._raw_dict[key]
 
     def __iter__(self):
         return iter(self._raw_dict)

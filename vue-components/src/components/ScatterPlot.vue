@@ -90,32 +90,23 @@ const dataset = computed(() => {
   return new ScatterGL.Dataset(allPoints)
 })
 
+watch([scatterPlotRef, dataset, selectedPoints, highlightedPoint, colorMap, hideSourcePoints], () =>
+  scatterPlot?.render(dataset.value)
+)
+
 const sequences = computed(() => {
   return transformedPointIds.value.map((id) => ({
     indices: [idToIndex(id, false), idToIndex(id, true)]
   }))
 })
 
-watchEffect(() => {
+watch([sequences, scatterPlotRef], () => {
   if (scatterPlotRef.value && scatterPlot) {
     // Due to a bug in scatter-gl we unselect all points before setting the sequences
     scatterPlot.select([])
     scatterPlot.setSequences(sequences.value)
   }
 })
-
-watch(
-  [
-    scatterPlotRef,
-    dataset,
-    selectedPoints,
-    highlightedPoint,
-    colorMap,
-    hideSourcePoints,
-    sequences
-  ],
-  () => scatterPlot?.render(dataset.value)
-)
 
 onMounted(() => {
   if (!plotContainer.value) {
@@ -135,8 +126,10 @@ onMounted(() => {
         return `rgba(255,0,0,255)`
       }
 
-      if (isTrans) {
-        const p0 = props.points[id]
+      // check p0 because sometimes scatterPlot.setSequences called after props.points updated
+      // but before scatterPlot gets updated Dataset
+      const p0 = props.points[id]
+      if (isTrans && p0) {
         const p1 = props.transformedPoints[id]
         const dx = Math.abs(p0[0] - p1[0])
         const dy = Math.abs(p0[1] - p1[1])

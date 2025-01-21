@@ -5,9 +5,16 @@ import threading
 import logging
 import queue
 import uuid
+from enum import Enum
 from .predictor import Predictor
 
 WORKER_RESPONSE_TIMEOUT = 40
+
+
+class Command(Enum):
+    SET_MODEL = "SET_MODEL"
+    INFER = "INFER"
+    RESET = "RESET"
 
 
 def _child_worker(request_queue, result_queue, model_name, force_cpu):
@@ -25,12 +32,12 @@ def _child_worker(request_queue, result_queue, model_name, force_cpu):
             logger.debug("Worker: Received EXIT command. Shutting down.")
             break
 
-        command = msg["command"]
+        command = Command(msg["command"])
         req_id = msg["req_id"]
         payload = msg.get("payload", {})
-        logger.debug(f"Worker: Received {command} with ID {req_id}")
+        logger.debug(f"Worker: Received {command.value} with ID {req_id}")
 
-        if command == "SET_MODEL":
+        if command == Command.SET_MODEL:
             try:
                 predictor = Predictor(
                     model_name=payload["model_name"], force_cpu=payload["force_cpu"]
@@ -39,14 +46,14 @@ def _child_worker(request_queue, result_queue, model_name, force_cpu):
             except Exception as e:
                 logger.exception("Failed to set model.")
                 result_queue.put((req_id, {"status": "ERROR", "message": str(e)}))
-        elif command == "INFER":
+        elif command == Command.INFER:
             try:
                 predictions = predictor.eval(payload["images"])
                 result_queue.put((req_id, {"status": "OK", "result": predictions}))
             except Exception as e:
                 logger.exception("Inference failed.")
                 result_queue.put((req_id, {"status": "ERROR", "message": str(e)}))
-        elif command == "RESET":
+        elif command == Command.RESET:
             try:
                 predictor.reset()
                 result_queue.put((req_id, {"status": "OK"}))
@@ -115,7 +122,7 @@ class MultiprocessPredictor:
             req_id = str(uuid.uuid4())
             self._request_queue.put(
                 {
-                    "command": "SET_MODEL",
+                    "command": Command.SET_MODEL.value,
                     "req_id": req_id,
                     "payload": {
                         "model_name": self.model_name,
@@ -130,7 +137,11 @@ class MultiprocessPredictor:
             return {}
         with self._lock:
             req_id = str(uuid.uuid4())
-            new_req = {"command": "INFER", "req_id": req_id, "payload": {"images": images}}
+            new_req = {
+                "command": Command.INFER.value,
+                "req_id": req_id,
+                "payload": {"images": images},
+            }
             self._request_queue.put(new_req)
 
         resp = await self._wait_for_response_async(req_id)
@@ -139,7 +150,7 @@ class MultiprocessPredictor:
     def reset(self):
         with self._lock:
             req_id = str(uuid.uuid4())
-            self._request_queue.put({"command": "RESET", "req_id": req_id})
+            self._request_queue.put({"command": Command.RESET.value, "req_id": req_id})
             return self._wait_for_response(req_id)
 
     def shutdown(self):

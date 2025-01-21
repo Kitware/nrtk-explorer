@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, toRefs, computed, watchEffect } from 'vue'
+import { ref, watch, onMounted, toRefs, computed } from 'vue'
 import { ScatterGL } from 'scatter-gl'
 
 import { createColorMap, linearScale } from '@colormap/core'
@@ -90,10 +90,6 @@ const dataset = computed(() => {
   return new ScatterGL.Dataset(allPoints)
 })
 
-watch([scatterPlotRef, dataset, selectedPoints, highlightedPoint, colorMap, hideSourcePoints], () =>
-  scatterPlot?.render(dataset.value)
-)
-
 const sequences = computed(() => {
   return transformedPointIds.value.map((id) => ({
     indices: [idToIndex(id, false), idToIndex(id, true)]
@@ -108,6 +104,17 @@ watch([sequences, scatterPlotRef], () => {
   }
 })
 
+watch(
+  [scatterPlotRef, dataset, selectedPoints, highlightedPoint, colorMap, hideSourcePoints],
+  () => {
+    scatterPlot?.render(dataset.value)
+    if (selectMode.value) {
+      // When switching bettween 3D and 2D, ScatterGL pan/rotate mode is always active.  Stop that.
+      scatterPlot?.setSelectMode()
+    }
+  }
+)
+
 onMounted(() => {
   if (!plotContainer.value) {
     return
@@ -116,9 +123,6 @@ onMounted(() => {
   scatterPlot = new ScatterGL(plotContainer.value, {
     rotateOnStart: false,
     selectEnabled: true,
-    styles: {
-      axesVisible: true
-    },
     pointColorer(i) {
       const id = indexToId(i)
       const isTrans = isTransformed(i)

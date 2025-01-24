@@ -74,6 +74,11 @@ class Predictor:
         batches: dict = {}
         for image in images_with_ids:
             size = image.image.size
+            exif_data = image.image.getexif()
+            orientation = exif_data.get(274, None)
+            # Swap dimensions if the orientation implies a 90° rotation
+            if orientation in [5, 6, 7, 8]:
+                size = (size[1], size[0])
             batches.setdefault(size, [])
             batches[size].append(image)
 
@@ -81,16 +86,12 @@ class Predictor:
             self.batch_size = self.batch_size
         while self.batch_size > 0:
             try:
-                predictions_in_baches = [
-                    zip(
-                        [image.id for image in imagesInBatch],
-                        self.pipeline(
-                            [image.image for image in imagesInBatch],
-                            batch_size=self.batch_size,
-                        ),
-                    )
-                    for imagesInBatch in batches.values()
-                ]
+                predictions_in_baches = []
+                for imagesInBatch in batches.values():
+                    image_ids = [image.id for image in imagesInBatch]
+                    image_data = [image.image for image in imagesInBatch]
+                    pipeline_output = self.pipeline(image_data, batch_size=self.batch_size)
+                    predictions_in_baches.append(zip(image_ids, pipeline_output))
 
                 predictions_by_image_id = {
                     image_id: predictions

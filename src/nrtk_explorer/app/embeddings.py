@@ -155,9 +155,9 @@ class EmbeddingsApp(Applet):
             self.state.points_transformations = {}
 
     def compute_source_points(self):
-        images = [
+        images = (
             self.images.get_image_without_cache_eviction(id) for id in self.state.dataset_ids
-        ]
+        )
         self.features = self.extractor.extract(images)
 
         points = self.compute_points(self.features, self.features)

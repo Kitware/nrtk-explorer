@@ -1,4 +1,5 @@
 import base64
+import psutil
 from io import BytesIO
 from PIL import Image
 from trame.decorators import TrameApp, change, controller
@@ -18,23 +19,35 @@ def convert_to_base64(img: Image.Image) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-IMAGE_CACHE_SIZE = 500
+IMAGE_CACHE_SIZE_DEFAULT = 50
+AVALIBLE_MEMORY_TO_TAKE_FACTOR = 0.5
 
 
 @TrameApp()
 class Images:
     def __init__(self, server):
         self.server = server
-        self.original_images = LruCache(
-            IMAGE_CACHE_SIZE,
-        )
-        self.transformed_images = LruCache(
-            IMAGE_CACHE_SIZE,
-        )
+        self.original_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
+        self.transformed_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
+        self._should_reset_cache = True
+
+    def _ajust_cache_size(self, image_example: Image.Image):
+        img_size = len(image_example.tobytes())
+        system_memory = psutil.virtual_memory().available
+        mem_for_cache = round(system_memory * AVALIBLE_MEMORY_TO_TAKE_FACTOR)
+        images_that_fit = max(min(mem_for_cache // img_size, 500), 50)
+        cache_size = images_that_fit // 2
+        self.original_images = LruCache(cache_size)
+        self.transformed_images = LruCache(cache_size)
 
     def _load_image(self, dataset_id: str):
         img = self.server.context.dataset.get_image(int(dataset_id))
         img.load()  # Avoid OSError(24, 'Too many open files')
+
+        if self._should_reset_cache:
+            self._should_reset_cache = False
+            self._ajust_cache_size(img)  # assuming images in dataset are similar size
+
         # transforms and base64 encoding require RGB mode
         return img.convert("RGB") if img.mode != "RGB" else img
 
@@ -105,6 +118,7 @@ class Images:
     def clear_all(self, **kwargs):
         self.original_images.clear()
         self.clear_transformed()
+        self._should_reset_cache = True
 
     @controller.add("apply_transform")
     def clear_transformed(self, **kwargs):

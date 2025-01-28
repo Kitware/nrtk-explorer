@@ -231,7 +231,7 @@ class TransformsApp(Applet):
             feature_enabled_state_key="transform_enabled",
             gui_switch_key="transform_enabled_switch",
             column_name=TRANSFORM_COLUMNS[0],
-            enabled_callback=self._start_update_images,
+            enabled_callback=self.on_apply_transform,
         )
 
         self.server.controller.on_server_ready.add(self.on_server_ready)
@@ -267,6 +267,8 @@ class TransformsApp(Applet):
     def on_apply_transform(self, **kwargs):
         # Turn on switch if user clicked lower apply button
         self.state.transform_enabled_switch = True
+        transforms = list(map(lambda t: t["instance"], self.context.transforms))
+        self.context.chained_transform = trans.ChainedImageTransform(transforms)
         self._start_update_images()
 
     async def update_transformed_images(
@@ -275,22 +277,15 @@ class TransformsApp(Applet):
         if not self.state.transform_enabled:
             return
 
-        transforms = list(map(lambda t: t["instance"], self.context.transforms))
-        transform = trans.ChainedImageTransform(transforms)
+        transform = self.context.chained_transform
 
         id_to_image = LazyDict()
         for id in dataset_ids:
-            if visible:
-                with self.state:
-                    transformed = self.images.get_stateful_transformed_image(transform, id)
-                    id_to_image[dataset_id_to_transformed_image_id(id)] = transformed
-                await self.server.network_completion
-            else:
-                id_to_image[dataset_id_to_transformed_image_id(id)] = (
-                    lambda id=id: self.images.get_transformed_image_without_cache_eviction(
-                        transform, id
-                    )
+            id_to_image[dataset_id_to_transformed_image_id(id)] = (
+                lambda id=id: self.images.get_transformed_image_without_cache_eviction(
+                    transform, id
                 )
+            )
 
         with self.state:
             annotations = await self.transformed_detection_annotations.get_annotations(
@@ -325,8 +320,8 @@ class TransformsApp(Applet):
                     {"original_detection_to_transformed_detection_score": score},
                 )
 
-        self.state.flush()  # needed cuz in async func and modifying state or else UI does not update
-        # sortable score value may have changed which may have changed images that are in view
+        self.state.flush()  # needed cuz we are async func that modifies state.  If no flush, UI does not update.
+        # sortable score value may have changed which images that are in view
         self.server.controller.check_images_in_view()
 
         self.on_transform(id_to_image)  # inform embeddings app

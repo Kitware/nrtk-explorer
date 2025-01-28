@@ -20,7 +20,7 @@ def convert_to_base64(img: Image.Image) -> str:
 
 
 IMAGE_CACHE_SIZE_DEFAULT = 50
-AVALIBLE_MEMORY_TO_TAKE_FACTOR = 0.5
+AVALIBLE_MEMORY_TO_TAKE_FACTOR = 0.3
 
 
 @TrameApp()
@@ -93,14 +93,6 @@ class Images:
         image_id, image = self._get_transformed_image(transform, dataset_id, **kwargs)
         self.transformed_images.add_item(image_id, image, **kwargs)
         return image
-
-    def get_stateful_transformed_image(self, transform: ImageTransform, dataset_id: str):
-        return self.get_transformed_image(
-            transform,
-            dataset_id,
-            on_add_item=self._add_image_to_state,
-            on_clear_item=self._delete_from_state,
-        )
 
     def get_transformed_image_without_cache_eviction(
         self, transform: ImageTransform, dataset_id: str

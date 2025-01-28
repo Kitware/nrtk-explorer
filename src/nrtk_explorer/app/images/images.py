@@ -58,11 +58,6 @@ class Images:
         self.original_images.add_item(image_id, image, **kwargs)
         return image
 
-    def get_stateful_image(self, dataset_id: str):
-        return self.get_image(
-            dataset_id, on_add_item=self._add_image_to_state, on_clear_item=self._delete_from_state
-        )
-
     def _add_image_to_state(self, image_id: str, image: Image.Image):
         self.server.state[image_id] = convert_to_base64(image)
 

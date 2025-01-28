@@ -17,6 +17,7 @@ from nrtk_explorer.library.app_config import process_config
 
 
 from nrtk_explorer.app.images.images import Images
+from nrtk_explorer.app.images.image_server import ImageServer
 from nrtk_explorer.app.embeddings import EmbeddingsApp
 from nrtk_explorer.app.export import ExportApp
 from nrtk_explorer.app.transforms import TransformsApp
@@ -101,12 +102,11 @@ class Engine(Applet):
         ]
 
         self.state.all_datasets = self.state.input_datasets + self.state.repository_datasets
-
         self.state.all_datasets_options = dataset_select_options(self.state.all_datasets)
-
         self.state.current_dataset = self.state.all_datasets[0]
 
         images = Images(server=self.server)
+        self._image_server = ImageServer(server=self.server, images=images)
 
         self._transforms_app = TransformsApp(
             server=self.server.create_child_server(), images=images, **kwargs
@@ -163,6 +163,7 @@ class Engine(Applet):
 
     def on_dataset_change(self, **kwargs):
         self.state.dataset_ids = []  # sampled images
+        self.state.user_selected_ids = []  # ensure image update in transforms app via image list
         self.context.dataset = get_dataset(self.state.current_dataset)
         self.state.num_images_max = len(self.context.dataset.imgs)
         self.state.num_images = min(self.state.num_images_max, self.state.num_images)

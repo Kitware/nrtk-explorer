@@ -368,8 +368,6 @@ class TransformsApp(Applet):
         if visible:
             # load images on state for ImageList
             with self.state:
-                for id in dataset_ids:
-                    self.images.get_stateful_image(id)
                 self.ground_truth_annotations.get_annotations(dataset_ids)
             await self.server.network_completion
 

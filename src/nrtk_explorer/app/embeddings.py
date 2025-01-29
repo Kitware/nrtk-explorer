@@ -208,17 +208,19 @@ class EmbeddingsApp(Applet):
         self.transformed_images.add_images(id_to_image)
 
     def update_transformed_images(self, id_to_image):
-        new_to_plot = {
-            id: img
-            for id, img in id_to_image.items()
+        ids_to_plot = [
+            id
+            for id in id_to_image.keys()
             if image_id_to_dataset_id(id) not in self._stashed_points_transformations
-        }
+        ]
+        images_to_plot = (id_to_image[id] for id in ids_to_plot)
 
-        transformation_features = self.extractor.extract(list(new_to_plot.values()))
+        transformation_features = self.extractor.extract(images_to_plot)
         points = self.compute_points(self.features, transformation_features)
-        image_id_to_point = zip(new_to_plot.keys(), points)
 
-        updated_points = {image_id_to_dataset_id(id): point for id, point in image_id_to_point}
+        updated_points = {
+            image_id_to_dataset_id(id): point for id, point in zip(ids_to_plot, points)
+        }
         self._stashed_points_transformations = {
             **self._stashed_points_transformations,
             **updated_points,

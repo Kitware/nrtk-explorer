@@ -8,8 +8,6 @@ import uuid
 from enum import Enum
 from .predictor import Predictor
 
-WORKER_RESPONSE_TIMEOUT = 40
-
 
 class Command(Enum):
     SET_MODEL = "SET_MODEL"
@@ -35,7 +33,6 @@ def _child_worker(request_queue, result_queue, model_name, force_cpu):
         command = Command(msg["command"])
         req_id = msg["req_id"]
         payload = msg.get("payload", {})
-        logger.debug(f"Worker: Received {command.value} with ID {req_id}")
 
         if command == Command.SET_MODEL:
             try:
@@ -61,6 +58,11 @@ def _child_worker(request_queue, result_queue, model_name, force_cpu):
                 logger.exception("Reset failed.")
                 result_queue.put((req_id, {"status": "ERROR", "message": str(e)}))
 
+        del msg
+        del command
+        del req_id
+        del payload
+
     logger.debug("Worker: shutting down.")
 
 
@@ -72,7 +74,14 @@ class MultiprocessPredictor:
         self._proc = None
         self._request_queue = None
         self._result_queue = None
+        self._pending_futures = {}
+
+        self.loop = asyncio.get_event_loop()
+
         self._start_process()
+
+        # Instead of a response thread, schedule an async task:
+        asyncio.ensure_future(self._poll_responses())
 
         def handle_shutdown(signum, frame):
             self.shutdown()
@@ -98,66 +107,94 @@ class MultiprocessPredictor:
             )
             self._proc.start()
 
-    def _get_response(self, req_id, timeout=WORKER_RESPONSE_TIMEOUT):
+    async def _poll_responses(self):
         while True:
             try:
-                r_id, data = self._result_queue.get(timeout=timeout)
-            except queue.Empty:
-                raise TimeoutError("No response from worker.")
-            if r_id == req_id:
-                return data
+                r_id, payload = await self.loop.run_in_executor(None, self._result_queue.get)
+            except (EOFError, KeyboardInterrupt):
+                break
+            with self._lock:
+                future = self._pending_futures.pop(r_id, None)
+            if future and not future.done():
+                future.set_result(payload)
 
-    def _wait_for_response(self, req_id):
-        return self._get_response(req_id, WORKER_RESPONSE_TIMEOUT)
+    async def _submit_request(self, command, payload):
+        future = self.loop.create_future()
+        req_id = str(uuid.uuid4())
 
-    async def _wait_for_response_async(self, req_id):
-        return await asyncio.get_event_loop().run_in_executor(
-            None, self._get_response, req_id, WORKER_RESPONSE_TIMEOUT
+        def cleanup(_):
+            with self._lock:
+                self._pending_futures.pop(req_id, None)
+                # Remove the request if it's still in the queue. Probably got canceled.
+                stashed_requests = []
+                while not self._request_queue.empty():
+                    try:
+                        req = self._request_queue.get_nowait()
+                        if req["req_id"] != req_id:
+                            stashed_requests.append(req)
+                    except queue.Empty:
+                        break
+                for req in stashed_requests:
+                    self._request_queue.put(req)
+
+        future.add_done_callback(cleanup)
+
+        with self._lock:
+            self._pending_futures[req_id] = future
+
+        self._request_queue.put(
+            {
+                "command": command.value,
+                "req_id": req_id,
+                "payload": payload,
+            }
         )
+
+        try:
+            r = await future
+            return r
+        except asyncio.CancelledError:
+            cleanup(None)
+            raise
+
+    async def infer(self, images):
+        if not images:
+            return {}
+        resp = await self._submit_request(Command.INFER, {"images": images})
+        return resp.get("result")
+
+    def _run_coro(self, coro):
+        if self.loop.is_running():
+            return asyncio.ensure_future(coro)
+        else:
+            return self.loop.run_until_complete(coro)
 
     def set_model(self, model_name, force_cpu=False):
         with self._lock:
             self.model_name = model_name
             self.force_cpu = force_cpu
-            req_id = str(uuid.uuid4())
-            self._request_queue.put(
-                {
-                    "command": Command.SET_MODEL.value,
-                    "req_id": req_id,
-                    "payload": {
-                        "model_name": self.model_name,
-                        "force_cpu": self.force_cpu,
-                    },
-                }
+
+        async def _async_set():
+            return await self._submit_request(
+                Command.SET_MODEL, {"model_name": self.model_name, "force_cpu": self.force_cpu}
             )
-            return self._wait_for_response(req_id)
 
-    async def infer(self, images):
-        if not images:
-            return {}
-        with self._lock:
-            req_id = str(uuid.uuid4())
-            new_req = {
-                "command": Command.INFER.value,
-                "req_id": req_id,
-                "payload": {"images": images},
-            }
-            self._request_queue.put(new_req)
-
-        resp = await self._wait_for_response_async(req_id)
-        return resp.get("result")
+        return self._run_coro(_async_set())
 
     def reset(self):
-        with self._lock:
-            req_id = str(uuid.uuid4())
-            self._request_queue.put({"command": Command.RESET.value, "req_id": req_id})
-            return self._wait_for_response(req_id)
+        async def _async_reset():
+            return await self._submit_request(Command.RESET, {})
+
+        return self._run_coro(_async_reset())
 
     def shutdown(self):
-        with self._lock:
-            try:
-                self._request_queue.put(None)
-            except Exception:
-                logging.warning("Could not send exit message to worker.")
+        async def _async_shutdown():
+            with self._lock:
+                try:
+                    self._request_queue.put(None)
+                except Exception:
+                    logging.warning("Could not send exit message to worker.")
             if self._proc:
                 self._proc.join()
+
+        return self._run_coro(_async_shutdown())

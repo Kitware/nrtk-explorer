@@ -1,22 +1,12 @@
-import base64
 import psutil
-from io import BytesIO
 from PIL import Image
 from trame.decorators import TrameApp, change, controller
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
-from nrtk_explorer.app.trame_utils import delete_state
 from nrtk_explorer.app.images.cache import LruCache
 from nrtk_explorer.library.transforms import ImageTransform
-
-
-def convert_to_base64(img: Image.Image) -> str:
-    """Convert image to base64 string"""
-    buf = BytesIO()
-    img.save(buf, format="png")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 IMAGE_CACHE_SIZE_DEFAULT = 50
@@ -29,7 +19,7 @@ class Images:
         self.server = server
         self.original_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
         self.transformed_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
-        self._should_reset_cache = True
+        self._should_ajust_cache_size = True
 
     def _ajust_cache_size(self, image_example: Image.Image):
         img_size = len(image_example.tobytes())
@@ -44,8 +34,8 @@ class Images:
         img = self.server.context.dataset.get_image(int(dataset_id))
         img.load()  # Avoid OSError(24, 'Too many open files')
 
-        if self._should_reset_cache:
-            self._should_reset_cache = False
+        if self._should_ajust_cache_size:
+            self._should_ajust_cache_size = False
             self._ajust_cache_size(img)  # assuming images in dataset are similar size
 
         # transforms and base64 encoding require RGB mode
@@ -57,12 +47,6 @@ class Images:
         image = self.original_images.get_item(image_id) or self._load_image(dataset_id)
         self.original_images.add_item(image_id, image, **kwargs)
         return image
-
-    def _add_image_to_state(self, image_id: str, image: Image.Image):
-        self.server.state[image_id] = convert_to_base64(image)
-
-    def _delete_from_state(self, state_key: str):
-        delete_state(self.server.state, state_key)
 
     def get_image_without_cache_eviction(self, dataset_id: str):
         """
@@ -105,7 +89,7 @@ class Images:
     def clear_all(self, **kwargs):
         self.original_images.clear()
         self.clear_transformed()
-        self._should_reset_cache = True
+        self._should_ajust_cache_size = True
 
     @controller.add("apply_transform")
     def clear_transformed(self, **kwargs):

@@ -268,23 +268,18 @@ class TransformsApp(Applet):
         # Turn on switch if user clicked lower apply button
         self.state.transform_enabled_switch = True
         transforms = list(map(lambda t: t["instance"], self.context.transforms))
-        self.context.chained_transform = trans.ChainedImageTransform(transforms)
+        chained_transform = trans.ChainedImageTransform(transforms)
+        self.images.set_transform(chained_transform)
         self._start_update_images()
 
-    async def update_transformed_images(
-        self, dataset_ids, predictions_original_images, visible=False
-    ):
+    async def update_transformed_images(self, dataset_ids, predictions_original_images):
         if not self.state.transform_enabled:
             return
-
-        transform = self.context.chained_transform
 
         id_to_image = LazyDict()
         for id in dataset_ids:
             id_to_image[dataset_id_to_transformed_image_id(id)] = (
-                lambda id=id: self.images.get_transformed_image_without_cache_eviction(
-                    transform, id
-                )
+                lambda id=id: self.images.get_transformed_image_without_cache_eviction(id)
             )
 
         with self.state:
@@ -375,9 +370,7 @@ class TransformsApp(Applet):
         # sortable score value may have changed which may have changed images that are in view
         self.server.controller.check_images_in_view()
 
-        await self.update_transformed_images(
-            dataset_ids, predictions_original_images, visible=visible
-        )
+        await self.update_transformed_images(dataset_ids, predictions_original_images)
 
     async def _chunk_update_images(self, dataset_ids, visible=False):
         ids = list(dataset_ids)

@@ -45,11 +45,9 @@ async def original_image_endpoint(images: Images, state_id_to_dataset_id, reques
     return make_response(image)
 
 
-async def transform_image_endpoint(
-    images: Images, state_id_to_dataset_id, context, request: web.Request
-):
+async def transform_image_endpoint(images: Images, state_id_to_dataset_id, request: web.Request):
     dataset_id = state_id_to_dataset_id[request.match_info["id"]]
-    image = images.get_transformed_image(context.chained_transform, dataset_id)
+    image = images.get_transformed_image(dataset_id)
     return make_response(image)
 
 
@@ -69,7 +67,6 @@ class ImageServer:
             transform_image_endpoint,
             images,
             self._state_id_to_dataset_id,
-            self.server.context,
         )
 
         change_checker(self.server.state, "dataset_ids")(self.on_dataset_ids_change)

@@ -1,10 +1,8 @@
 import pytest
 from nrtk_explorer.library.predictor import Predictor
-from nrtk_explorer.library.multiprocess_predictor import MultiprocessPredictor
 from nrtk_explorer.library.scoring import compute_score
 from nrtk_explorer.library.dataset import get_dataset
 from utils import get_images, DATASET
-import asyncio
 
 
 def test_predictor_small():
@@ -16,15 +14,13 @@ def test_predictor_small():
 
 @pytest.fixture
 def predictor():
-    predictor = MultiprocessPredictor(model_name="facebook/detr-resnet-50")
-    yield predictor
-    predictor.shutdown()
+    return Predictor(model_name="facebook/detr-resnet-50")
 
 
 def test_detect(predictor):
     """Test the detect method with sample images."""
     images = get_images()
-    results = asyncio.run(predictor.infer(images))
+    results = predictor.eval(images)
     assert len(results) == len(images), "Number of results should match number of images"
     for img_id, preds in results.items():
         assert isinstance(preds, list), f"Predictions for {img_id} should be a list"
@@ -32,9 +28,9 @@ def test_detect(predictor):
 
 def test_set_model(predictor):
     """Test setting a new model and performing detection."""
-    predictor.set_model(model_name="hustvl/yolos-tiny")
+    predictor.pipeline = "hustvl/yolos-tiny"
     images = get_images()
-    results = asyncio.run(predictor.infer(images))
+    results = predictor.eval(images)
     assert len(results) == len(
         images
     ), "Number of results should match number of images after setting new model"

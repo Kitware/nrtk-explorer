@@ -1,16 +1,15 @@
 import psutil
 from PIL import Image
-from trame.decorators import TrameApp, change, controller
+from trame.decorators import TrameApp, change
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
 )
 from nrtk_explorer.app.images.cache import LruCache
-from nrtk_explorer.library.transforms import ImageTransform
 
 
 IMAGE_CACHE_SIZE_DEFAULT = 50
-AVALIBLE_MEMORY_TO_TAKE_FACTOR = 0.3
+AVALIBLE_MEMORY_TO_TAKE_FACTOR = 0.2
 
 
 @TrameApp()
@@ -20,6 +19,7 @@ class Images:
         self.original_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
         self.transformed_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
         self._should_ajust_cache_size = True
+        self._transform = None
 
     def _ajust_cache_size(self, image_example: Image.Image):
         img_size = len(image_example.tobytes())
@@ -58,39 +58,37 @@ class Images:
         self.original_images.add_if_room(image_id, image)
         return image
 
-    def _load_transformed_image(self, transform: ImageTransform, dataset_id: str):
+    def _load_transformed_image(self, dataset_id: str):
         original = self.get_image_without_cache_eviction(dataset_id)
-        transformed = transform.execute(original)
+        transformed = self._transform.execute(original)
         # So pixel-wise annotation similarity score works
         if original.size != transformed.size:
             return transformed.resize(original.size)
         return transformed
 
-    def _get_transformed_image(self, transform: ImageTransform, dataset_id: str, **kwargs):
+    def _get_transformed_image(self, dataset_id: str, **kwargs):
         image_id = dataset_id_to_transformed_image_id(dataset_id)
         image = self.transformed_images.get_item(image_id) or self._load_transformed_image(
-            transform, dataset_id
+            dataset_id
         )
         return image_id, image
 
-    def get_transformed_image(self, transform: ImageTransform, dataset_id: str, **kwargs):
-        image_id, image = self._get_transformed_image(transform, dataset_id, **kwargs)
+    def get_transformed_image(self, dataset_id: str, **kwargs):
+        image_id, image = self._get_transformed_image(dataset_id, **kwargs)
         self.transformed_images.add_item(image_id, image, **kwargs)
         return image
 
-    def get_transformed_image_without_cache_eviction(
-        self, transform: ImageTransform, dataset_id: str
-    ):
-        image_id, image = self._get_transformed_image(transform, dataset_id)
+    def get_transformed_image_without_cache_eviction(self, dataset_id: str):
+        image_id, image = self._get_transformed_image(dataset_id)
         self.transformed_images.add_if_room(image_id, image)
         return image
 
     @change("current_dataset")
     def clear_all(self, **kwargs):
         self.original_images.clear()
-        self.clear_transformed()
+        self.transformed_images.clear()
         self._should_ajust_cache_size = True
 
-    @controller.add("apply_transform")
-    def clear_transformed(self, **kwargs):
+    def set_transform(self, transform):
+        self._transform = transform
         self.transformed_images.clear()

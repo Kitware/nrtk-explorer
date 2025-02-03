@@ -1,4 +1,5 @@
 from typing import Dict
+import numpy as np
 from trame.decorators import TrameApp, change
 from PIL import Image
 from nrtk_explorer.widgets.nrtk_explorer import ScatterPlot
@@ -22,38 +23,46 @@ from trame.ui.quasar import QLayout
 from trame.app import get_server, asynchronous
 
 
-IdToImage = Dict[str, Image.Image]
+IdToFeatures = Dict[str, Image.Image]
 
 
 @TrameApp()
 class TransformedImages:
     def __init__(self, server):
         self.server = server
-        self.transformed_images: IdToImage = {}
+        self.transformed_features: IdToFeatures = {}
+        self.extractor = None
+
+    def set_extractor(self, extractor):
+        self.extractor = extractor
 
     def emit_update(self):
-        self.server.controller.update_transformed_images(self.transformed_images)
+        self.server.controller.update_transformed_images(self.transformed_features)
 
-    def add_images(self, dataset_id_to_image: IdToImage):
-        self.transformed_images.update(dataset_id_to_image)
+    def add_images(self, dataset_id_to_image: IdToFeatures):
+        features = self.extractor.extract(dataset_id_to_image.values())
+
+        id_to_feature = {id: features for id, features in zip(dataset_id_to_image, features)}
+
+        self.transformed_features.update(id_to_feature)
         self.emit_update()
 
     @change("dataset_ids")
     def on_dataset_ids(self, **kwargs):
-        self.transformed_images = {
+        self.transformed_features = {
             k: v
-            for k, v in self.transformed_images.items()
+            for k, v in self.transformed_features.items()
             if image_id_to_dataset_id(k) in self.server.state.dataset_ids
         }
         self.emit_update()
 
     @change("current_dataset")
     def on_dataset(self, **kwargs):
-        self.transformed_images = {}
+        self.transformed_features = {}
         self.emit_update()
 
     def clear(self, **kwargs):
-        self.transformed_images = {}
+        self.transformed_features = {}
         self.emit_update()
 
 
@@ -91,11 +100,11 @@ class EmbeddingsApp(Applet):
             "is_transformed": True,
         }
 
+        self.transformed_images = TransformedImages(server)
         self.clear_points_transformations()  # init vars
         self.on_feature_extraction_model_change()
 
-        self.transformed_images = TransformedImages(server)
-        self.server.controller.update_transformed_images.add(self.update_transformed_images)
+        self.server.controller.update_transformed_images.add(self.update_transformed_points)
 
     def on_server_ready(self, *args, **kwargs):
         self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
@@ -110,6 +119,7 @@ class EmbeddingsApp(Applet):
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
             model_name=self.state.feature_extraction_model
         )
+        self.transformed_images.set_extractor(self.extractor)
 
     def compute_points(self, fit_features, features):
         if len(features) == 0:
@@ -180,7 +190,7 @@ class EmbeddingsApp(Applet):
 
         with self.state:
             self.compute_source_points()
-            self.update_transformed_images(self.transformed_images.transformed_images)
+            self.update_transformed_points(self.transformed_images.transformed_features)
             self.state.is_loading = False
 
     def update_points(self, **kwargs):
@@ -207,24 +217,24 @@ class EmbeddingsApp(Applet):
     def on_run_transformations(self, id_to_image):
         self.transformed_images.add_images(id_to_image)
 
-    def update_transformed_images(self, id_to_image):
+    def update_transformed_points(self, id_to_features):
         ids_to_plot = [
             id
-            for id in id_to_image.keys()
+            for id in id_to_features.keys()
             if image_id_to_dataset_id(id) not in self._stashed_points_transformations
         ]
-        images_to_plot = (id_to_image[id] for id in ids_to_plot)
+        features = [id_to_features[id] for id in ids_to_plot]
+        if len(features) > 0:
+            features_to_plot = np.vstack(features)
+            points = self.compute_points(self.features, features_to_plot)
 
-        transformation_features = self.extractor.extract(images_to_plot)
-        points = self.compute_points(self.features, transformation_features)
-
-        updated_points = {
-            image_id_to_dataset_id(id): point for id, point in zip(ids_to_plot, points)
-        }
-        self._stashed_points_transformations = {
-            **self._stashed_points_transformations,
-            **updated_points,
-        }
+            updated_points = {
+                image_id_to_dataset_id(id): point for id, point in zip(ids_to_plot, points)
+            }
+            self._stashed_points_transformations = {
+                **self._stashed_points_transformations,
+                **updated_points,
+            }
         self.update_points_transformations_state()
 
     # called by category filter

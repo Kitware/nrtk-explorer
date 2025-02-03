@@ -9,7 +9,7 @@ from nrtk_explorer.app.images.cache import LruCache
 
 
 IMAGE_CACHE_SIZE_DEFAULT = 50
-AVALIBLE_MEMORY_TO_TAKE_FACTOR = 0.2
+AVALIBLE_MEMORY_TO_TAKE_FACTOR = 0.4
 
 
 @TrameApp()

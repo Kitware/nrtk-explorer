@@ -80,13 +80,8 @@ class MultiprocessPredictor:
 
         self._start_process()
 
-        # Instead of a response thread, schedule an async task:
         asyncio.ensure_future(self._poll_responses())
-
-        def handle_shutdown(signum, frame):
-            self.shutdown()
-
-        signal.signal(signal.SIGINT, handle_shutdown)
+        self.loop.add_signal_handler(signal.SIGINT, self.shutdown)
 
     def _start_process(self):
         with self._lock:

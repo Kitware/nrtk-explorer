@@ -44,7 +44,7 @@ INFERENCE_MODELS_DEFAULT = [
 ]
 
 
-UPDATE_IMAGES_CHUNK_SIZE = 32
+IMAGE_UPDATE_BATCH_SIZE = 16
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -372,20 +372,20 @@ class TransformsApp(Applet):
 
         await self.update_transformed_images(dataset_ids, predictions_original_images)
 
-    async def _chunk_update_images(self, dataset_ids, visible=False):
+    async def _batch_process_images(self, dataset_ids, visible=False):
         ids = list(dataset_ids)
-        for i in range(0, len(ids), UPDATE_IMAGES_CHUNK_SIZE):
-            chunk = ids[i : i + UPDATE_IMAGES_CHUNK_SIZE]
+        for i in range(0, len(ids), IMAGE_UPDATE_BATCH_SIZE):
+            chunk = ids[i : i + IMAGE_UPDATE_BATCH_SIZE]
             await self._update_images(chunk, visible=visible)
 
     async def _update_all_images(self, visible_images):
         with self.state:
             self.state.updating_images = True
 
-        await self._chunk_update_images(visible_images, visible=True)
+        await self._batch_process_images(visible_images, visible=True)
 
         other_images = set(self.state.user_selected_ids) - set(visible_images)
-        await self._chunk_update_images(other_images, visible=False)
+        await self._batch_process_images(other_images, visible=False)
 
         with self.state:
             self.state.updating_images = False

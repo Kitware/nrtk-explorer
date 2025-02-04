@@ -22,12 +22,16 @@ from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
 from trame.app import get_server, asynchronous
 
-
-IdToFeatures = Dict[str, Image.Image]
+Id = str
+Features = np.ndarray
+IdToImage = Dict[Id, Image.Image]
+IdToFeatures = Dict[Id, Features]
 
 
 @TrameApp()
 class TransformedImages:
+    """Caches features/embeddings for transformed images"""
+
     def __init__(self, server):
         self.server = server
         self.transformed_features: IdToFeatures = {}
@@ -39,7 +43,7 @@ class TransformedImages:
     def emit_update(self):
         self.server.controller.update_transformed_images(self.transformed_features)
 
-    def add_images(self, dataset_id_to_image: IdToFeatures):
+    def add_images(self, dataset_id_to_image: IdToImage):
         features = self.extractor.extract(dataset_id_to_image.values())
 
         id_to_feature = {id: features for id, features in zip(dataset_id_to_image, features)}
@@ -50,9 +54,9 @@ class TransformedImages:
     @change("dataset_ids")
     def on_dataset_ids(self, **kwargs):
         self.transformed_features = {
-            k: v
-            for k, v in self.transformed_features.items()
-            if image_id_to_dataset_id(k) in self.server.state.dataset_ids
+            id: features
+            for id, features in self.transformed_features.items()
+            if image_id_to_dataset_id(id) in self.server.state.dataset_ids
         }
         self.emit_update()
 
@@ -155,7 +159,7 @@ class EmbeddingsApp(Applet):
         )
 
     def clear_points_transformations(self, **kwargs):
-        self.state.points_transformations = {}  # datset ID to point
+        self.state.points_transformations = {}  # dataset ID to point
         self._stashed_points_transformations = {}
 
     def update_points_transformations_state(self, **kwargs):

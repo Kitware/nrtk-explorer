@@ -25,14 +25,14 @@ def is_browser_compatible_image(file_path):
     return file_path.split(".")[-1].upper() in COMPATIBLE_FORMATS
 
 
-def ensure_browser_compatable_format(image: Image.Image):
+def ensure_browser_compatible_format(image: Image.Image):
     if is_browser_compatible_image(image.format):
         return image.format
     return "JPEG"
 
 
 def make_response(image: Image.Image):
-    format = ensure_browser_compatable_format(image)
+    format = ensure_browser_compatible_format(image)
     bytes_io = io.BytesIO()
     image.save(bytes_io, format=format)
     bytes_io.seek(0)

@@ -12,6 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from PIL import Image
 import kwcoco
+import zipfile
 from datasets import (
     load_dataset,
     get_dataset_infos,
@@ -43,11 +44,20 @@ class CocoDataset(kwcoco.CocoDataset, BaseDataset):
 
 
 def is_coco_dataset(path: str):
+    # Note: this check is expensive and duplicates loading
     if not os.path.exists(path) or os.path.isdir(path):
         return False
     required_keys = ['"images"', '"categories"', '"annotations"']
-    with open(path) as f:
-        content = f.read()
+    if zipfile.is_zipfile(path):
+        try:
+            kwcoco.CocoDataset(path, autobuild=False)
+        except Exception:
+            return False
+        else:
+            return True
+    else:
+        with open(path) as f:
+            content = f.read()
     return all(key in content for key in required_keys)
 
 
@@ -60,7 +70,11 @@ def discover_datasets(repository: Union[Path, None]) -> list[Path]:
     for item in repository.iterdir():
         if item.is_dir():
             for file in item.iterdir():
-                if file.is_file() and file.suffix == ".json" and is_coco_dataset(str(file)):
+                if (
+                    file.is_file()
+                    and file.suffix in {".json", ".zip"}
+                    and is_coco_dataset(str(file))
+                ):
                     datasets.append(file)
 
     return datasets

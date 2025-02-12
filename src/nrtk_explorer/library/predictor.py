@@ -4,6 +4,7 @@ import torch
 import transformers
 from typing import Optional, Sequence, Dict, NamedTuple
 from PIL.Image import Image
+import math
 
 
 ImageIdToAnnotations = dict[str, Sequence[dict]]
@@ -84,12 +85,14 @@ class Predictor:
 
         if batch_size != 0:
             self.batch_size = self.batch_size
+        images_in_batch_count = -1  # for adjusting batch size.
         while self.batch_size > 0:
             try:
                 predictions_in_baches = []
                 for imagesInBatch in batches.values():
                     image_ids = [image.id for image in imagesInBatch]
                     image_data = [image.image for image in imagesInBatch]
+                    images_in_batch_count = len(image_data)
                     pipeline_output = self.pipeline(image_data, batch_size=self.batch_size)
                     predictions_in_baches.append(zip(image_ids, pipeline_output))
 
@@ -103,8 +106,9 @@ class Predictor:
             except RuntimeError as e:
                 if "out of memory" in str(e) and self.batch_size > 1:
                     previous_batch_size = self.batch_size
-                    self.batch_size = self.batch_size // 2
-                    self.batch_size = self.batch_size
+                    image_count_that_failed = min(images_in_batch_count, self.batch_size)
+                    # next lower power of 2
+                    self.batch_size = 2 ** int(math.log2(image_count_that_failed - 1))
                     print(
                         f"Changing pipeline batch_size from {previous_batch_size} to {self.batch_size} because caught out of memory exception:\n{e}"
                     )

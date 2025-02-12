@@ -18,11 +18,11 @@ TRANSFORM_IMAGE_ENDPOINT = "transform-image"
 COMPATIBLE_FORMATS = {"JPG", "JPEG", "PNG", "GIF", "WEBP"}
 
 
-def is_browser_compatible_image(file_path):
+def is_browser_compatible_image(format):
     # Check if the image format is compatible with web browsers
-    if not file_path:
+    if not format:
         return False
-    return file_path.split(".")[-1].upper() in COMPATIBLE_FORMATS
+    return format.upper() in COMPATIBLE_FORMATS
 
 
 def ensure_browser_compatible_format(image: Image.Image):

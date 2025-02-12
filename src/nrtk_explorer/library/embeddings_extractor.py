@@ -64,14 +64,13 @@ class EmbeddingsExtractor:
 
     def extract(self, images, batch_size=0):
         """Extract features from images"""
-        if len(images) == 0:
-            return []
-
         if batch_size != 0:
             self.batch_size = batch_size
 
         features = list()
         transformed_images = [self.transform_image(img) for img in images]
+        if len(transformed_images) == 0:
+            return []
 
         while self.batch_size > 0:
             try:

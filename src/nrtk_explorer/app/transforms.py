@@ -44,7 +44,7 @@ INFERENCE_MODELS_DEFAULT = [
 ]
 
 
-UPDATE_IMAGES_CHUNK_SIZE = 32
+IMAGE_UPDATE_BATCH_SIZE = 16
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -231,7 +231,7 @@ class TransformsApp(Applet):
             feature_enabled_state_key="transform_enabled",
             gui_switch_key="transform_enabled_switch",
             column_name=TRANSFORM_COLUMNS[0],
-            enabled_callback=self._start_update_images,
+            enabled_callback=self.on_apply_transform,
         )
 
         self.server.controller.on_server_ready.add(self.on_server_ready)
@@ -267,30 +267,20 @@ class TransformsApp(Applet):
     def on_apply_transform(self, **kwargs):
         # Turn on switch if user clicked lower apply button
         self.state.transform_enabled_switch = True
+        transforms = list(map(lambda t: t["instance"], self.context.transforms))
+        chained_transform = trans.ChainedImageTransform(transforms)
+        self.images.set_transform(chained_transform)
         self._start_update_images()
 
-    async def update_transformed_images(
-        self, dataset_ids, predictions_original_images, visible=False
-    ):
+    async def update_transformed_images(self, dataset_ids, predictions_original_images):
         if not self.state.transform_enabled:
             return
 
-        transforms = list(map(lambda t: t["instance"], self.context.transforms))
-        transform = trans.ChainedImageTransform(transforms)
-
         id_to_image = LazyDict()
         for id in dataset_ids:
-            if visible:
-                with self.state:
-                    transformed = self.images.get_stateful_transformed_image(transform, id)
-                    id_to_image[dataset_id_to_transformed_image_id(id)] = transformed
-                await self.server.network_completion
-            else:
-                id_to_image[dataset_id_to_transformed_image_id(id)] = (
-                    lambda id=id: self.images.get_transformed_image_without_cache_eviction(
-                        transform, id
-                    )
-                )
+            id_to_image[dataset_id_to_transformed_image_id(id)] = (
+                lambda id=id: self.images.get_transformed_image_without_cache_eviction(id)
+            )
 
         with self.state:
             annotations = await self.transformed_detection_annotations.get_annotations(
@@ -325,8 +315,8 @@ class TransformsApp(Applet):
                     {"original_detection_to_transformed_detection_score": score},
                 )
 
-        self.state.flush()  # needed cuz in async func and modifying state or else UI does not update
-        # sortable score value may have changed which may have changed images that are in view
+        self.state.flush()  # needed cuz we are async func that modifies state.  If no flush, UI does not update.
+        # sortable score value may have changed which images that are in view
         self.server.controller.check_images_in_view()
 
         self.on_transform(id_to_image)  # inform embeddings app
@@ -368,8 +358,6 @@ class TransformsApp(Applet):
         if visible:
             # load images on state for ImageList
             with self.state:
-                for id in dataset_ids:
-                    self.images.get_stateful_image(id)
                 self.ground_truth_annotations.get_annotations(dataset_ids)
             await self.server.network_completion
 
@@ -382,24 +370,22 @@ class TransformsApp(Applet):
         # sortable score value may have changed which may have changed images that are in view
         self.server.controller.check_images_in_view()
 
-        await self.update_transformed_images(
-            dataset_ids, predictions_original_images, visible=visible
-        )
+        await self.update_transformed_images(dataset_ids, predictions_original_images)
 
-    async def _chunk_update_images(self, dataset_ids, visible=False):
+    async def _batch_process_images(self, dataset_ids, visible=False):
         ids = list(dataset_ids)
-        for i in range(0, len(ids), UPDATE_IMAGES_CHUNK_SIZE):
-            chunk = ids[i : i + UPDATE_IMAGES_CHUNK_SIZE]
+        for i in range(0, len(ids), IMAGE_UPDATE_BATCH_SIZE):
+            chunk = ids[i : i + IMAGE_UPDATE_BATCH_SIZE]
             await self._update_images(chunk, visible=visible)
 
     async def _update_all_images(self, visible_images):
         with self.state:
             self.state.updating_images = True
 
-        await self._chunk_update_images(visible_images, visible=True)
+        await self._batch_process_images(visible_images, visible=True)
 
         other_images = set(self.state.user_selected_ids) - set(visible_images)
-        await self._chunk_update_images(other_images, visible=False)
+        await self._batch_process_images(other_images, visible=False)
 
         with self.state:
             self.state.updating_images = False

@@ -45,6 +45,7 @@ dependencies = [
     "nrtk[headless]==0.19.1",
     "trame-annotations>=0.4.0",
     "kwcoco",
+    "psutil", 
 ]
 
 [project.optional-dependencies]
@@ -55,6 +56,7 @@ dev = [
   "pytest",
   "tabulate",
   "types-PyYAML",
+  "pre-commit",
 ]
 
 package = [

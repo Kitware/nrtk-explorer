@@ -161,6 +161,24 @@ class Engine(Applet):
 
         self.on_dataset_change()
 
+        # Capture errors emitted by wslink and display them in the UI
+        self.server.protocol.log_emitter.add_event_listener("error", self.handle_errors)
+        self.server.protocol.log_emitter.add_event_listener("exception", self.handle_exceptions)
+
+    def handle_errors(self, message):
+        self.ctrl.create_error_alert(
+            text=message,
+            persistent=True,
+        )
+
+    def handle_exceptions(self, e: Exception):
+        e_str = str(e)
+        self.ctrl.create_error_alert(
+            title="An uncaught exception occurred",
+            text=f"Exception type: {e.__class__.__name__}\n{e_str}",
+            persistent=True,
+        )
+
     def on_dataset_change(self, **kwargs):
         self.state.dataset_ids = []  # sampled images
         self.state.user_selected_ids = []  # ensure image update in transforms app via image list

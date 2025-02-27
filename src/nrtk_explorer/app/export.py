@@ -58,9 +58,18 @@ class ExportApp(Applet):
 
         try:
             await self._export_dataset(name, full)
+            self.ctrl.create_success_alert(
+                text="Dataset exported successfully.",
+            )
             with self.state:
                 self.state.export_status = "success"
-        except Exception:
+        except Exception as e:
+            e_str = str(e)
+            self.ctrl.create_error_alert(
+                title="Error occurred while exporting the dataset",
+                text=f"Exception type: {e.__class__.__name__}\n{e_str}",
+                persistent=True,
+            )
             with self.state:
                 self.state.export_status = "fail"
         finally:

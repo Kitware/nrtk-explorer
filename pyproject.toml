@@ -38,6 +38,7 @@ dependencies = [
     "torch",
     "torchvision",
     "trame>=3.7",
+    "trame-alerts",
     "trame-quasar",
     "transformers",
     "datasets[vision]",
@@ -46,6 +47,7 @@ dependencies = [
     "trame-annotations>=0.4.0",
     "kwcoco",
     "psutil", 
+    "wslink>=2.3.2",
 ]
 
 [project.optional-dependencies]

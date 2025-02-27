@@ -1,6 +1,6 @@
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
-from trame.widgets import html
+from trame.widgets import html, alerts, alerts_quasar
 from nrtk_explorer.app import ui
 
 HORIZONTAL_SPLIT_DEFAULT_VALUE = 17
@@ -138,6 +138,7 @@ class NrtkToolbar(quasar.QHeader):
                     v_show="trame__busy",
                     size="2rem",
                 )
+                alerts_quasar.AlertsCount(click="rightDrawer = !rightDrawer")
 
 
 class NrtkExplorerLayout(QLayout):
@@ -158,31 +159,47 @@ class NrtkExplorerLayout(QLayout):
         self.state.trame__title = "NRTK Explorer"
 
         with self:
-            NrtkToolbar(reload=reload)
-            with quasar.QPageContainer():
-                with quasar.QPage():
-                    with Splitter(
-                        model_value=("horizontal_split", HORIZONTAL_SPLIT_DEFAULT_VALUE),
-                        classes="inherit-height",
-                        before_class="inherit-height zero-height scroll",
-                        after_class="inherit-height zero-height",
-                    ) as split_drawer_main:
-                        with split_drawer_main.slot_before:
-                            NrtkDrawer(
-                                embeddings_app=embeddings_app,
-                                filtering_app=filtering_app,
-                                transforms_app=transforms_app,
-                                export_app=export_app,
-                            )
-                        with split_drawer_main.slot_after:
-                            with Splitter(
-                                v_model=("vertical_split", VERTICAL_SPLIT_DEFAULT_VALUE),
-                                limits=("[0,100]",),
-                                horizontal=True,
-                                classes="inherit-height zero-height",
-                            ) as split_scatter_table:
-                                with split_scatter_table.slot_before:
-                                    embeddings_app.visualization_widget()
+            with alerts.AlertsProvider() as alerts_provider:
+                # Add create_alert, create_error_alert, etc. to the controller
+                alerts_provider.bind_controller()
 
-                                with split_scatter_table.slot_after:
-                                    transforms_app.dataset_widget()
+                NrtkToolbar(reload=reload)
+
+                with quasar.QDrawer(
+                    v_model=("rightDrawer", False),
+                    side="right",
+                    bordered=True,
+                    overlay=True,
+                    width=400,
+                ):
+                    alerts_quasar.AlertsList()
+
+                with quasar.QPageContainer():
+                    with quasar.QPage():
+                        with Splitter(
+                            model_value=("horizontal_split", HORIZONTAL_SPLIT_DEFAULT_VALUE),
+                            classes="inherit-height",
+                            before_class="inherit-height zero-height scroll",
+                            after_class="inherit-height zero-height",
+                        ) as split_drawer_main:
+                            with split_drawer_main.slot_before:
+                                NrtkDrawer(
+                                    embeddings_app=embeddings_app,
+                                    filtering_app=filtering_app,
+                                    transforms_app=transforms_app,
+                                    export_app=export_app,
+                                )
+                            with split_drawer_main.slot_after:
+                                with Splitter(
+                                    v_model=("vertical_split", VERTICAL_SPLIT_DEFAULT_VALUE),
+                                    limits=("[0,100]",),
+                                    horizontal=True,
+                                    classes="inherit-height zero-height",
+                                ) as split_scatter_table:
+                                    with split_scatter_table.slot_before:
+                                        embeddings_app.visualization_widget()
+
+                                    with split_scatter_table.slot_after:
+                                        transforms_app.dataset_widget()
+
+                alerts_quasar.AlertsPopup()

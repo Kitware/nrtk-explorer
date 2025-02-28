@@ -13,12 +13,9 @@ Clone the Repo
 Setup NPM
 ~~~~~~~~~
 
-To develop nrtk-explorer ensure that `npm is installed <setup>`_.
+To develop nrtk-explorer ensure that `npm is installed <https://nodejs.org/en/download>`_.
 
 For convenience we provide scriptable instructions for Ubuntu 22.04
-
-On Ubuntu 22.04
-Installing a more modern version of node js from 06-Aug-2024 17:08
 
 .. code:: bash
 

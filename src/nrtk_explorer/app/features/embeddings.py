@@ -81,7 +81,6 @@ class EmbeddingsApp(Applet):
 
         self._dataset_paths = datasets
         self.images = images or Images(server)
-        self._on_hover_fn = None
         self._ui = None
         self.reducer = dimension_reducers.DimReducerManager()
 
@@ -97,7 +96,7 @@ class EmbeddingsApp(Applet):
         self.state.client_only("camera_position")
         self.state.feature_extraction_model = "resnet50.a1_in1k"
 
-        self.server.controller.add("on_server_ready")(self.on_server_ready)
+        self.ctrl.on_server_ready.add(self.on_server_ready)
         self.transformed_images_cache = {}
         self.state.highlighted_image = {
             "id": "",
@@ -108,15 +107,17 @@ class EmbeddingsApp(Applet):
         self.clear_points_transformations()  # init vars
         self.on_feature_extraction_model_change()
 
-        self.server.controller.update_transformed_images.add(self.update_transformed_points)
+        self.ctrl.hover_image.add(self.on_image_hovered)
+        self.ctrl.update_transformed_images.add(self.update_transformed_points)
+        self.ctrl.transform_applied.add(self.on_transform_applied)
 
     def on_server_ready(self, *args, **kwargs):
         self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
         self.save_embedding_params()
         self.update_points()
         self.state.change("dataset_ids")(self.update_points)
-        self.server.controller.apply_transform.add(self.clear_points_transformations)
-        self.server.controller.apply_transform.add(self.transformed_images.clear)
+        self.ctrl.apply_transform.add(self.clear_points_transformations)
+        self.ctrl.apply_transform.add(self.transformed_images.clear)
         self.state.change("transform_enabled_switch")(self.update_points_transformations_state)
 
     def on_feature_extraction_model_change(self, **kwargs):
@@ -218,7 +219,7 @@ class EmbeddingsApp(Applet):
         self.save_embedding_params()
         self.update_points()
 
-    def on_run_transformations(self, id_to_image):
+    def on_transform_applied(self, id_to_image):
         self.transformed_images.add_images(id_to_image)
 
     def update_transformed_points(self, id_to_features):
@@ -241,18 +242,11 @@ class EmbeddingsApp(Applet):
             }
         self.update_points_transformations_state()
 
-    # called by category filter
-    def on_select(self, image_ids):
-        self.state.user_selected_ids = image_ids
-
     def on_scatter_select(self, image_ids):
         self.state.user_selected_ids = image_ids or self.state.dataset_ids
 
     def on_move(self, camera_position):
         self.state.camera_position = camera_position
-
-    def set_on_hover(self, fn):
-        self._on_hover_fn = fn
 
     def get_dataset_id_index(self, point_index):
         if point_index < len(self.state.dataset_ids):
@@ -261,13 +255,15 @@ class EmbeddingsApp(Applet):
 
     def on_point_hover(self, event):
         self.state.highlighted_image = event
-        if not self._on_hover_fn:
+        if not self.ctrl.hover_image.exists():
             return
+
         if event["is_transformed"]:
             image_id = dataset_id_to_transformed_image_id(event["id"])
         else:
             image_id = dataset_id_to_image_id(event["id"])
-        self._on_hover_fn(image_id)
+
+        self.ctrl.hover_image(image_id)
 
     def on_image_hovered(self, image_id):
         self.state.highlighted_image = {

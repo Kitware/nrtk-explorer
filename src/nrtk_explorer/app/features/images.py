@@ -1,23 +1,17 @@
 import logging
-from typing import Dict, Callable
 from collections.abc import MutableMapping
 
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
 from trame.app import get_server, asynchronous
-from trame_server import Server
 
-import nrtk_explorer.library.transforms as trans
-import nrtk_explorer.library.yaml_transforms as nrtk_yaml
-from nrtk_explorer.library.multiprocess_predictor import MultiprocessPredictor
-from nrtk_explorer.library.app_config import process_config
 from nrtk_explorer.library.scoring import (
     compute_score,
 )
 
 from nrtk_explorer.app.applet import Applet
-from nrtk_explorer.app.parameters import ParametersApp
+from nrtk_explorer.app.trame_utils import ProcessingStep
 from nrtk_explorer.app.images.image_meta import update_image_meta, dataset_id_to_meta
 from nrtk_explorer.app.trame_utils import change_checker, delete_state
 from nrtk_explorer.app.images.image_ids import (
@@ -27,21 +21,13 @@ from nrtk_explorer.app.images.image_ids import (
 from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.images.stateful_annotations import (
     make_stateful_annotations,
-    make_stateful_predictor,
 )
 from nrtk_explorer.app.ui import ImageList
 from nrtk_explorer.app.ui.image_list import (
-    TRANSFORM_COLUMNS,
     ORIGINAL_COLUMNS,
-    init_visible_columns,
+    init_always_visible_columns,
+    add_visible_columns,
 )
-
-
-INFERENCE_MODELS_DEFAULT = [
-    "facebook/detr-resnet-50",
-    "hustvl/yolos-tiny",
-    "valentinafeve/yolos-fashionpedia",
-]
 
 
 IMAGE_UPDATE_BATCH_SIZE = 16
@@ -79,72 +65,16 @@ class LazyDict(MutableMapping):
         return ((k, self[k]) for k in self._raw_dict)
 
 
-class ProcessingStep:
-    def __init__(
-        self,
-        server: Server,
-        feature_enabled_state_key: str,
-        gui_switch_key: str,
-        column_name: str,
-        enabled_callback: Callable,
-    ):
-        self.state = server.state
-        self.feature_enabled_state_key = feature_enabled_state_key
-        self.gui_switch_key = gui_switch_key
-        self.enabled_callback = enabled_callback
-        self.column_name = column_name
-        self.state.change(self.gui_switch_key)(self.on_gui_switch)
-        self.update_feature_enabled_state()
-        self.state.change("visible_columns", self.gui_switch_key)(
-            self.update_feature_enabled_state
-        )
-        self.state.change(self.feature_enabled_state_key)(self.on_change_feature_enabled)
-
-    def on_gui_switch(self, **kwargs):
-        if self.state[self.gui_switch_key]:
-            self.state.visible_columns = list(set([*self.state.visible_columns, self.column_name]))
-        else:
-            self.state.visible_columns = [
-                col for col in self.state.visible_columns if col != self.column_name
-            ]
-
-    def update_feature_enabled_state(self, **kwargs):
-        self.state[self.feature_enabled_state_key] = (
-            self.column_name in self.state.visible_columns and self.state[self.gui_switch_key]
-        )
-
-    def on_change_feature_enabled(self, **kwargs):
-        if self.state[self.feature_enabled_state_key]:
-            self.enabled_callback()
-
-
-config_options = {
-    "models": {
-        "flags": ["--models"],
-        "params": {
-            "nargs": "+",
-            "default": INFERENCE_MODELS_DEFAULT,
-            "help": "Space separated list of inference models",
-        },
-    },
-}
-
-
-class TransformsApp(Applet):
+class ImagesApp(Applet):
     def __init__(
         self,
         server,
         images=None,
         ground_truth_annotations=None,
-        original_detection_annotations=None,
-        transformed_detection_annotations=None,
         **kwargs,
     ):
         super().__init__(server)
 
-        config = process_config(self.server.cli, config_options, **kwargs)
-        self.state.inference_models = config["models"]
-        self.state.inference_model = self.state.inference_models[0]
         self.state.setdefault("image_list_ids", [])
         self.state.setdefault("dataset_ids", [])
         self.state.setdefault("user_selected_ids", [])
@@ -152,22 +82,12 @@ class TransformsApp(Applet):
         self.images = images or Images(server)
 
         ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(server)
-        self.ground_truth_annotations = ground_truth_annotations.annotations_factory
+        self.context.ground_truth_annotations = ground_truth_annotations.annotations_factory
 
-        original_detection_annotations = original_detection_annotations or make_stateful_predictor(
-            server
-        )
-        self.original_detection_annotations = original_detection_annotations.annotations_factory
+        def clear_transformed(*args, **kwargs):
+            if self.context.transformed_detection_annotations:
+                self.context.transformed_detection_annotations.cache_clear()
 
-        transformed_detection_annotations = (
-            transformed_detection_annotations or make_stateful_predictor(server)
-        )
-        self.transformed_detection_annotations = (
-            transformed_detection_annotations.annotations_factory
-        )
-
-        def clear_transformed(**kwargs):
-            self.transformed_detection_annotations.cache_clear()
             for id in self.state.dataset_ids:
                 update_image_meta(
                     self.state,
@@ -178,7 +98,11 @@ class TransformsApp(Applet):
                     },
                 )
 
-        server.controller.apply_transform.add(clear_transformed)
+        self.ctrl.apply_transform.add(clear_transformed)
+        self.ctrl.run_transform.add(self._start_update_images)
+        self.ctrl.start_update_images.add(self._start_update_images)
+        self.ctrl.scroll_images.add(self.on_scroll)
+        self.ctrl.hover_image.add(self.on_hover)
 
         # delete score from state of old ids that are not in new
         def delete_meta_state(old_ids, new_ids):
@@ -191,90 +115,41 @@ class TransformsApp(Applet):
         # clear score when changing model
         # clear score when changing transform
 
-        self._parameters_app = ParametersApp(
-            server=server,
-        )
-
         self._ui = None
 
-        self._on_transform_fn = None
-
-        self._transform_classes: Dict[str, type[trans.ImageTransform]] = {
-            "blur": trans.GaussianBlurTransform,
-            "invert": trans.InvertTransform,
-            "downsample": trans.DownSampleTransform,
-            "identity": trans.IdentityTransform,
-        }
-
-        # Add transform from YAML definition
-        self._transform_classes.update(nrtk_yaml.generate_transforms())
-
-        self._parameters_app._transform_classes = self._transform_classes
-
-        # Initialize the transforms pipeline to the identity
-        self._parameters_app._default_transform = "blur"
-        self._parameters_app.on_add_transform()
-
-        init_visible_columns(self.state)
+        init_always_visible_columns(self.state)
+        add_visible_columns(self.state, ORIGINAL_COLUMNS)
 
         # On annotations enabled, run whole pipeline to possibly compute transforms. Why? Transforms compute scores are based on original images
         self.annotations_enable_control = ProcessingStep(
             server,
-            feature_enabled_state_key="predictions_original_images_enabled",
-            gui_switch_key="annotations_enabled_switch",
+            feature_enabled_state_key="predictions_images_enabled",
+            gui_switch_key="inference_enabled_switch",
             column_name=ORIGINAL_COLUMNS[0],
             enabled_callback=self._start_update_images,
         )
 
-        self.transform_enable_control = ProcessingStep(
-            server,
-            feature_enabled_state_key="transform_enabled",
-            gui_switch_key="transform_enabled_switch",
-            column_name=TRANSFORM_COLUMNS[0],
-            enabled_callback=self.on_apply_transform,
-        )
-
         self.server.controller.on_server_ready.add(self.on_server_ready)
-        self.server.controller.apply_transform.add(self.on_apply_transform)
-        self._on_hover_fn = None
 
-        self.visible_dataset_ids = []  # set by ImageList via self.on_scroll callback
-
-        self.predictor = MultiprocessPredictor(model_name=self.state.inference_model)
+        self.visible_dataset_ids = []  # updated when ImageList invokes ctrl.scroll_images
 
     def on_server_ready(self, *args, **kwargs):
-        self.state.change("inference_model")(self.on_inference_model_change)
         self.state.change("current_dataset")(self._cancel_update_images)
-        self.state.change("current_dataset")(self.reset_predictor)
-        self.state.change("confidence_score_threshold")(self._start_update_images)
-
-    def on_inference_model_change(self, **kwargs):
-        self.original_detection_annotations.cache_clear()
-        self.transformed_detection_annotations.cache_clear()
-        self.predictor.set_model(self.state.inference_model)
-        self._start_update_images()
-
-    def reset_predictor(self, **kwargs):
-        self.predictor.reset()
-
-    def set_on_transform(self, fn):
-        self._on_transform_fn = fn
-
-    def on_transform(self, *args, **kwargs):
-        if self._on_transform_fn:
-            self._on_transform_fn(*args, **kwargs)
-
-    def on_apply_transform(self, **kwargs):
-        # Turn on switch if user clicked lower apply button
-        self.state.transform_enabled_switch = True
-        transforms = list(map(lambda t: t["instance"], self.context.transforms))
-        chained_transform = trans.ChainedImageTransform(transforms)
-        self.images.set_transform(chained_transform)
-        self._start_update_images()
 
     async def update_transformed_images(self, dataset_ids, predictions_original_images):
         if not self.state.transform_enabled:
             return
+
+        skip_inference = False
+
+        if not self.state.predictions_images_enabled:
+            skip_inference = True
+
+        if not self.context.transformed_detection_annotations:
+            skip_inference = True
+
+        if not self.context.predictor:
+            skip_inference = True
 
         id_to_image = LazyDict()
         for id in dataset_ids:
@@ -282,48 +157,59 @@ class TransformsApp(Applet):
                 lambda id=id: self.images.get_transformed_image_without_cache_eviction(id)
             )
 
-        with self.state:
-            annotations = await self.transformed_detection_annotations.get_annotations(
-                self.predictor, id_to_image
-            )
-        await self.server.network_completion
+        if not skip_inference:
+            with self.state:
+                annotations = await self.context.transformed_detection_annotations.get_annotations(
+                    self.context.predictor, id_to_image
+                )
+            await self.server.network_completion
 
-        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
-        scores = compute_score(
-            self.context.dataset,
-            ground_truth_annotations,
-            annotations,
-            self.state.confidence_score_threshold,
-        )
-        for id, score in scores:
-            update_image_meta(
-                self.state, id, {"ground_truth_to_transformed_detection_score": score}
+            ground_truth_annotations = self.context.ground_truth_annotations.get_annotations(
+                dataset_ids
             )
-
-        # depends on original images predictions
-        if predictions_original_images:
             scores = compute_score(
                 self.context.dataset,
-                predictions_original_images,
+                ground_truth_annotations,
                 annotations,
                 self.state.confidence_score_threshold,
             )
             for id, score in scores:
                 update_image_meta(
-                    self.state,
-                    id,
-                    {"original_detection_to_transformed_detection_score": score},
+                    self.state, id, {"ground_truth_to_transformed_detection_score": score}
                 )
 
-        self.state.flush()  # needed cuz we are async func that modifies state.  If no flush, UI does not update.
-        # sortable score value may have changed which images that are in view
-        self.server.controller.check_images_in_view()
+            # depends on original images predictions
+            if predictions_original_images:
+                scores = compute_score(
+                    self.context.dataset,
+                    predictions_original_images,
+                    annotations,
+                    self.state.confidence_score_threshold,
+                )
+                for id, score in scores:
+                    update_image_meta(
+                        self.state,
+                        id,
+                        {"original_detection_to_transformed_detection_score": score},
+                    )
 
-        self.on_transform(id_to_image)  # inform embeddings app
+            self.state.flush()  # needed cuz we are async func that modifies state.  If no flush, UI does not update.
+            # sortable score value may have changed which images that are in view
+            self.server.controller.check_images_in_view()
+
+        if self.ctrl.transform_applied.exists():
+            self.ctrl.transform_applied(id_to_image)  # inform embeddings app
+
         self.state.flush()
 
     async def compute_predictions_original_images(self, dataset_ids):
-        if not self.state.predictions_original_images_enabled:
+        if not self.state.predictions_images_enabled:
+            return
+
+        if not self.context.original_detection_annotations:
+            return
+
+        if not self.context.predictor:
             return
 
         image_id_to_image = LazyDict(
@@ -335,11 +221,15 @@ class TransformsApp(Applet):
             }
         )
 
-        predictions_original_images = await self.original_detection_annotations.get_annotations(
-            self.predictor, image_id_to_image
+        predictions_original_images = (
+            await self.context.original_detection_annotations.get_annotations(
+                self.context.predictor, image_id_to_image
+            )
         )
 
-        ground_truth_annotations = self.ground_truth_annotations.get_annotations(dataset_ids)
+        ground_truth_annotations = self.context.ground_truth_annotations.get_annotations(
+            dataset_ids
+        )
 
         scores = compute_score(
             self.context.dataset,
@@ -358,7 +248,7 @@ class TransformsApp(Applet):
         if visible:
             # load images on state for ImageList
             with self.state:
-                self.ground_truth_annotations.get_annotations(dataset_ids)
+                self.context.ground_truth_annotations.get_annotations(dataset_ids)
             await self.server.network_completion
 
         # always push to state because compute_predictions_original_images updates score metadata
@@ -411,28 +301,11 @@ class TransformsApp(Applet):
         self.visible_dataset_ids = visible_ids
         self._start_update_images()
 
-    def on_image_hovered(self, id):
-        self.state.hovered_id = id
-
-    def set_on_hover(self, fn):
-        self._on_hover_fn = fn
-
-    def on_hover(self, hover_event):
-        id_ = hover_event["id"]
-        self.on_image_hovered(id_)
-        if self._on_hover_fn:
-            self._on_hover_fn(id_)
-
-    def settings_widget(self):
-        with html.Div(classes="col"):
-            self._parameters_app.transforms_ui()
-
-    def apply_ui(self):
-        with html.Div():
-            self._parameters_app.transform_apply_ui()
+    def on_hover(self, id_):
+        self.state.hovered_id = id_
 
     def dataset_widget(self):
-        ImageList(self.on_scroll, self.on_hover)
+        ImageList()
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property
@@ -480,8 +353,6 @@ class TransformsApp(Applet):
                                             label=True,
                                             label_always=True,
                                         )
-                                self.settings_widget()
-                                self.apply_ui()
 
                             self.dataset_widget()
 
@@ -492,7 +363,7 @@ class TransformsApp(Applet):
 def main(server=None, *args, **kwargs):
     server = get_server(client_type="vue3")
 
-    transforms_app = TransformsApp(server)
+    transforms_app = ImagesApp(server)
     transforms_app.ui
 
     server.start(**kwargs)

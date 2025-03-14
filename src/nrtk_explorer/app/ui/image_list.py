@@ -72,14 +72,22 @@ TRANSFORM_COLUMNS = [
 visible_columns_initialized = False
 
 
-def init_visible_columns(state):
+def init_always_visible_columns(state):
     global visible_columns_initialized
     if visible_columns_initialized:
         return
-    state.visible_columns = [col["name"] for col in COLUMNS]
-    make_dependent_columns_handler(state, ORIGINAL_COLUMNS)
-    make_dependent_columns_handler(state, TRANSFORM_COLUMNS)
+
+    _optional_columns = set(ORIGINAL_COLUMNS + TRANSFORM_COLUMNS)
+
+    state.visible_columns = [
+        col["name"] for col in COLUMNS if col["name"] not in _optional_columns
+    ]
+
     visible_columns_initialized = True
+
+
+def add_visible_columns(state, columns):
+    make_dependent_columns_handler(state, columns)
 
 
 class ImageWithSpinner(html.Div):
@@ -92,6 +100,7 @@ class ImageWithSpinner(html.Div):
         selected=None,
         hover=None,
         container_selector=None,
+        show_annotations="show_annotations_on_images",
         **kwargs,
     ):
         super().__init__(
@@ -102,7 +111,7 @@ class ImageWithSpinner(html.Div):
             ImageDetection(
                 identifier=identifier,
                 src=src,
-                annotations=(f"show_annotations_on_images ? {annotations[0]} : []",),
+                annotations=(f"{show_annotations} ? {annotations[0]} : []",),
                 categories=categories,
                 selected=selected,
                 hover=hover,
@@ -110,7 +119,7 @@ class ImageWithSpinner(html.Div):
                 score_threshold=("confidence_score_threshold",),
             )
             quasar.QInnerLoading(
-                showing=(f"!{src[0]} || (show_annotations_on_images && !{annotations[0]}.value)",)
+                showing=(f"!{src[0]} || ({show_annotations} && !{annotations[0]}.value)",)
             )
 
 
@@ -126,7 +135,8 @@ class ImageList(html.Div):
         visible = set(ids)
         if self.visible_ids != visible:
             self.visible_ids = visible
-            self.scroll_callback(self.visible_ids)
+            if self.server.controller.scroll_images.exists():
+                self.server.controller.scroll_images(self.visible_ids)
 
     def _set_image_list_ids(self, dataset_ids):
         # create reactive variables so ImageDetection components have live Refs
@@ -157,10 +167,13 @@ class ImageList(html.Div):
         else:
             self.state.pagination = {**old_pagination, "rowsPerPage": 0}  # show all rows
 
-    def __init__(self, on_scroll, on_hover, **kwargs):
+    def on_hover(self, ev):
+        if self.server.controller.hover_image.exists():
+            self.server.controller.hover_image(ev["id"])
+
+    def __init__(self, **kwargs):
         super().__init__(classes="full-height", **kwargs)
         self.visible_ids = set()
-        self.scroll_callback = on_scroll
         self.update_pagination()
         self.state.client_only("image_size_image_list")
 
@@ -251,8 +264,9 @@ class ImageList(html.Div):
                             annotations=("props.row.groundTruthAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
-                            hover=(on_hover, "[$event]"),
+                            hover=(self.on_hover, "[$event]"),
                             container_selector="#image-list .q-table__middle",
+                            show_annotations="show_annotations_on_images",
                         )
                 with html.Template(
                     v_slot_body_cell_original=True,
@@ -268,8 +282,9 @@ class ImageList(html.Div):
                             annotations=("props.row.originalAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
-                            hover=(on_hover, "[$event]"),
+                            hover=(self.on_hover, "[$event]"),
                             container_selector="#image-list .q-table__middle",
+                            show_annotations="(show_annotations_on_images && predictions_images_enabled)",
                         )
                 with html.Template(
                     v_slot_body_cell_transformed=True,
@@ -288,8 +303,9 @@ class ImageList(html.Div):
                             annotations=("props.row.transformedAnnotations",),
                             categories=("annotation_categories",),
                             selected=("(props.row.transformed == hovered_id)",),
-                            hover=(on_hover, "[$event]"),
+                            hover=(self.on_hover, "[$event]"),
                             container_selector="#image-list .q-table__middle",
+                            show_annotations="(show_annotations_on_images && predictions_images_enabled)",
                         )
                 # Grid Mode template for each row/grid-item
                 with html.Template(
@@ -313,7 +329,8 @@ class ImageList(html.Div):
                                         annotations=("props.row.groundTruthAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.original == hovered_id)",),
-                                        hover=(on_hover, "[$event]"),
+                                        hover=(self.on_hover, "[$event]"),
+                                        show_annotations="show_annotations_on_images",
                                     )
                                 with html.Div(
                                     classes="col-4 q-pa-sm",
@@ -332,7 +349,8 @@ class ImageList(html.Div):
                                         annotations=("props.row.originalAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.original == hovered_id)",),
-                                        hover=(on_hover, "[$event]"),
+                                        hover=(self.on_hover, "[$event]"),
+                                        show_annotations="(show_annotations_on_images && predictions_images_enabled)",
                                     )
                                 with html.Div(
                                     classes="col-4 q-pa-sm",
@@ -351,7 +369,8 @@ class ImageList(html.Div):
                                         annotations=("props.row.transformedAnnotations",),
                                         categories=("annotation_categories",),
                                         selected=("(props.row.transformed == hovered_id)",),
-                                        hover=(on_hover, "[$event]"),
+                                        hover=(self.on_hover, "[$event]"),
+                                        show_annotations="(show_annotations_on_images && predictions_images_enabled)",
                                     )
                             with quasar.QList(
                                 dense=True,

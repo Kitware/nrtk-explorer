@@ -1,5 +1,3 @@
-from typing import Callable, Iterable
-
 from nrtk_explorer.app.applet import Applet
 
 from trame.widgets import quasar, html
@@ -43,9 +41,6 @@ class FilteringApp(Applet):
 
         self._ui = None
 
-    def set_on_apply_filter(self, fn: Callable[[FilterProtocol[Iterable[int]]], None]):
-        self._on_apply_filter = fn
-
     def on_server_ready(self, *args, **kwargs):
         # Bind instance methods to state change
         self.on_filter_categories_change()
@@ -60,10 +55,11 @@ class FilteringApp(Applet):
 
     def on_select_click(self):
         self.select_clicked = True
-        if self.state.filter_not:
-            self._on_apply_filter(self._not_filter)
-        else:
-            self._on_apply_filter(self._filter)
+        if self.ctrl.apply_filter.exists():
+            if self.state.filter_not:
+                self.ctrl.apply_filter(self._not_filter)
+            else:
+                self.ctrl.apply_filter(self._filter)
 
     def enable_select_button(self, **kwargs):
         self.state.disable_select = False
@@ -161,7 +157,7 @@ def main(server=None, *args, **kwargs):
         for value, res in zip(test_values, result):
             print(value, res)
 
-    app.set_on_apply_filter(on_apply_filter)
+    server.controller.apply_filter.add(on_apply_filter)
 
     app.ui
 

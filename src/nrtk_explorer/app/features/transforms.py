@@ -1,5 +1,7 @@
 from typing import Dict
 
+import numpy as np
+
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
@@ -74,6 +76,17 @@ class TransformsApp(Applet):
         # Turn on switch if user clicked lower apply button
         self.state.transform_enabled_switch = True
         transforms = list(map(lambda t: t["instance"], self.context.transforms))
+
+        for transform in transforms:
+            params = transform.get_parameters()
+            for key, value in transform.get_parameters_description().items():
+                if "actual_type" in value.keys():
+                    if value["actual_type"] == "numpy.ndarray" and not isinstance(
+                        params[key], np.ndarray
+                    ):
+                        params[key] = np.fromstring(params[key].strip("[]"), sep=",")
+            transform.set_parameters(params)
+
         chained_transform = trans.ChainedImageTransform(transforms)
         self.images.set_transform(chained_transform)
         if self.ctrl.run_transform.exists():

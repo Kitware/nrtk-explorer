@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import type { ParameterValue, TransformDescription, TransformValue } from '../types'
 
 import ParamsWidget from './ParamsWidget.vue'
@@ -15,8 +16,20 @@ type Events = {
   remove: []
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<Events>()
+
+const stringOptions = Object.keys(props.descriptions)
+const options = ref(stringOptions)
+
+function filterFn(val: string, update: (arg0: () => void) => void, abort: any) {
+  update(() => {
+    const needle = val.toLowerCase()
+    options.value = stringOptions.filter((option) => {
+      return option.toLowerCase().indexOf(needle) > -1
+    })
+  })
+}
 </script>
 
 <template>
@@ -27,7 +40,9 @@ const emit = defineEmits<Events>()
       stack-label
       map-options
       :model-value="value.name"
-      :options="Object.keys(descriptions)"
+      :options="options"
+      @filter="filterFn"
+      use-input
       @update:model-value="(t: string) => emit('update:type', t)"
     >
       <template v-slot:prepend>

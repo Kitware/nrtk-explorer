@@ -106,7 +106,7 @@ class MetaYamlPerturber(type):
             raise TypeError("MetaYamlPerturber: configuration is missing.")
 
         # add class variables
-        setattr(cls, "description", config.get("description"))
+        setattr(cls, "description", config.get("description", {}))
         setattr(cls, "exec_args", config.get("exec_default_args", []))
         perturber_class, perturber_kwargs = get_perturber_constructor(
             config.get("perturber"), config.get("perturber_kwargs", {})

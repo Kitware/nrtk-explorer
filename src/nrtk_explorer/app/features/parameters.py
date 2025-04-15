@@ -1,5 +1,7 @@
 from typing import Dict
 
+import numpy as np
+
 from nrtk_explorer.app.applet import Applet
 
 from trame.widgets import quasar, html
@@ -99,7 +101,11 @@ class ParametersApp(Applet):
         def serialize_transform(item):
             name = item["name"]
             transform = item["instance"]
-            return {"name": name, "parameters": transform.get_parameters()}
+            params = transform.get_parameters()
+            for param, value in params.items():
+                if isinstance(value, np.ndarray):
+                    params[param] = np.array2string(value, separator=", ")
+            return {"name": name, "parameters": params}
 
         state_transforms = list(map(serialize_transform, self.context.transforms))
 

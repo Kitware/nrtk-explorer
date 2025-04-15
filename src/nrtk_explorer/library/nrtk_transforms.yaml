@@ -92,6 +92,19 @@ nrtk_sk_speckle_noise:
       type: float
       label: Variance
 
+nrtk_random_crop:
+  perturber: nrtk.impls.perturb_image.generic.crop_perturber.RandomCropPerturber
+
+nrtk_random_translation:
+  perturber: nrtk.impls.perturb_image.generic.translation_perturber.RandomTranslationPerturber
+
+nrtk_haze_perturber:
+  perturber: nrtk.impls.perturb_image.generic.haze_perturber.HazePerturber
+  description:
+    factor:
+      type: float
+      label: Haze Intensity
+
 nrtk_pybsm_jitter_otf:
   perturber: nrtk.impls.perturb_image.pybsm.jitter_otf_perturber.JitterOTFPerturber
   description:
@@ -114,6 +127,64 @@ nrtk_pybsm_detector_otf:
     f:
       type: float
       label: Focal length (m)
+
+nrtk_pybsm_defocus_otf:
+  perturber: nrtk.impls.perturb_image.pybsm.defocus_otf_perturber.DefocusOTFPerturber
+  description:
+    w_x:
+      type: float
+      label: Detector width X (m)
+    w_y:
+      type: float
+      label: Detector width Y (m)
+
+nrtk_pybsm_turbulence_aperture_otf:
+  perturber: nrtk.impls.perturb_image.pybsm.turbulence_aperture_otf_perturber.TurbulenceApertureOTFPerturber
+  description:
+    altitude:
+      type: float
+      label: Altitude (m)
+    slant_range:
+      type: float
+      label: Line-of-sight range between the aircraft and target (m)
+    D:
+      type: float
+      label: Effective aperture (m)
+    ha_wind_speed:
+      type: float
+      label: High altitude windspeed (m/s)
+    cn2_at_1m:
+      type: float
+      label: Refractive index structure parameter "near the ground"
+    int_time:
+      type: float
+      label: Dwell (i.e. integration) time (seconds)
+    n_tdi:
+      type: float
+      label: Number of time-delay integration stages
+    aircraft_speed:
+      type: float
+      label: Apparent atmospheric velocity (m/s)
+    mtf_wavelengths:
+      type: string
+      actual_type: numpy.ndarray
+      label: MTF Wavelengths
+    mtf_weights:
+      type: string
+      actual_type: numpy.ndarray
+      label: MTF Weights
+
+nrtk_pybsm_circular_aperture_otf:
+  perturber: nrtk.impls.perturb_image.pybsm.circular_aperture_otf_perturber.CircularApertureOTFPerturber
+  description:
+    mtf_wavelengths:
+      type: string
+      actual_type: numpy.ndarray
+      label: MTF Wavelengths
+    mtf_weights:
+      type: string
+      actual_type: numpy.ndarray
+      label: MTF Weights
 
 nrtk_pybsm:
   perturber: nrtk.impls.perturb_image.pybsm.perturber.PybsmPerturber

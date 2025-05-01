@@ -167,11 +167,13 @@ nrtk_pybsm_turbulence_aperture_otf:
       label: Apparent atmospheric velocity (m/s)
     mtf_wavelengths:
       type: string
-      actual_type: numpy.ndarray
+      serialize_func: np_array_to_string
+      deserialize_func: string_to_np_array
       label: MTF Wavelengths
     mtf_weights:
       type: string
-      actual_type: numpy.ndarray
+      serialize_func: np_array_to_string
+      deserialize_func: string_to_np_array
       label: MTF Weights
 
 nrtk_pybsm_circular_aperture_otf:
@@ -179,11 +181,13 @@ nrtk_pybsm_circular_aperture_otf:
   description:
     mtf_wavelengths:
       type: string
-      actual_type: numpy.ndarray
+      serialize_func: np_array_to_string
+      deserialize_func: string_to_np_array
       label: MTF Wavelengths
     mtf_weights:
       type: string
-      actual_type: numpy.ndarray
+      serialize_func: np_array_to_string
+      deserialize_func: string_to_np_array
       label: MTF Weights
 
 nrtk_pybsm:

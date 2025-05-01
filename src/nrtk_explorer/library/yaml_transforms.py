@@ -5,6 +5,7 @@ import contextlib
 from PIL import Image as ImageModule
 from pathlib import Path
 from yaml import load, Loader
+import nrtk_explorer.library.serialization_helpers as serialization_helpers
 
 TRANSFORM_FILE = Path(__file__).with_name("nrtk_transforms.yaml").resolve()
 
@@ -137,6 +138,8 @@ class MetaYamlPerturber(type):
         for k, v in self.description.items():
             attr_path = v.get("_path", [k])
             params[k] = get_value(self._perturber, attr_path)
+            if "serialize_func" in v:
+                params[k] = getattr(serialization_helpers, v["serialize_func"])(params[k])
         return params
 
     def set_parameters(self, params):

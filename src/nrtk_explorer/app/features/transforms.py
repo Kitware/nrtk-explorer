@@ -1,7 +1,5 @@
 from typing import Dict
 
-import numpy as np
-
 from trame.ui.quasar import QLayout
 from trame.widgets import quasar
 from trame.widgets import html
@@ -9,6 +7,7 @@ from trame.app import get_server
 
 import nrtk_explorer.library.transforms as trans
 import nrtk_explorer.library.yaml_transforms as nrtk_yaml
+import nrtk_explorer.library.serialization_helpers as serialization_helpers
 
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.trame_utils import ProcessingStep
@@ -80,11 +79,10 @@ class TransformsApp(Applet):
         for transform in transforms:
             params = transform.get_parameters()
             for key, value in transform.get_parameters_description().items():
-                if "actual_type" in value.keys():
-                    if value["actual_type"] == "numpy.ndarray" and not isinstance(
-                        params[key], np.ndarray
-                    ):
-                        params[key] = np.fromstring(params[key].strip("[]"), sep=",")
+                if "deserialize_func" in value.keys():
+                    params[key] = getattr(serialization_helpers, value["deserialize_func"])(
+                        params[key]
+                    )
             transform.set_parameters(params)
 
         chained_transform = trans.ChainedImageTransform(transforms)

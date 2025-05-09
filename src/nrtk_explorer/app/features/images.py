@@ -17,6 +17,8 @@ from nrtk_explorer.app.trame_utils import change_checker, delete_state
 from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_image_id,
     dataset_id_to_transformed_image_id,
+    image_id_to_score_id,
+    GROUND_TRUTH_MODEL,
 )
 from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.images.stateful_annotations import (
@@ -81,12 +83,16 @@ class ImagesApp(Applet):
 
         self.images = images or Images(server)
 
-        ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(server)
+        ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(
+            server, GROUND_TRUTH_MODEL
+        )
         self.context.ground_truth_annotations = ground_truth_annotations.annotations_factory
 
         def clear_transformed(*args, **kwargs):
-            if self.context.transformed_detection_annotations:
-                self.context.transformed_detection_annotations.cache_clear()
+            if self.context.models:
+                for obj in self.context.models.values():
+                    transformed_annotations = obj["transformed_annotations"]
+                    transformed_annotations.cache_clear()
 
             for id in self.state.dataset_ids:
                 update_image_meta(
@@ -145,10 +151,7 @@ class ImagesApp(Applet):
         if not self.state.predictions_images_enabled:
             skip_inference = True
 
-        if not self.context.transformed_detection_annotations:
-            skip_inference = True
-
-        if not self.context.predictor:
+        if not self.context.models:
             skip_inference = True
 
         id_to_image = LazyDict()
@@ -158,42 +161,35 @@ class ImagesApp(Applet):
             )
 
         if not skip_inference:
-            with self.state:
-                annotations = await self.context.transformed_detection_annotations.get_annotations(
-                    self.context.predictor, id_to_image
-                )
-            await self.server.network_completion
-
             ground_truth_annotations = self.context.ground_truth_annotations.get_annotations(
                 dataset_ids
             )
-            scores = compute_score(
-                self.context.dataset,
-                ground_truth_annotations,
-                annotations,
-                self.state.confidence_score_threshold,
-            )
-            for id, score in scores:
-                update_image_meta(
-                    self.state, id, {"ground_truth_to_transformed_detection_score": score}
-                )
 
-            # depends on original images predictions
-            if predictions_original_images:
+            for model_name, obj in self.context.models.items():
+                predictor = obj["predictor"]
+                transformed_annotations = obj["transformed_annotations"]
+
+                with self.state:
+                    annotations = await transformed_annotations.get_annotations(
+                        predictor, id_to_image
+                    )
+                await self.server.network_completion
+
                 scores = compute_score(
                     self.context.dataset,
-                    predictions_original_images,
+                    ground_truth_annotations,
                     annotations,
                     self.state.confidence_score_threshold,
                 )
-                for id, score in scores:
-                    update_image_meta(
-                        self.state,
-                        id,
-                        {"original_detection_to_transformed_detection_score": score},
-                    )
 
-            self.state.flush()  # needed cuz we are async func that modifies state.  If no flush, UI does not update.
+                for dataset_id, score in scores:
+                    score_id = image_id_to_score_id(
+                        dataset_id_to_transformed_image_id(dataset_id), model_name
+                    )
+                    self.state[score_id] = score
+
+                self.state.flush()  # needed cuz we are async func that modifies state.  If no flush, UI does not update.
+
             # sortable score value may have changed which images that are in view
             self.server.controller.check_images_in_view()
 
@@ -206,10 +202,7 @@ class ImagesApp(Applet):
         if not self.state.predictions_images_enabled:
             return
 
-        if not self.context.original_detection_annotations:
-            return
-
-        if not self.context.predictor:
+        if not self.context.models:
             return
 
         image_id_to_image = LazyDict(
@@ -221,26 +214,34 @@ class ImagesApp(Applet):
             }
         )
 
-        predictions_original_images = (
-            await self.context.original_detection_annotations.get_annotations(
-                self.context.predictor, image_id_to_image
-            )
-        )
-
         ground_truth_annotations = self.context.ground_truth_annotations.get_annotations(
             dataset_ids
         )
 
-        scores = compute_score(
-            self.context.dataset,
-            ground_truth_annotations,
-            predictions_original_images,
-            self.state.confidence_score_threshold,
-        )
-        for dataset_id, score in scores:
-            update_image_meta(
-                self.state, dataset_id, {"original_ground_to_original_detection_score": score}
+        predictions_original_images = {}
+
+        for model_name, obj in self.context.models.items():
+            predictor = obj["predictor"]
+            original_annotations = obj["original_annotations"]
+
+            with self.state:
+                annotations = await original_annotations.get_annotations(
+                    predictor, image_id_to_image
+                )
+            await self.server.network_completion
+
+            predictions_original_images[model_name] = annotations
+
+            scores = compute_score(
+                self.context.dataset,
+                ground_truth_annotations,
+                annotations,
+                self.state.confidence_score_threshold,
             )
+
+            for dataset_id, score in scores:
+                score_id = image_id_to_score_id(dataset_id_to_image_id(dataset_id), model_name)
+                self.state[score_id] = score
 
         return predictions_original_images
 

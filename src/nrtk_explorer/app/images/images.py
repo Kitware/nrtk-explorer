@@ -18,7 +18,7 @@ class Images:
         self.server = server
         self.original_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
         self.transformed_images = LruCache(IMAGE_CACHE_SIZE_DEFAULT)
-        self._should_ajust_cache_size = True
+        self._should_ajust_cache_size = [True, True]
         self._transform = None
 
     def _ajust_cache_size(self, image_example: Image.Image):
@@ -27,16 +27,17 @@ class Images:
         mem_for_cache = round(system_memory * AVALIBLE_MEMORY_TO_TAKE_FACTOR)
         images_that_fit = max(min(mem_for_cache // img_size, 500), 50)
         cache_size = images_that_fit // 2
-        self.original_images = LruCache(cache_size)
-        self.transformed_images = LruCache(cache_size)
+        return LruCache(cache_size)
 
     def _load_image(self, dataset_id: str):
         img = self.server.context.dataset.get_image(int(dataset_id))
         img.load()  # Avoid OSError(24, 'Too many open files')
 
-        if self._should_ajust_cache_size:
-            self._should_ajust_cache_size = False
-            self._ajust_cache_size(img)  # assuming images in dataset are similar size
+        if self._should_ajust_cache_size[0]:
+            self._should_ajust_cache_size[0] = False
+            self.original_images = self._ajust_cache_size(
+                img
+            )  # assuming images in dataset are similar size
 
         # transforms and base64 encoding require RGB mode
         return img.convert("RGB") if img.mode != "RGB" else img
@@ -44,7 +45,11 @@ class Images:
     def get_image(self, dataset_id: str, **kwargs):
         """For cache side effects pass on_add_item and on_clear_item callbacks as kwargs"""
         image_id = dataset_id_to_image_id(dataset_id)
-        image = self.original_images.get_item(image_id) or self._load_image(dataset_id)
+        image = self.original_images.get_item(image_id)
+
+        if image is None:
+            image = self._load_image(dataset_id)
+
         self.original_images.add_item(image_id, image, **kwargs)
         return image
 
@@ -87,7 +92,8 @@ class Images:
     def clear_all(self, **kwargs):
         self.original_images.clear()
         self.transformed_images.clear()
-        self._should_ajust_cache_size = True
+        self._should_ajust_cache_size[0] = True
+        self._should_ajust_cache_size[1] = True
 
     def set_transform(self, transform):
         self._transform = transform

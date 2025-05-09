@@ -4,6 +4,7 @@ import TransformsWidget from './TransformsWidget.vue'
 import FilterOptionsWidget from './FilterOptionsWidget.vue'
 import FilterOperatorWidget from './FilterOperatorWidget.vue'
 import ExportWidget from './ExportWidget.vue'
+import ScoreTable from './ScoreTable.vue'
 
 export default {
   scatterPlot: ScatterPlot,
@@ -11,5 +12,6 @@ export default {
   transformsWidget: TransformsWidget,
   filterOptionsWidget: FilterOptionsWidget,
   filterOperatorWidget: FilterOperatorWidget,
-  exportWidget: ExportWidget
+  exportWidget: ExportWidget,
+  scoreTable: ScoreTable
 }

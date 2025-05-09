@@ -4,36 +4,40 @@ from trame.decorators import TrameApp, change
 from trame_annotations.widgets.annotations import ImageDetection
 from nrtk_explorer.app.trame_utils import change_checker
 from nrtk_explorer.app.images.image_ids import get_image_state_keys
+from nrtk_explorer.widgets.nrtk_explorer import ScoreTable
 
 
 CSS_FILE = Path(__file__).with_name("image_list.css")
 
 COLUMNS = [
-    {"name": "id", "label": "Dataset ID", "field": "id", "sortable": True},
-    {"name": "truth", "label": "Original: Ground Truth Annotations", "field": "truth"},
-    {"name": "original", "label": "Original: Detection Annotations", "field": "original"},
+    {"name": "id", "label": "Dataset ID", "field": "id", "align": "left", "sortable": True},
+    {
+        "name": "original",
+        "label": "Original",
+        "field": "original",
+        "align": "center",
+        "sortable": False,
+    },
+    {
+        "name": "originalScores",
+        "label": "Annotations Similarity | Original",
+        "field": "originalScores",
+        "align": "center",
+        "sortable": False,
+    },
     {
         "name": "transformed",
-        "label": "Transformed: Detection Annotations",
+        "label": "Transformed",
         "field": "transformed",
+        "align": "center",
+        "sortable": False,
     },
     {
-        "name": "original_ground_to_original_detection_score",
-        "label": "Ground Truth - Original Detection | Annotations Similarity",
-        "field": "original_ground_to_original_detection_score",
-        "sortable": True,
-    },
-    {
-        "name": "ground_truth_to_transformed_detection_score",
-        "label": "Ground Truth - Transformed Detection | Annotations Similarity",
-        "field": "ground_truth_to_transformed_detection_score",
-        "sortable": True,
-    },
-    {
-        "name": "original_detection_to_transformed_detection_score",
-        "label": "Original Detection - Transformed Detection | Annotations Similarity",
-        "field": "original_detection_to_transformed_detection_score",
-        "sortable": True,
+        "name": "transformedScores",
+        "label": "Annotations Similarity | Transformed",
+        "field": "transformedScores",
+        "align": "center",
+        "sortable": False,
     },
 ]
 
@@ -58,15 +62,13 @@ def make_dependent_columns_handler(state, columns):
 
 
 ORIGINAL_COLUMNS = [
-    "original",
-    "original_ground_to_original_detection_score",
+    "originalScores",
 ]
 
 
 TRANSFORM_COLUMNS = [
     "transformed",
-    "ground_truth_to_transformed_detection_score",
-    "original_detection_to_transformed_detection_score",
+    "transformedScores",
 ]
 
 visible_columns_initialized = False
@@ -101,10 +103,11 @@ class ImageWithSpinner(html.Div):
         hover=None,
         container_selector=None,
         show_annotations="show_annotations_on_images",
+        models=None,
+        color_by=None,
         **kwargs,
     ):
         super().__init__(
-            classes="relative-position",
             **kwargs,
         )
         with self:
@@ -117,9 +120,70 @@ class ImageWithSpinner(html.Div):
                 hover=hover,
                 container_selector=container_selector,
                 score_threshold=("confidence_score_threshold",),
+                models=models,
+                color_by=color_by,
             )
-            quasar.QInnerLoading(
-                showing=(f"!{src[0]} || ({show_annotations} && !{annotations[0]}.value)",)
+            quasar.QInnerLoading(showing=(f"!{src[0]}",))
+
+
+class MaximizableImageWithSpinner(html.Div):
+    def __init__(
+        self,
+        style=None,
+        identifier=None,
+        src=None,
+        annotations=None,
+        models=None,
+        color_by=None,
+        categories=None,
+        selected=None,
+        hover=None,
+        container_selector=None,
+        show_annotations=None,
+        click=None,
+        maximized_style=None,
+        maximized_click=None,
+        maximized_model_value=None,
+        maximized_update_model_value=None,
+        maximized_container_selector=None,
+        **kwargs,
+    ):
+        super().__init__(
+            **kwargs,
+        )
+        with self:
+            with quasar.QDialog(
+                full_width=True,
+                full_height=True,
+                model_value=maximized_model_value,
+                update_model_value=maximized_update_model_value,
+            ):
+                ImageWithSpinner(
+                    style=maximized_style,
+                    identifier=identifier,
+                    src=src,
+                    annotations=annotations,
+                    models=models,
+                    color_by=color_by,
+                    categories=categories,
+                    container_selector=maximized_container_selector,
+                    show_annotations=show_annotations,
+                    click=maximized_click,
+                )
+
+            ImageWithSpinner(
+                style=style,
+                identifier=identifier,
+                src=src,
+                annotations=annotations,
+                models=models,
+                color_by=color_by,
+                categories=categories,
+                selected=selected,
+                hover=hover,
+                container_selector=container_selector,
+                show_annotations=show_annotations,
+                click=click,
             )
 
 
@@ -140,8 +204,10 @@ class ImageList(html.Div):
 
     def _set_image_list_ids(self, dataset_ids):
         # create reactive variables so ImageDetection components have live Refs
+        annotation_models = self.state.inference_models or []
+
         for id in dataset_ids:
-            keys = get_image_state_keys(id)
+            keys = get_image_state_keys(id, annotation_models)
             for key in keys.values():
                 if not self.state.has(key):
                     self.state[key] = None
@@ -170,6 +236,9 @@ class ImageList(html.Div):
     def on_hover(self, ev):
         if self.server.controller.hover_image.exists():
             self.server.controller.hover_image(ev["id"])
+
+    def on_close_maximised(self, *args):
+        self.state.maximised_id = None
 
     def __init__(self, **kwargs):
         super().__init__(classes="full-height", **kwargs)
@@ -210,22 +279,40 @@ class ImageList(html.Div):
                 rows=(
                     r"""image_list_ids.map((id) =>
                             {
-                                const meta = get(`meta_${id}`)?.value ?? {original_ground_to_original_detection_score: 0, ground_truth_to_transformed_detection_score: 0, original_detection_to_transformed_detection_score: 0}
                                 const original_id = `img_${id}`
                                 const transformed_id = `transformed_img_${id}`
+
+                                const originalAnnotations = Object.entries(inference_models_obj).reduce(function(acc, [model_id, model]){
+                                    acc[model_id] = get(`result_${original_id}_${model.name}`);
+                                    return acc;
+                                }, {});
+
+                                const transformedAnnotations = Object.entries(inference_models_obj).reduce(function(acc, [model_id, model]){
+                                    acc[model_id] = get(`result_${transformed_id}_${model.name}`);
+                                    return acc;
+                                }, {});
+
+                                const originalScores = Object.entries(inference_models_obj).reduce(function(acc, [model_id, model]){
+                                    acc[model_id] = get(`score_${original_id}_${model.name}`);
+                                    return acc;
+                                }, {});
+
+                                const transformedScores = Object.entries(inference_models_obj).reduce(function(acc, [model_id, model]){
+                                    acc[model_id] = get(`score_${transformed_id}_${model.name}`);
+                                    return acc;
+                                }, {});
+
                                 return {
-                                    ...meta,
-                                    original_ground_to_original_detection_score: meta.original_ground_to_original_detection_score.toFixed(2),
-                                    ground_truth_to_transformed_detection_score: meta.ground_truth_to_transformed_detection_score.toFixed(2),
-                                    original_detection_to_transformed_detection_score: meta.original_detection_to_transformed_detection_score.toFixed(2),
                                     id,
                                     original: original_id,
                                     original_src: get(original_id).value,
                                     transformed: transformed_id,
                                     transformed_src: get(transformed_id).value,
-                                    groundTruthAnnotations: get(`result_${id}`),
-                                    originalAnnotations: get(`result_img_${id}`),
-                                    transformedAnnotations: get(`result_transformed_img_${id}`),
+                                    groundTruthAnnotations: get(`result_${original_id}_ground-truth`) || [],
+                                    originalAnnotations: originalAnnotations || {},
+                                    transformedAnnotations: transformedAnnotations,
+                                    originalScores,
+                                    transformedScores
                                 }
                             })
                         """,
@@ -253,39 +340,50 @@ class ImageList(html.Div):
             ):
                 # ImageDetection component for image columns
                 with html.Template(
-                    v_slot_body_cell_truth=True,
-                    __properties=[("v_slot_body_cell_truth", "v-slot:body-cell-truth='props'")],
-                ):
-                    with quasar.QTd():
-                        ImageWithSpinner(
-                            style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
-                            identifier=("props.row.original",),
-                            src=("props.row.original_src",),
-                            annotations=("props.row.groundTruthAnnotations",),
-                            categories=("annotation_categories",),
-                            selected=("(props.row.original == hovered_id)",),
-                            hover=(self.on_hover, "[$event]"),
-                            container_selector="#image-list .q-table__middle",
-                            show_annotations="show_annotations_on_images",
-                        )
-                with html.Template(
                     v_slot_body_cell_original=True,
                     __properties=[
                         ("v_slot_body_cell_original", "v-slot:body-cell-original='props'")
                     ],
                 ):
                     with quasar.QTd():
-                        ImageWithSpinner(
-                            style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
+                        MaximizableImageWithSpinner(
+                            style=(
+                                "`width: ${image_size_image_list}rem; margin-left: auto; margin-right: auto;`",
+                            ),
                             identifier=("props.row.original",),
                             src=("props.row.original_src",),
                             annotations=("props.row.originalAnnotations",),
+                            models=("inference_models_obj",),
+                            color_by="model",
                             categories=("annotation_categories",),
                             selected=("(props.row.original == hovered_id)",),
                             hover=(self.on_hover, "[$event]"),
                             container_selector="#image-list .q-table__middle",
-                            show_annotations="(show_annotations_on_images && predictions_images_enabled)",
+                            show_annotations="(show_annotations_on_images)",
+                            click="maximised_id = props.row.original;",
+                            maximized_style="overflow: hidden;",
+                            maximized_click="maximised_id = null;",
+                            maximized_model_value=("(props.row.original == maximised_id)",),
+                            maximized_update_model_value=(self.on_close_maximised, "[$event]"),
+                            maximized_container_selector=".q-dialog__inner",
                         )
+
+                with html.Template(
+                    v_slot_body_cell_original_scores=True,
+                    __properties=[
+                        (
+                            "v_slot_body_cell_original_scores",
+                            "v-slot:body-cell-originalScores='props'",
+                        )
+                    ],
+                ):
+                    with quasar.QTd():
+                        ScoreTable(
+                            style="margin-left: auto; margin-right: auto;",
+                            models=("inference_models_obj",),
+                            scores=("props.row.originalScores",),
+                        )
+
                 with html.Template(
                     v_slot_body_cell_transformed=True,
                     __properties=[
@@ -296,17 +394,44 @@ class ImageList(html.Div):
                     ],
                 ):
                     with quasar.QTd():
-                        ImageWithSpinner(
-                            style=("`width: ${image_size_image_list}rem; float: inline-end;`",),
+                        MaximizableImageWithSpinner(
+                            style=(
+                                "`width: ${image_size_image_list}rem; margin-left: auto; margin-right: auto;`",
+                            ),
                             identifier=("props.row.transformed",),
                             src=("props.row.transformed_src",),
                             annotations=("props.row.transformedAnnotations",),
+                            models=("inference_models_obj",),
+                            color_by="model",
                             categories=("annotation_categories",),
                             selected=("(props.row.transformed == hovered_id)",),
                             hover=(self.on_hover, "[$event]"),
                             container_selector="#image-list .q-table__middle",
-                            show_annotations="(show_annotations_on_images && predictions_images_enabled)",
+                            show_annotations="(show_annotations_on_images)",
+                            click="maximised_id = props.row.transformed;",
+                            maximized_style="overflow: hidden;",
+                            maximized_click="maximised_id = null;",
+                            maximized_model_value=("(props.row.transformed == maximised_id)",),
+                            maximized_update_model_value=(self.on_close_maximised, "[$event]"),
+                            maximized_container_selector=".q-dialog__inner",
                         )
+
+                with html.Template(
+                    v_slot_body_cell_transformed_scores=True,
+                    __properties=[
+                        (
+                            "v_slot_body_cell_transformed_scores",
+                            "v-slot:body-cell-transformedScores='props'",
+                        )
+                    ],
+                ):
+                    with quasar.QTd():
+                        ScoreTable(
+                            style="margin-left: auto; margin-right: auto;",
+                            models=("inference_models_obj",),
+                            scores=("props.row.transformedScores",),
+                        )
+
                 # Grid Mode template for each row/grid-item
                 with html.Template(
                     v_slot_item=True,
@@ -317,40 +442,37 @@ class ImageList(html.Div):
                             with html.Div(classes="row"):
                                 with html.Div(
                                     classes="col-4 q-pa-sm",
-                                    v_if=("props.cols.map(c => c.name).includes('truth')", True),
-                                ):
-                                    html.Div(
-                                        "Original: Ground Truth Annotations",
-                                        classes="text-center",
-                                    )
-                                    ImageWithSpinner(
-                                        identifier=("props.row.original",),
-                                        src=("props.row.original_src",),
-                                        annotations=("props.row.groundTruthAnnotations",),
-                                        categories=("annotation_categories",),
-                                        selected=("(props.row.original == hovered_id)",),
-                                        hover=(self.on_hover, "[$event]"),
-                                        show_annotations="show_annotations_on_images",
-                                    )
-                                with html.Div(
-                                    classes="col-4 q-pa-sm",
                                     v_if=(
                                         "props.cols.map(c => c.name).includes('original')",
                                         True,
                                     ),
                                 ):
                                     html.Div(
-                                        "Original: Detection Annotations",
+                                        "Original",
                                         classes="text-center",
                                     )
-                                    ImageWithSpinner(
+                                    MaximizableImageWithSpinner(
                                         identifier=("props.row.original",),
                                         src=("props.row.original_src",),
                                         annotations=("props.row.originalAnnotations",),
+                                        models=("inference_models_obj",),
+                                        color_by="model",
                                         categories=("annotation_categories",),
                                         selected=("(props.row.original == hovered_id)",),
                                         hover=(self.on_hover, "[$event]"),
-                                        show_annotations="(show_annotations_on_images && predictions_images_enabled)",
+                                        container_selector="#image-list .q-table__middle",
+                                        show_annotations="(show_annotations_on_images)",
+                                        click="maximised_id = props.row.original;",
+                                        maximized_style="overflow: hidden;",
+                                        maximized_click="maximised_id = null;",
+                                        maximized_model_value=(
+                                            "(props.row.original == maximised_id)",
+                                        ),
+                                        maximized_update_model_value=(
+                                            self.on_close_maximised,
+                                            "[$event]",
+                                        ),
+                                        maximized_container_selector=".q-dialog__inner",
                                     )
                                 with html.Div(
                                     classes="col-4 q-pa-sm",
@@ -360,24 +482,38 @@ class ImageList(html.Div):
                                     ),
                                 ):
                                     html.Div(
-                                        "Transformed: Detection Annotations",
+                                        "Transformed",
                                         classes="text-center",
                                     )
-                                    ImageWithSpinner(
+                                    MaximizableImageWithSpinner(
                                         identifier=("props.row.transformed",),
                                         src=("props.row.transformed_src",),
                                         annotations=("props.row.transformedAnnotations",),
+                                        models=("inference_models_obj",),
+                                        color_by="model",
                                         categories=("annotation_categories",),
                                         selected=("(props.row.transformed == hovered_id)",),
                                         hover=(self.on_hover, "[$event]"),
-                                        show_annotations="(show_annotations_on_images && predictions_images_enabled)",
+                                        container_selector="#image-list .q-table__middle",
+                                        show_annotations="(show_annotations_on_images)",
+                                        click="maximised_id = props.row.transformed;",
+                                        maximized_style="overflow: hidden;",
+                                        maximized_click="maximised_id = null;",
+                                        maximized_model_value=(
+                                            "(props.row.transformed == maximised_id)",
+                                        ),
+                                        maximized_update_model_value=(
+                                            self.on_close_maximised,
+                                            "[$event]",
+                                        ),
+                                        maximized_container_selector=".q-dialog__inner",
                                     )
                             with quasar.QList(
                                 dense=True,
                             ):
                                 with quasar.QItem(
                                     v_for=(
-                                        "col in props.cols.filter(col => !(['truth', 'original', 'transformed'].includes(col.name)))",
+                                        "col in props.cols.filter(col => (['id', 'originalScores', 'transformedScores'].includes(col.name)))",
                                     ),
                                     key=("col.name",),
                                 ):
@@ -388,7 +524,15 @@ class ImageList(html.Div):
                                         with quasar.QItemLabel(
                                             caption=True,
                                         ):
-                                            html.Div("{{col.value}}")
+                                            ScoreTable(
+                                                v_if=("col.name !== 'id'",),
+                                                style="margin-left: auto; margin-right: auto;",
+                                                models=("inference_models_obj",),
+                                                scores=("col.value",),
+                                            )
+
+                                            html.Div("{{col.value}}", v_else=True)
+
                 # Top control bar for visible-columns, search, table-grid switch, full-screen
                 with html.Template(
                     v_slot_top=True,
@@ -414,21 +558,6 @@ class ImageList(html.Div):
                     html.Span("Show Annotations")
                     quasar.QToggle(
                         v_model=("show_annotations_on_images", True),
-                    )
-                    quasar.QSelect(
-                        classes="q-pl-xl q-pr-lg",
-                        v_model=("visible_columns"),
-                        multiple=True,
-                        dense=True,
-                        options_dense=True,
-                        emit_value=True,
-                        map_options=True,
-                        options=("columns",),
-                        option_value="name",
-                        options_cover=True,
-                        raw_attrs=[
-                            ":display-value='$q.lang.table.columns'",
-                        ],
                     )
                     quasar.QBtn(
                         classes="q-pl-lg q-pr-xl",

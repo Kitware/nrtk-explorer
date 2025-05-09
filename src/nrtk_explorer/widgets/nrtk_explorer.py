@@ -106,3 +106,16 @@ class ExportWidget(HtmlElement):
         self._event_names += [
             ("export_dataset", "exportDataset"),
         ]
+
+
+class ScoreTable(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "score-table",
+            **kwargs,
+        )
+        self._attr_names += [
+            "scores",
+            "models",
+        ]
+        self._event_names += []

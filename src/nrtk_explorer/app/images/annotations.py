@@ -2,6 +2,9 @@ from typing import Dict, Sequence
 from functools import lru_cache, partial
 from PIL import Image
 from nrtk_explorer.app.images.cache import LruCache
+from nrtk_explorer.app.images.image_ids import (
+    dataset_id_to_image_id,
+)
 from nrtk_explorer.library.scoring import partition
 
 
@@ -20,14 +23,15 @@ class DeleteCallbackRef:
 def get_annotations_from_dataset(
     context, add_to_cache_callback, delete_from_cache_callback, dataset_id: str
 ):
+    image_id = dataset_id_to_image_id(dataset_id)
     dataset = context.dataset
     annotations = [
         annotation
         for annotation in dataset.anns.values()
         if str(annotation["image_id"]) == dataset_id
     ]
-    add_to_cache_callback(dataset_id, annotations)
-    with_id = partial(delete_from_cache_callback, dataset_id)
+    add_to_cache_callback(image_id, annotations)
+    with_id = partial(delete_from_cache_callback, image_id)
     return DeleteCallbackRef(with_id, annotations)
 
 
@@ -73,6 +77,7 @@ class DetectionAnnotations:
 
         to_detect = {id: id_to_image[id] for id in misses}
         predictions = await predictor.infer(to_detect)
+        predictions
         for id, annotations in predictions.items():
             self.cache.add_item(
                 id, annotations, self.add_to_cache_callback, self.delete_from_cache_callback

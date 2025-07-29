@@ -43,7 +43,7 @@ dependencies = [
     "transformers==4.49.0",
     "datasets[vision]",
     "umap-learn",
-    "nrtk[headless]==0.20.0",
+    "nrtk[headless]==0.24.0",
     "trame-annotations>=0.4.0",
     "kwcoco",
     "psutil", 

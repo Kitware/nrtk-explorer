@@ -92,11 +92,53 @@ nrtk_sk_speckle_noise:
       type: float
       label: Variance
 
+# Currently broken because of how __init__ is handled
+# nrtk_albumentations:
+#   perturber: nrtk.impls.perturb_image.generic.albumentations_perturber.AlbumentationsPerturber
+#   description:
+#     perturber:
+#       type: string
+#       label: Name of the BasicTransform perturber
+#     parameters:
+#       type: string
+#       label: Parameters for the Albumentations transform
+#       serialize_func: literal_to_string
+#       deserialize_func: string_to_literal
+
+nrtk_diffusion:
+  perturber: nrtk.impls.perturb_image.generic.diffusion_perturber.DiffusionPerturber
+  description:
+    prompt:
+      type: string
+      label: Text prompt describing the desired perturbation
+
 nrtk_random_crop:
-  perturber: nrtk.impls.perturb_image.generic.crop_perturber.RandomCropPerturber
+  perturber: nrtk.impls.perturb_image.generic.random_crop_perturber.RandomCropPerturber
+  description:
+    crop_size:
+      type: string
+      label: Target crop size
+      serialize_func: literal_to_string
+      deserialize_func: string_to_literal
+
+nrtk_random_rotation:
+  perturber: nrtk.impls.perturb_image.generic.random_rotation_perturber.RandomRotationPerturber
+  description:
+    limit:
+      type: float
+      label: Maximum rotation angle in degrees
 
 nrtk_random_translation:
-  perturber: nrtk.impls.perturb_image.generic.translation_perturber.RandomTranslationPerturber
+  perturber: nrtk.impls.perturb_image.generic.random_translation_perturber.RandomTranslationPerturber
+
+nrtk_radial_distortion:
+  perturber: nrtk.impls.perturb_image.generic.radial_distortion_perturber.RadialDistortionPerturber
+  description:
+    k:
+      type: string
+      label: Coefficients to compute the radial distortion
+      serialize_func: literal_to_string
+      deserialize_func: string_to_literal
 
 nrtk_haze_perturber:
   perturber: nrtk.impls.perturb_image.generic.haze_perturber.HazePerturber
@@ -104,6 +146,16 @@ nrtk_haze_perturber:
     factor:
       type: float
       label: Haze Intensity
+
+nrtk_water_droplet_perturber:
+  perturber: nrtk.impls.perturb_image.generic.water_droplet_perturber.WaterDropletPerturber
+  description:
+    num_drops:
+      type: integer
+      label: Number of water droplets
+    blur_strength:
+      type: integer
+      label: Strength of Gaussian blur
 
 nrtk_pybsm_jitter_otf:
   perturber: nrtk.impls.perturb_image.pybsm.jitter_otf_perturber.JitterOTFPerturber
@@ -191,9 +243,9 @@ nrtk_pybsm_circular_aperture_otf:
       label: MTF Weights
 
 nrtk_pybsm:
-  perturber: nrtk.impls.perturb_image.pybsm.perturber.PybsmPerturber
+  perturber: nrtk.impls.perturb_image.pybsm.pybsm_perturber.PybsmPerturber
   perturber_kwargs: nrtk_explorer.library.nrtk_transforms.create_sample_sensor_and_scenario
-  exec_default_args: [None, { img_gsd: 0.15 }]
+  exec_default_args: { img_gsd: 0.15 }
   description:
     D:
       _path: [sensor, D]

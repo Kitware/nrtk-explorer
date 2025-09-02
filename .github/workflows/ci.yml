@@ -66,6 +66,7 @@ jobs:
 
   semantic_release:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
     name: Semantic release noop
     steps:
       - uses: actions/checkout@v3
@@ -82,6 +83,7 @@ jobs:
 
       - name: Python Semantic Release
         id: release
-        uses: python-semantic-release/python-semantic-release@v9.4.1
+        uses: python-semantic-release/python-semantic-release@v10.3.1
         with:
-          root_options: -vv --noop
+          no_operation_mode: true
+          verbosity: 2

@@ -188,7 +188,7 @@ class ImagesApp(Applet):
                     )
                     self.state[score_id] = score
 
-                self.state.flush()  # needed cuz we are async func that modifies state.  If no flush, UI does not update.
+                await self.server.network_completion
 
             # sortable score value may have changed which images that are in view
             self.server.controller.check_images_in_view()

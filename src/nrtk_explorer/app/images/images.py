@@ -68,7 +68,14 @@ class Images:
         transformed = self._transform.execute(original)
         # So pixel-wise annotation similarity score works
         if original.size != transformed.size:
-            return transformed.resize(original.size)
+            transformed = transformed.resize(original.size)
+
+        if self._should_ajust_cache_size[1]:
+            self._should_ajust_cache_size[1] = False
+            self.transformed_images = self._ajust_cache_size(
+                transformed
+            )  # assuming images in dataset are similar size
+
         return transformed
 
     def _get_transformed_image(self, dataset_id: str, **kwargs):

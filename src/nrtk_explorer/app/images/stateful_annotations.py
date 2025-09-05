@@ -21,7 +21,6 @@ def add_predictions_to_state(
     context: Any, state: Any, model_name: str, image_id: str, predictions: Any
 ):
     state_key = image_id_to_result_id(image_id, model_name)
-    model_name, image_id, state_key, predictions
     state[state_key] = [to_annotation(context.dataset, prediction) for prediction in predictions]
 
 

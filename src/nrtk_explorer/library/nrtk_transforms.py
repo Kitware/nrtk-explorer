@@ -6,7 +6,7 @@ logger.setLevel(logging.INFO)
 
 try:
     from pybsm.otf import dark_current_from_density
-    from nrtk.impls.perturb_image.pybsm.perturber import PybsmSensor, PybsmScenario
+    from nrtk.impls.perturb_image.pybsm.pybsm_perturber import PybsmSensor, PybsmScenario
 except ImportError:
     logger.info("Disabling NRTK transforms due to missing library/failing imports")
 
@@ -45,7 +45,7 @@ def create_sample_sensor():
     # dark current density of 1 nA/cm2 guess, guess mid range for a
     # silicon camera
     # dark current density of 1 nA/cm2 guess, guess mid range for a silicon camera
-    dark_current = dark_current_from_density(1e-5, w_x, w_y)
+    dark_current = dark_current_from_density(jd=1e-5, w_x=w_x, w_y=w_y)
 
     # rms read noise (rms electrons)
     read_noise = 25.0

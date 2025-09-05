@@ -288,7 +288,11 @@ class ImageList(html.Div):
                                 }, {});
 
                                 const transformedAnnotations = Object.entries(inference_models_obj).reduce(function(acc, [model_id, model]){
-                                    acc[model_id] = get(`result_${transformed_id}_${model.name}`);
+                                    if (model.name == 'ground-truth') {
+                                        acc[model_id] = get(`result_${original_id}_${model.name}`);
+                                    } else {
+                                        acc[model_id] = get(`result_${transformed_id}_${model.name}`);
+                                    }
                                     return acc;
                                 }, {});
 
@@ -339,12 +343,7 @@ class ImageList(html.Div):
                 ],
             ):
                 # ImageDetection component for image columns
-                with html.Template(
-                    v_slot_body_cell_original=True,
-                    __properties=[
-                        ("v_slot_body_cell_original", "v-slot:body-cell-original='props'")
-                    ],
-                ):
+                with html.Template(raw_attrs=['v-slot:body-cell-original="props"']):
                     with quasar.QTd():
                         MaximizableImageWithSpinner(
                             style=(
@@ -368,15 +367,7 @@ class ImageList(html.Div):
                             maximized_container_selector=".q-dialog__inner",
                         )
 
-                with html.Template(
-                    v_slot_body_cell_original_scores=True,
-                    __properties=[
-                        (
-                            "v_slot_body_cell_original_scores",
-                            "v-slot:body-cell-originalScores='props'",
-                        )
-                    ],
-                ):
+                with html.Template(raw_attrs=['v-slot:body-cell-originalScores="props"']):
                     with quasar.QTd():
                         ScoreTable(
                             style="margin-left: auto; margin-right: auto;",
@@ -384,15 +375,7 @@ class ImageList(html.Div):
                             scores=("props.row.originalScores",),
                         )
 
-                with html.Template(
-                    v_slot_body_cell_transformed=True,
-                    __properties=[
-                        (
-                            "v_slot_body_cell_transformed",
-                            "v-slot:body-cell-transformed='props'",
-                        )
-                    ],
-                ):
+                with html.Template(raw_attrs=['v-slot:body-cell-transformed="props"']):
                     with quasar.QTd():
                         MaximizableImageWithSpinner(
                             style=(
@@ -416,15 +399,7 @@ class ImageList(html.Div):
                             maximized_container_selector=".q-dialog__inner",
                         )
 
-                with html.Template(
-                    v_slot_body_cell_transformed_scores=True,
-                    __properties=[
-                        (
-                            "v_slot_body_cell_transformed_scores",
-                            "v-slot:body-cell-transformedScores='props'",
-                        )
-                    ],
-                ):
+                with html.Template(raw_attrs=['v-slot:body-cell-transformedScores="props"']):
                     with quasar.QTd():
                         ScoreTable(
                             style="margin-left: auto; margin-right: auto;",
@@ -433,10 +408,7 @@ class ImageList(html.Div):
                         )
 
                 # Grid Mode template for each row/grid-item
-                with html.Template(
-                    v_slot_item=True,
-                    __properties=[("v_slot_item", "v-slot:item='props'")],
-                ):
+                with html.Template(raw_attrs=['v-slot:item="props"']):
                     with html.Div(classes="q-pa-xs col-xs-12 col-sm-6 col-md-4"):
                         with quasar.QCard(flat=True, bordered=True):
                             with html.Div(classes="row"):
@@ -534,10 +506,7 @@ class ImageList(html.Div):
                                             html.Div("{{col.value}}", v_else=True)
 
                 # Top control bar for visible-columns, search, table-grid switch, full-screen
-                with html.Template(
-                    v_slot_top=True,
-                    __properties=[("v_slot_top", "v-slot:top='props'")],
-                ):
+                with html.Template(raw_attrs=['v-slot:top="props"']):
                     html.Span("Sampled Images", classes="col q-table__title")
                     # Image size
                     quasar.QIcon(name="zoom_in", size="1.2rem", classes="q-px-sm")

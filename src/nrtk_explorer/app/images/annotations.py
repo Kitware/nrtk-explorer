@@ -77,7 +77,7 @@ class DetectionAnnotations:
 
         to_detect = {id: id_to_image[id] for id in misses}
         predictions = await predictor.infer(to_detect)
-        predictions
+
         for id, annotations in predictions.items():
             self.cache.add_item(
                 id, annotations, self.add_to_cache_callback, self.delete_from_cache_callback

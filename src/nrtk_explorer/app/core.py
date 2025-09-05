@@ -206,6 +206,7 @@ class Engine(Applet):
         self.state.random_sampling_disabled = True
         self.state.dataset_ids = []
         self.state.hovered_id = None
+        self.state.maximised_id = None
 
         def clear_hovered(**kwargs):
             self.state.hovered_id = None

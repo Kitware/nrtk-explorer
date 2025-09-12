@@ -40,7 +40,7 @@ dependencies = [
     "trame>=3.7",
     "trame-alerts",
     "trame-quasar",
-    "transformers==4.49.0",
+    "transformers==4.56.1",
     "datasets[vision]",
     "umap-learn",
     "nrtk[pybsm, headless, Pillow, scikit-image, albumentations, waterdroplet, diffusion]==0.25.0",

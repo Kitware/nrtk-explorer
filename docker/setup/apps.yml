@@ -14,4 +14,4 @@ trame:
         - --server
         - --banner
         - --dataset
-        - /data/OIRDS_v1_0/oirds.json
+        - /data/coco-od-2017/oirds.json

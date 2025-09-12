@@ -44,7 +44,7 @@ dependencies = [
     "datasets[vision]",
     "umap-learn",
     "nrtk[headless]==0.20.0",
-    "trame-annotations>=0.4.0",
+    "trame-annotations>=0.5.0",
     "kwcoco",
     "psutil", 
     "wslink>=2.3.2",

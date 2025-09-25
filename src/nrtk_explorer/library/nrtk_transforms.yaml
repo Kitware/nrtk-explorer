@@ -92,18 +92,17 @@ nrtk_sk_speckle_noise:
       type: float
       label: Variance
 
-# Currently broken because of how __init__ is handled
-# nrtk_albumentations:
-#   perturber: nrtk.impls.perturb_image.generic.albumentations_perturber.AlbumentationsPerturber
-#   description:
-#     perturber:
-#       type: string
-#       label: Name of the BasicTransform perturber
-#     parameters:
-#       type: string
-#       label: Parameters for the Albumentations transform
-#       serialize_func: literal_to_string
-#       deserialize_func: string_to_literal
+nrtk_albumentations:
+  perturber: nrtk.impls.perturb_image.generic.albumentations_perturber.AlbumentationsPerturber
+  description:
+    perturber:
+      type: string
+      label: Name of the BasicTransform perturber
+    parameters:
+      type: string
+      label: Parameters for the Albumentations transform
+      serialize_func: literal_to_string
+      deserialize_func: string_to_literal
 
 nrtk_diffusion:
   perturber: nrtk.impls.perturb_image.generic.diffusion_perturber.DiffusionPerturber

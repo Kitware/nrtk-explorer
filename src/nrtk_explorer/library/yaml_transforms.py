@@ -128,6 +128,8 @@ class MetaYamlPerturber(type):
 
         super().__init__(name, bases, namespace)
 
+        cls.params_updated = False
+
     # Methods that will be defined on the dynamic YamlPerturber classes
 
     def instance_init(self):
@@ -143,6 +145,7 @@ class MetaYamlPerturber(type):
         return params
 
     def set_parameters(self, params):
+        self.params_updated = True
         for k, v in params.items():
             attr_path = self.description.get(k).get("_path", [k])
             set_value(self._perturber, attr_path, v)
@@ -153,6 +156,16 @@ class MetaYamlPerturber(type):
     def execute(self, input, *input_args):
         if len(input_args) == 0:
             input_args = self.exec_args
+
+        if self.params_updated:
+            new_params = self.get_parameters()
+            for k, v in self.description.items():
+                if "deserialize_func" in v:
+                    new_params[k] = getattr(serialization_helpers, v["deserialize_func"])(
+                        new_params[k]
+                    )
+            self._perturber = self.perturber_class(**new_params)
+            self.params_updated = False
 
         input_array = np.asarray(input)
         output_array, _ = self._perturber.perturb(input_array, additional_params=input_args)

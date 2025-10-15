@@ -5,6 +5,7 @@ import contextlib
 from PIL import Image as ImageModule
 from pathlib import Path
 from yaml import load, Loader
+import nrtk_explorer.library.serialization_helpers as serialization_helpers
 
 TRANSFORM_FILE = Path(__file__).with_name("nrtk_transforms.yaml").resolve()
 
@@ -106,7 +107,7 @@ class MetaYamlPerturber(type):
             raise TypeError("MetaYamlPerturber: configuration is missing.")
 
         # add class variables
-        setattr(cls, "description", config.get("description"))
+        setattr(cls, "description", config.get("description", {}))
         setattr(cls, "exec_args", config.get("exec_default_args", []))
         perturber_class, perturber_kwargs = get_perturber_constructor(
             config.get("perturber"), config.get("perturber_kwargs", {})
@@ -127,6 +128,8 @@ class MetaYamlPerturber(type):
 
         super().__init__(name, bases, namespace)
 
+        cls.params_updated = False
+
     # Methods that will be defined on the dynamic YamlPerturber classes
 
     def instance_init(self):
@@ -137,9 +140,12 @@ class MetaYamlPerturber(type):
         for k, v in self.description.items():
             attr_path = v.get("_path", [k])
             params[k] = get_value(self._perturber, attr_path)
+            if "serialize_func" in v:
+                params[k] = getattr(serialization_helpers, v["serialize_func"])(params[k])
         return params
 
     def set_parameters(self, params):
+        self.params_updated = True
         for k, v in params.items():
             attr_path = self.description.get(k).get("_path", [k])
             set_value(self._perturber, attr_path, v)
@@ -151,7 +157,17 @@ class MetaYamlPerturber(type):
         if len(input_args) == 0:
             input_args = self.exec_args
 
+        if self.params_updated:
+            new_params = self.get_parameters()
+            for k, v in self.description.items():
+                if "deserialize_func" in v:
+                    new_params[k] = getattr(serialization_helpers, v["deserialize_func"])(
+                        new_params[k]
+                    )
+            self._perturber = self.perturber_class(**new_params)
+            self.params_updated = False
+
         input_array = np.asarray(input)
-        output_array = self._perturber.perturb(input_array, *input_args)
+        output_array, _ = self._perturber.perturb(input_array, additional_params=input_args)
 
         return ImageModule.fromarray(output_array)

@@ -1,3 +1,7 @@
+from typing import Dict
+import numpy as np
+from trame.decorators import TrameApp, change
+from PIL import Image
 from nrtk_explorer.widgets.nrtk_explorer import ScatterPlot
 from nrtk_explorer.library import embeddings_extractor
 from nrtk_explorer.library import dimension_reducers
@@ -18,6 +22,53 @@ from trame.widgets import quasar, html
 from trame.ui.quasar import QLayout
 from trame.app import get_server, asynchronous
 
+Id = str
+Features = np.ndarray
+IdToImage = Dict[Id, Image.Image]
+IdToFeatures = Dict[Id, Features]
+
+
+@TrameApp()
+class TransformedImages:
+    """Caches features/embeddings for transformed images"""
+
+    def __init__(self, server):
+        self.server = server
+        self.transformed_features: IdToFeatures = {}
+        self.extractor = None
+
+    def set_extractor(self, extractor):
+        self.extractor = extractor
+
+    def emit_update(self):
+        self.server.controller.update_transformed_images(self.transformed_features)
+
+    def add_images(self, dataset_id_to_image: IdToImage):
+        features = self.extractor.extract(dataset_id_to_image.values())
+
+        id_to_feature = {id: features for id, features in zip(dataset_id_to_image, features)}
+
+        self.transformed_features.update(id_to_feature)
+        self.emit_update()
+
+    @change("dataset_ids")
+    def on_dataset_ids(self, **kwargs):
+        self.transformed_features = {
+            id: features
+            for id, features in self.transformed_features.items()
+            if image_id_to_dataset_id(id) in self.server.state.dataset_ids
+        }
+        self.emit_update()
+
+    @change("current_dataset")
+    def on_dataset(self, **kwargs):
+        self.transformed_features = {}
+        self.emit_update()
+
+    def clear(self, **kwargs):
+        self.transformed_features = {}
+        self.emit_update()
+
 
 class EmbeddingsApp(Applet):
     def __init__(
@@ -30,7 +81,6 @@ class EmbeddingsApp(Applet):
 
         self._dataset_paths = datasets
         self.images = images or Images(server)
-        self._on_hover_fn = None
         self._ui = None
         self.reducer = dimension_reducers.DimReducerManager()
 
@@ -39,106 +89,91 @@ class EmbeddingsApp(Applet):
         if self.is_standalone_app and datasets:
             self.state.dataset_ids = []
             self.state.current_dataset = datasets[0]
-            self.on_current_dataset_change()
+            self.context.dataset = get_dataset(self.state.current_dataset)
 
         self.features = None
 
         self.state.client_only("camera_position")
         self.state.feature_extraction_model = "resnet50.a1_in1k"
 
-        self.server.controller.add("on_server_ready")(self.on_server_ready)
+        self.ctrl.on_server_ready.add(self.on_server_ready)
         self.transformed_images_cache = {}
         self.state.highlighted_image = {
             "id": "",
             "is_transformed": True,
         }
 
-    def on_server_ready(self, *args, **kwargs):
-        # Bind instance methods to state change
-        self.on_current_dataset_change()
-        self.state.change("current_dataset")(self.on_current_dataset_change)
-
+        self.transformed_images = TransformedImages(server)
+        self.clear_points_transformations()  # init vars
         self.on_feature_extraction_model_change()
-        self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
 
+        self.ctrl.hover_image.add(self.on_image_hovered)
+        self.ctrl.update_transformed_images.add(self.update_transformed_points)
+        self.ctrl.transform_applied.add(self.on_transform_applied)
+
+    def on_server_ready(self, *args, **kwargs):
+        self.state.change("feature_extraction_model")(self.on_feature_extraction_model_change)
+        self.save_embedding_params()
         self.update_points()
         self.state.change("dataset_ids")(self.update_points)
-
-        self.server.controller.apply_transform.add(self.clear_points_transformations)
-        self.state.change("transform_enabled_switch")(
-            self.update_points_transformations_visibility
-        )
+        self.ctrl.apply_transform.add(self.clear_points_transformations)
+        self.ctrl.apply_transform.add(self.transformed_images.clear)
+        self.state.change("transform_enabled_switch")(self.update_points_transformations_state)
 
     def on_feature_extraction_model_change(self, **kwargs):
-        feature_extraction_model = self.state.feature_extraction_model
         self.extractor = embeddings_extractor.EmbeddingsExtractor(
-            model_name=feature_extraction_model
+            model_name=self.state.feature_extraction_model
         )
-
-    def on_current_dataset_change(self, **kwargs):
-        self.state.num_elements_disabled = True
-        if self.context.dataset is None:
-            self.context.dataset = get_dataset(self.state.current_dataset)
-
-        self.state.num_elements_max = len(list(self.context.dataset.imgs))
-        self.state.num_elements_disabled = False
+        self.transformed_images.set_extractor(self.extractor)
 
     def compute_points(self, fit_features, features):
         if len(features) == 0:
             # reduce will fail if no features
             return []
 
-        if self.state.tab == "PCA":
+        params = self.embedding_params
+
+        if params["tab"] == "PCA":
             return self.reducer.reduce(
                 name="PCA",
                 fit_features=fit_features,
                 features=features,
-                dims=self.state.dimensionality,
-                whiten=self.state.pca_whiten,
-                solver=self.state.pca_solver,
+                dims=params["dimensionality"],
+                whiten=params["pca_whiten"],
+                solver=params["pca_solver"],
             )
 
         # must be UMAP
         args = {}
-        if self.state.umap_random_seed:
-            args["random_state"] = int(self.state.umap_random_seed_value)
+        if params["umap_random_seed"]:
+            args["random_state"] = int(params["umap_random_seed_value"])
 
-        if self.state.umap_n_neighbors:
-            args["n_neighbors"] = int(self.state.umap_n_neighbors_number)
+        if params["umap_n_neighbors"]:
+            args["n_neighbors"] = int(params["umap_n_neighbors_number"])
 
         return self.reducer.reduce(
             name="UMAP",
             fit_features=fit_features,
             features=features,
-            dims=self.state.dimensionality,
+            dims=params["dimensionality"],
             **args,
         )
 
     def clear_points_transformations(self, **kwargs):
-        self.state.points_transformations = {}  # ID to point
+        self.state.points_transformations = {}  # dataset ID to point
         self._stashed_points_transformations = {}
 
-    def update_points_transformations_visibility(self, **kwargs):
+    def update_points_transformations_state(self, **kwargs):
         if self.state.transform_enabled_switch:
             self.state.points_transformations = self._stashed_points_transformations
         else:
-            self._stashed_points_transformations = self.state.points_transformations
             self.state.points_transformations = {}
 
-    async def compute_source_points(self):
-        with self.state:
-            self.state.is_loading = True
-
-        # Don't lock server before enabling the spinner on client
-        await self.server.network_completion
-
-        images = [
+    def compute_source_points(self):
+        images = (
             self.images.get_image_without_cache_eviction(id) for id in self.state.dataset_ids
-        ]
-        self.features = self.extractor.extract(
-            images,
-            batch_size=int(self.state.model_batch_size),
         )
+        self.features = self.extractor.extract(images)
 
         points = self.compute_points(self.features, self.features)
 
@@ -146,42 +181,72 @@ class EmbeddingsApp(Applet):
             id: point for id, point in zip(self.state.dataset_ids, points)
         }
 
-        self.clear_points_transformations()
-
-        self.state.user_selected_ids = []
         self.state.camera_position = []
 
+    async def _update_points(self):
         with self.state:
+            self.state.is_loading = True
+            self.points_sources = {}
+            self.clear_points_transformations()
+        # Don't lock server before enabling the spinner on client
+        await self.server.network_completion
+
+        self.save_embedding_params()
+
+        with self.state:
+            self.compute_source_points()
+            self.update_transformed_points(self.transformed_images.transformed_features)
             self.state.is_loading = False
 
     def update_points(self, **kwargs):
         if hasattr(self, "_update_task"):
             self._update_task.cancel()
-        self._update_task = asynchronous.create_task(self.compute_source_points())
+        self._update_task = asynchronous.create_task(self._update_points())
+
+    def save_embedding_params(self):
+        self.embedding_params = {
+            "tab": self.state.tab,
+            "dimensionality": self.state.dimensionality,
+            "pca_whiten": self.state.pca_whiten,
+            "pca_solver": self.state.pca_solver,
+            "umap_random_seed": self.state.umap_random_seed,
+            "umap_random_seed_value": self.state.umap_random_seed_value,
+            "umap_n_neighbors": self.state.umap_n_neighbors,
+            "umap_n_neighbors_number": self.state.umap_n_neighbors_number,
+        }
 
     def on_run_clicked(self):
+        self.save_embedding_params()
         self.update_points()
 
-    def on_run_transformations(self, id_to_image):
-        transformation_features = self.extractor.extract(
-            id_to_image.values(),
-            batch_size=int(self.state.model_batch_size),
-        )
+    def on_transform_applied(self, id_to_image):
+        self.transformed_images.add_images(id_to_image)
 
-        points = self.compute_points(self.features, transformation_features)
+    def update_transformed_points(self, id_to_features):
+        ids_to_plot = [
+            id
+            for id in id_to_features.keys()
+            if image_id_to_dataset_id(id) not in self._stashed_points_transformations
+        ]
+        features = [id_to_features[id] for id in ids_to_plot]
+        if len(features) > 0:
+            features_to_plot = np.vstack(features)
+            points = self.compute_points(self.features, features_to_plot)
 
-        ids = id_to_image.keys()
-        updated_points = {image_id_to_dataset_id(id): point for id, point in zip(ids, points)}
-        self.state.points_transformations = {**self.state.points_transformations, **updated_points}
+            updated_points = {
+                image_id_to_dataset_id(id): point for id, point in zip(ids_to_plot, points)
+            }
+            self._stashed_points_transformations = {
+                **self._stashed_points_transformations,
+                **updated_points,
+            }
+        self.update_points_transformations_state()
 
-    def on_select(self, image_ids):
-        self.state.user_selected_ids = image_ids
+    def on_scatter_select(self, image_ids):
+        self.state.user_selected_ids = image_ids or self.state.dataset_ids
 
     def on_move(self, camera_position):
         self.state.camera_position = camera_position
-
-    def set_on_hover(self, fn):
-        self._on_hover_fn = fn
 
     def get_dataset_id_index(self, point_index):
         if point_index < len(self.state.dataset_ids):
@@ -190,13 +255,15 @@ class EmbeddingsApp(Applet):
 
     def on_point_hover(self, event):
         self.state.highlighted_image = event
-        if not self._on_hover_fn:
+        if not self.ctrl.hover_image.exists():
             return
+
         if event["is_transformed"]:
             image_id = dataset_id_to_transformed_image_id(event["id"])
         else:
             image_id = dataset_id_to_image_id(event["id"])
-        self._on_hover_fn(image_id)
+
+        self.ctrl.hover_image(image_id)
 
     def on_image_hovered(self, image_id):
         self.state.highlighted_image = {
@@ -212,7 +279,7 @@ class EmbeddingsApp(Applet):
             hover=(self.on_point_hover, "[$event]"),
             points=("points_sources", {}),
             transformedPoints=("points_transformations", {}),
-            select=(self.on_select, "[$event]"),
+            select=(self.on_scatter_select, "[$event]"),
             selectedPoints=("user_selected_ids", []),
         )
 
@@ -220,7 +287,7 @@ class EmbeddingsApp(Applet):
         with html.Div(trame_server=self.server, classes="col"):
             with html.Div(classes="q-gutter-y-md"):
                 quasar.QBtnToggle(
-                    v_model=("dimensionality", "3"),
+                    v_model=("dimensionality", "2"),
                     toggler_color="primary",
                     flat=True,
                     spread=True,
@@ -248,13 +315,6 @@ class EmbeddingsApp(Applet):
                 filled=True,
                 emit_value=True,
                 map_options=True,
-            )
-            quasar.QInput(
-                v_model=("model_batch_size", 32),
-                filled=True,
-                stack_label=True,
-                label="Batch Size",
-                type="number",
             )
 
         with html.Div(classes="col"):

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, toRefs, computed, watchEffect } from 'vue'
+import { ref, watch, onMounted, toRefs, computed } from 'vue'
 import { ScatterGL } from 'scatter-gl'
 
 import { createColorMap, linearScale } from '@colormap/core'
@@ -42,7 +42,7 @@ type Events = {
 const emit = defineEmits<Events>()
 
 const plotContainer = ref<HTMLDivElement>()
-const selectMode = ref<boolean>(false)
+const selectMode = ref<boolean>(true)
 const colors = ref({ viridis, cividis, magma, inferno })
 const colorMapName = ref<keyof typeof colors.value>('viridis')
 const domain: Vector2<number> = [0, 1]
@@ -96,7 +96,7 @@ const sequences = computed(() => {
   }))
 })
 
-watchEffect(() => {
+watch([sequences, scatterPlotRef], () => {
   if (scatterPlotRef.value && scatterPlot) {
     // Due to a bug in scatter-gl we unselect all points before setting the sequences
     scatterPlot.select([])
@@ -105,16 +105,14 @@ watchEffect(() => {
 })
 
 watch(
-  [
-    scatterPlotRef,
-    dataset,
-    selectedPoints,
-    highlightedPoint,
-    colorMap,
-    hideSourcePoints,
-    sequences
-  ],
-  () => scatterPlot?.render(dataset.value)
+  [scatterPlotRef, dataset, selectedPoints, highlightedPoint, colorMap, hideSourcePoints],
+  () => {
+    scatterPlot?.render(dataset.value)
+    if (selectMode.value) {
+      // When switching bettween 3D and 2D, ScatterGL pan/rotate mode is always active.  Stop that.
+      scatterPlot?.setSelectMode()
+    }
+  }
 )
 
 onMounted(() => {
@@ -132,8 +130,10 @@ onMounted(() => {
         return `rgba(255,0,0,255)`
       }
 
-      if (isTrans) {
-        const p0 = props.points[id]
+      // check p0 because sometimes scatterPlot.setSequences called after props.points updated
+      // but before scatterPlot gets updated Dataset
+      const p0 = props.points[id]
+      if (isTrans && p0) {
         const p1 = props.transformedPoints[id]
         const dx = Math.abs(p0[0] - p1[0])
         const dy = Math.abs(p0[1] - p1[1])
@@ -165,6 +165,8 @@ onMounted(() => {
     }
   })
   scatterPlotRef.value = scatterPlot
+  // @ts-expect-error: force axes in 2D mode
+  scatterPlot.scatterPlot.add3dAxes()
 
   const cameraControls = ((scatterPlot as any).scatterPlot as any).orbitCameraControls
   cameraControls.addEventListener('start', emitCameraPosition)
@@ -174,6 +176,8 @@ onMounted(() => {
 
   // Without this there is an error upon browser refresh when sequences are defined.
   scatterPlot.render(dataset.value)
+  // needs to be after render or pan mode and select are initially active at the same time
+  scatterPlot.setSelectMode()
 })
 
 function emitCameraPosition() {

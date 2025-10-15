@@ -30,7 +30,7 @@ dependencies = [
     "accelerate",
     "numpy",
     "Pillow",
-    "pybsm>=0.6,<=0.9.0",
+    "pybsm",
     "scikit-learn>=1.6.0",
     "smqtk_image_io",
     "tabulate",
@@ -38,19 +38,19 @@ dependencies = [
     "torch",
     "torchvision",
     "trame>=3.7",
+    "trame-alerts",
     "trame-quasar",
-    "transformers",
+    "transformers==4.49.0",
     "datasets[vision]",
     "umap-learn",
-    "nrtk[headless]>=0.12.0,<=0.16.0",
-    "trame-annotations>=0.4.0",
+    "nrtk[pybsm, headless, Pillow, scikit-image, albumentations, waterdroplet, diffusion]==0.25.0",
+    "trame-annotations>=0.5.0",
+    "kwcoco",
+    "psutil", 
+    "wslink>=2.3.2",
 ]
 
 [project.optional-dependencies]
-kwcoco= [
-  "kwcoco",
-]
-
 dev = [
   "black",
   "flake8",
@@ -58,6 +58,7 @@ dev = [
   "pytest",
   "tabulate",
   "types-PyYAML",
+  "pre-commit",
 ]
 
 package = [

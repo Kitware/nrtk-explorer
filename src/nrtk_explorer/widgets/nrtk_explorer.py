@@ -89,3 +89,33 @@ class FilterOperatorWidget(HtmlElement):
             "update:operator",
             "update:invert",
         ]
+
+
+class ExportWidget(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "export-widget",
+            **kwargs,
+        )
+        self._attr_names += [
+            ("current_dataset", "currentDataset"),
+            ("repository_datasets", "repositoryDatasets"),
+            "status",
+            "progress",
+        ]
+        self._event_names += [
+            ("export_dataset", "exportDataset"),
+        ]
+
+
+class ScoreTable(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "score-table",
+            **kwargs,
+        )
+        self._attr_names += [
+            "scores",
+            "models",
+        ]
+        self._event_names += []

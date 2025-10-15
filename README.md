@@ -54,6 +54,7 @@ nrtk-explorer --dataset ./nrtk_explorer_datasets/coco-od-2017/mini_val2017.json 
   or a directory loadable by the [Dataset](https://huggingface.co/docs/datasets/index) library.
   You can specify multiple datasets using a space as the
   separator. Example: `nrtk-explorer --dataset ../foo-dir/coco.json cppe-5`
+- `--repository` Specify an existing directory where exported datasets will be saved to and loaded from.
 - `--download` Cache Hugging Face Hub datasets locally instead of streaming them.
   When datasets are streamed, nrtk-explorer limits the number of loaded images.
 - `--models` specify the Hugging Face Hub [object detection](https://huggingface.co/models?pipeline_tag=object-detection&library=transformers&sort=trending)
@@ -83,6 +84,7 @@ For more details on setting up a development environment see [DEVELOPMENT docs](
 1. Merge `main` to `release` with a _merge commit_.
 2. Run "Create Release" workflow with workflow from `release` branch.
 3. Merge `release` to `main` with a _merge commit_.
+4. Check package versions in Conda Feedstock [meta.yaml file](https://github.com/conda-forge/nrtk-explorer-feedstock/blob/main/recipe/meta.yaml)
 
 [1]: https://trame.readthedocs.io/en/latest/
 [2]: https://www.kitware.com/

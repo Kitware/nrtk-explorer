@@ -1,4 +1,4 @@
-from nrtk_explorer.library.dataset import get_dataset, JsonDataset
+from nrtk_explorer.library.dataset import get_dataset, CocoDataset
 import nrtk_explorer.test_data
 
 from pathlib import Path
@@ -27,7 +27,7 @@ def test_get_dataset_empty():
 
 
 def test_DefaultDataset(dataset_path):
-    ds = JsonDataset(dataset_path)
+    ds = CocoDataset(dataset_path)
     assert len(ds.imgs) > 0
     assert len(ds.cats) > 0
     assert len(ds.anns) > 0

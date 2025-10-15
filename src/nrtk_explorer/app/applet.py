@@ -21,3 +21,7 @@ class Applet:
     @property
     def context(self) -> State:
         return self.server.context
+
+    @property
+    def ctx(self) -> State:
+        return self.server.context

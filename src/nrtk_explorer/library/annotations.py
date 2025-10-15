@@ -1,5 +1,5 @@
 from typing import TypedDict, List
-from .dataset import JsonDataset
+from .dataset import CocoDataset
 
 
 def get_cat_id(dataset, annotation):
@@ -33,7 +33,7 @@ class Annotation(TypedDict, total=False):
     bbox: List[float]
 
 
-def to_annotation(dataset: JsonDataset, prediction: Prediction) -> Annotation:
+def to_annotation(dataset: CocoDataset, prediction: Prediction) -> Annotation:
     annotation: Annotation = {}
 
     if "label" in prediction:

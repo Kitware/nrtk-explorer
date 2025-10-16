@@ -1,6 +1,7 @@
 [project]
 name="nrtk-explorer"
 version="0.8.0"
+requires-python=">=3.10,<3.13"
 description="Model Visualizer"
 authors = [
   {name = "Alessandro Genova", email = "alessandro.genova@kitware.com"},

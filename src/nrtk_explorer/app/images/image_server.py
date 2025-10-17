@@ -69,6 +69,10 @@ class ImageServer:
             self._state_id_to_dataset_id,
         )
 
+        self.url_prefix = (
+            f"/api/{self.server.context.session}" if self.server.context.session else ""
+        )
+
         change_checker(self.server.state, "dataset_ids")(self.on_dataset_ids_change)
 
     @controller.add("on_server_bind")
@@ -99,7 +103,7 @@ class ImageServer:
             orig_key = str(self._id_counter)
             self._state_id_to_dataset_id[orig_key] = id
             self.server.state[dataset_id_to_image_id(id)] = (
-                f"/{ORIGINAL_IMAGE_ENDPOINT}/{orig_key}"
+                f"{self.url_prefix}/{ORIGINAL_IMAGE_ENDPOINT}/{orig_key}"
             )
 
             # Transform
@@ -108,7 +112,7 @@ class ImageServer:
             self._state_id_to_dataset_id[trans_key] = id
             self._transform_keys.add(trans_key)
             self.server.state[dataset_id_to_transformed_image_id(id)] = (
-                f"/{TRANSFORM_IMAGE_ENDPOINT}/{trans_key}"
+                f"{self.url_prefix}/{TRANSFORM_IMAGE_ENDPOINT}/{trans_key}"
             )
 
     @controller.add("apply_transform")
@@ -119,5 +123,5 @@ class ImageServer:
             self._state_id_to_dataset_id[trans_key] = id
             self._transform_keys.add(trans_key)
             self.server.state[dataset_id_to_transformed_image_id(id)] = (
-                f"/{TRANSFORM_IMAGE_ENDPOINT}/{trans_key}"
+                f"{self.url_prefix}/{TRANSFORM_IMAGE_ENDPOINT}/{trans_key}"
             )

@@ -40,7 +40,7 @@ DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
     f"{DIR_NAME}/coco-od-2017/test_val2017.json",
 ]
-NUM_IMAGES_DEFAULT = 500
+NUM_IMAGES_DEFAULT = os.environ.get("NRTK_EXPLORER_NUM_IMAGES", 500)
 NUM_IMAGES_DEBOUNCE_TIME = 0.3  # seconds
 
 
@@ -101,6 +101,14 @@ config_options = {
             "help": "Choose which application features to enable based on a preset name.",
         },
     },
+    "session_id": {
+        "flags": ["--session-id"],
+        "params": {
+            "default": "",
+            "required": False,
+            "help": "Session ID for deploying to a remote server using Docker",
+        },
+    },
 }
 
 
@@ -115,6 +123,7 @@ class Engine(Applet):
         )
 
         self.context.repository = config["repository"]
+        self.context.session = config["session_id"]
         self.state.repository_datasets = [
             str(path) for path in discover_datasets(self.context.repository)
         ]

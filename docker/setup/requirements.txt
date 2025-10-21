@@ -1,2 +1,1 @@
-nrtk[headless]
-# nrtk-explorer
+nrtk-explorer

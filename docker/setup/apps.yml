@@ -2,9 +2,9 @@ trame:
     www_modules:
       - nrtk_explorer.module
     cmd:
-        - python
-        - -m
-        - nrtk_explorer.app.main
+        - nrtk-explorer
+        - --session-id
+        - ${id}
         - --host
         - ${host}
         - --port
@@ -14,4 +14,4 @@ trame:
         - --server
         - --banner
         - --dataset
-        - /data/OIRDS_v1_0/oirds.json
+        - /data/coco-od-2017/mini_val2017.json

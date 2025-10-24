@@ -2,6 +2,7 @@ import gc
 import logging
 import torch
 import transformers
+from transformers.pipelines import Pipeline
 from typing import Optional, Sequence, Dict, NamedTuple
 from PIL.Image import Image
 import math
@@ -43,7 +44,7 @@ class Predictor:
         self._device = torch.device(dev)
 
     @property
-    def pipeline(self) -> transformers.pipeline:
+    def pipeline(self) -> Pipeline:
         """Get the pipeline for object detection using Hugging Face's transformers library"""
         return self._pipeline
 

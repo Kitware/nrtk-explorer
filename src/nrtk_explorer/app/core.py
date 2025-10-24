@@ -40,7 +40,7 @@ DIR_NAME = os.path.dirname(nrtk_explorer.test_data.__file__)
 DEFAULT_DATASETS = [
     f"{DIR_NAME}/coco-od-2017/test_val2017.json",
 ]
-NUM_IMAGES_DEFAULT = os.environ.get("NRTK_EXPLORER_NUM_IMAGES", 500)
+NUM_IMAGES_DEFAULT = int(os.environ.get("NRTK_EXPLORER_NUM_IMAGES", 500))
 NUM_IMAGES_DEBOUNCE_TIME = 0.3  # seconds
 
 

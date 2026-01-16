@@ -288,7 +288,7 @@ class ImageList(html.Div):
                                 }, {});
 
                                 const transformedAnnotations = Object.entries(inference_models_obj).reduce(function(acc, [model_id, model]){
-                                    if (model.name == 'ground-truth') {
+                                    if (model.name == 'groundtruth') {
                                         acc[model_id] = get(`result_${original_id}_${model.name}`);
                                     } else {
                                         acc[model_id] = get(`result_${transformed_id}_${model.name}`);
@@ -312,7 +312,7 @@ class ImageList(html.Div):
                                     original_src: get(original_id).value,
                                     transformed: transformed_id,
                                     transformed_src: get(transformed_id).value,
-                                    groundTruthAnnotations: get(`result_${original_id}_ground-truth`) || [],
+                                    groundTruthAnnotations: get(`result_${original_id}_groundtruth`) || [],
                                     originalAnnotations: originalAnnotations || {},
                                     transformedAnnotations: transformedAnnotations,
                                     originalScores,

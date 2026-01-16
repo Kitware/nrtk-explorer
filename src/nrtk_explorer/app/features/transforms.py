@@ -12,6 +12,7 @@ import nrtk_explorer.library.serialization_helpers as serialization_helpers
 from nrtk_explorer.app.applet import Applet
 from nrtk_explorer.app.trame_utils import ProcessingStep
 from nrtk_explorer.app.features.parameters import ParametersApp
+from nrtk_explorer.app.features.preview import PreviewApp
 from nrtk_explorer.app.images.images import Images
 
 from nrtk_explorer.app.ui.image_list import (
@@ -35,6 +36,10 @@ class TransformsApp(Applet):
         self._parameters_app = ParametersApp(
             server=server,
         )
+
+        self.context.parameters_app = self._parameters_app
+
+        self._preview_app = PreviewApp(self.server, self.images, **kwargs)
 
         self._ui = None
 
@@ -66,6 +71,7 @@ class TransformsApp(Applet):
         )
 
         self.server.controller.apply_transform.add(self.on_apply_transform)
+        self.server.controller.preview_transform.add(self.on_preview_transform)
         self.server.controller.on_server_ready.add(self.on_server_ready)
 
     def on_server_ready(self, *args, **kwargs):
@@ -73,6 +79,7 @@ class TransformsApp(Applet):
 
     def on_apply_transform(self, **kwargs):
         # Turn on switch if user clicked lower apply button
+        self.state.show_preview = False
         self.state.transform_enabled_switch = True
         transforms = list(map(lambda t: t["instance"], self.context.transforms))
 
@@ -90,13 +97,44 @@ class TransformsApp(Applet):
         if self.ctrl.run_transform.exists():
             self.ctrl.run_transform()
 
+    def on_preview_transform(self, **kwargs):
+        if self.state.preview_image_id is None and len(self.state.dataset_ids) > 0:
+            self.state.preview_image_id = self.state.dataset_ids[0]
+
+        self.state.show_preview = True
+
     def settings_widget(self):
         with html.Div(classes="col"):
             self._parameters_app.transforms_ui()
 
     def apply_ui(self):
         with html.Div():
+            self._parameters_app.transform_preview_ui()
             self._parameters_app.transform_apply_ui()
+
+        with quasar.QDialog(
+            full_width=True,
+            full_height=True,
+            transition_duration=0,
+            v_model=("show_preview", False),
+        ):
+            with html.Div(classes="row bg-grey-3 shadow-2 rounded-borders"):
+                quasar.QBtn(
+                    icon="close",
+                    flat=True,
+                    round=True,
+                    dense=True,
+                    click="show_preview = false;",
+                    style="position: absolute; margin: 0.5rem;",
+                )
+                with html.Div(classes="col-2 q-pa-md"):
+                    html.H5("Transform Preview")
+                    self._parameters_app.transforms_ui()
+                    self._parameters_app.transform_preview_ui()
+                    self._parameters_app.transform_apply_ui()
+
+                with html.Div(classes="col-10 q-pa-md"):
+                    self._preview_app.carousel_ui()
 
     # This is only used within when this module (file) is executed as an Standalone app.
     @property

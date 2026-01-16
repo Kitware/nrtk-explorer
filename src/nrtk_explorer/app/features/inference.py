@@ -46,7 +46,7 @@ class InferenceApp(Applet):
         self.state.inference_models = [self.state.inference_models_options[0]]
         self.state.inference_multi_model = False
 
-        inference_models_obj = {0: {"name": "ground-truth"}}
+        inference_models_obj = {0: {"name": "groundtruth"}}
         for i, model in enumerate(self.state.inference_models):
             inference_models_obj[i + 1] = {"name": model}
 
@@ -101,7 +101,7 @@ class InferenceApp(Applet):
                     "transformed_annotations": transformed_annotations.annotations_factory,
                 }
 
-        models_obj = {0: {"name": "ground-truth"}}
+        models_obj = {0: {"name": "groundtruth"}}
         for i, model in enumerate(models):
             models_obj[i + 1] = {"name": model}
 

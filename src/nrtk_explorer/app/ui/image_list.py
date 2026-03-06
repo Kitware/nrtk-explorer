@@ -6,7 +6,6 @@ from nrtk_explorer.app.trame_utils import change_checker
 from nrtk_explorer.app.images.image_ids import get_image_state_keys
 from nrtk_explorer.widgets.nrtk_explorer import ScoreTable
 
-
 CSS_FILE = Path(__file__).with_name("image_list.css")
 
 COLUMNS = [

@@ -397,7 +397,6 @@ from sphinx.domains.python import PythonDomain  # NOQA
 # from sphinx.application import Sphinx  # NOQA
 from typing import Any, List  # NOQA
 
-
 # HACK TO PREVENT EXCESSIVE TIME.
 # TODO: FIXME FOR REAL
 MAX_TIME_MINUTES = None

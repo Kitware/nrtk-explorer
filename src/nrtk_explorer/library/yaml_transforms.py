@@ -108,7 +108,7 @@ class MetaYamlPerturber(type):
 
         # add class variables
         setattr(cls, "description", config.get("description", {}))
-        setattr(cls, "exec_args", config.get("exec_default_args", []))
+        setattr(cls, "exec_args", config.get("exec_default_args", {}))
         perturber_class, perturber_kwargs = get_perturber_constructor(
             config.get("perturber"), config.get("perturber_kwargs", {})
         )
@@ -168,6 +168,6 @@ class MetaYamlPerturber(type):
             self.params_updated = False
 
         input_array = np.asarray(input)
-        output_array, _ = self._perturber.perturb(input_array, additional_params=input_args)
+        output_array, _ = self._perturber.perturb(image=input_array, **input_args)
 
         return ImageModule.fromarray(output_array)

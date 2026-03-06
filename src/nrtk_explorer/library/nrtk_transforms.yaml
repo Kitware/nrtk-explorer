@@ -1,47 +1,47 @@
 nrtk_pil_brightness:
-  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.BrightnessPerturber
+  perturber: nrtk.impls.perturb_image.photometric.enhance.BrightnessPerturber
   description:
     factor:
       type: float
       label: Factor
 
 nrtk_pil_color:
-  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.ColorPerturber
+  perturber: nrtk.impls.perturb_image.photometric.enhance.ColorPerturber
   description:
     factor:
       type: float
       label: Factor
 
 nrtk_pil_contrast:
-  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.ContrastPerturber
+  perturber: nrtk.impls.perturb_image.photometric.enhance.ContrastPerturber
   description:
     factor:
       type: float
       label: Factor
 
 nrtk_pil_sharpness:
-  perturber: nrtk.impls.perturb_image.generic.PIL.enhance.SharpnessPerturber
+  perturber: nrtk.impls.perturb_image.photometric.enhance.SharpnessPerturber
   description:
     factor:
       type: float
       label: Factor
 
 nrtk_cv2_average_blur:
-  perturber: nrtk.impls.perturb_image.generic.cv2.blur.AverageBlurPerturber
+  perturber: nrtk.impls.perturb_image.photometric.blur.AverageBlurPerturber
   description:
     ksize:
       type: integer
       label: Kernel Size
 
 nrtk_cv2_gauss_blur:
-  perturber: nrtk.impls.perturb_image.generic.cv2.blur.GaussianBlurPerturber
+  perturber: nrtk.impls.perturb_image.photometric.blur.GaussianBlurPerturber
   description:
     ksize:
       type: integer
       label: Kernel Size
 
 nrtk_cv2_median_blur:
-  perturber: nrtk.impls.perturb_image.generic.cv2.blur.MedianBlurPerturber
+  perturber: nrtk.impls.perturb_image.photometric.blur.MedianBlurPerturber
   perturber_kwargs: { ksize: 3 }
   description:
     ksize:
@@ -49,21 +49,21 @@ nrtk_cv2_median_blur:
       label: Kernel Size
 
 nrtk_sk_salt_noise:
-  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.SaltNoisePerturber
+  perturber: nrtk.impls.perturb_image.photometric.random_noise.SaltNoisePerturber
   description:
     amount:
       type: float
       label: Noise amount
 
 nrtk_sk_pepper_noise:
-  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.PepperNoisePerturber
+  perturber: nrtk.impls.perturb_image.photometric.random_noise.PepperNoisePerturber
   description:
     amount:
       type: float
       label: Noise amount
 
 nrtk_sk_salt_pepper_noise:
-  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.SaltAndPepperNoisePerturber
+  perturber: nrtk.impls.perturb_image.photometric.random_noise.SaltAndPepperNoisePerturber
   description:
     amount:
       type: float
@@ -73,7 +73,7 @@ nrtk_sk_salt_pepper_noise:
       label: Salt vs Pepper
 
 nrtk_sk_gauss_noise:
-  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.GaussianNoisePerturber
+  perturber: nrtk.impls.perturb_image.photometric.random_noise.GaussianNoisePerturber
   description:
     mean:
       type: float
@@ -83,7 +83,7 @@ nrtk_sk_gauss_noise:
       label: Variance
 
 nrtk_sk_speckle_noise:
-  perturber: nrtk.impls.perturb_image.generic.skimage.random_noise.SpeckleNoisePerturber
+  perturber: nrtk.impls.perturb_image.photometric.random_noise.SpeckleNoisePerturber
   description:
     mean:
       type: float
@@ -93,7 +93,7 @@ nrtk_sk_speckle_noise:
       label: Variance
 
 nrtk_albumentations:
-  perturber: nrtk.impls.perturb_image.generic.albumentations_perturber.AlbumentationsPerturber
+  perturber: nrtk.impls.perturb_image.AlbumentationsPerturber
   description:
     perturber:
       type: string
@@ -105,14 +105,14 @@ nrtk_albumentations:
       deserialize_func: string_to_literal
 
 nrtk_diffusion:
-  perturber: nrtk.impls.perturb_image.generic.diffusion_perturber.DiffusionPerturber
+  perturber: nrtk.impls.perturb_image.generative.DiffusionPerturber
   description:
     prompt:
       type: string
       label: Text prompt describing the desired perturbation
 
 nrtk_random_crop:
-  perturber: nrtk.impls.perturb_image.generic.random_crop_perturber.RandomCropPerturber
+  perturber: nrtk.impls.perturb_image.geometric.random.RandomCropPerturber
   description:
     crop_size:
       type: string
@@ -121,17 +121,17 @@ nrtk_random_crop:
       deserialize_func: string_to_literal
 
 nrtk_random_rotation:
-  perturber: nrtk.impls.perturb_image.generic.random_rotation_perturber.RandomRotationPerturber
+  perturber: nrtk.impls.perturb_image.geometric.random.RandomRotationPerturber
   description:
     limit:
       type: float
       label: Maximum rotation angle in degrees
 
 nrtk_random_translation:
-  perturber: nrtk.impls.perturb_image.generic.random_translation_perturber.RandomTranslationPerturber
+  perturber: nrtk.impls.perturb_image.geometric.random.RandomTranslationPerturber
 
 nrtk_radial_distortion:
-  perturber: nrtk.impls.perturb_image.generic.radial_distortion_perturber.RadialDistortionPerturber
+  perturber: nrtk.impls.perturb_image.optical.radial_distortion_perturber.RadialDistortionPerturber
   description:
     k:
       type: string
@@ -140,14 +140,14 @@ nrtk_radial_distortion:
       deserialize_func: string_to_literal
 
 nrtk_haze_perturber:
-  perturber: nrtk.impls.perturb_image.generic.haze_perturber.HazePerturber
+  perturber: nrtk.impls.perturb_image.environment.HazePerturber
   description:
     factor:
       type: float
       label: Haze Intensity
 
 nrtk_water_droplet_perturber:
-  perturber: nrtk.impls.perturb_image.generic.water_droplet_perturber.WaterDropletPerturber
+  perturber: nrtk.impls.perturb_image.environment.WaterDropletPerturber
   description:
     num_drops:
       type: integer
@@ -156,8 +156,8 @@ nrtk_water_droplet_perturber:
       type: integer
       label: Strength of Gaussian blur
 
-nrtk_pybsm_jitter_otf:
-  perturber: nrtk.impls.perturb_image.pybsm.jitter_otf_perturber.JitterOTFPerturber
+nrtk_pybsm_jitter:
+  perturber: nrtk.impls.perturb_image.optical.otf.JitterPerturber
   description:
     s_x:
       type: float
@@ -166,8 +166,8 @@ nrtk_pybsm_jitter_otf:
       type: float
       label: RMS Jitter Amplitute Y (rad)
 
-nrtk_pybsm_detector_otf:
-  perturber: nrtk.impls.perturb_image.pybsm.detector_otf_perturber.DetectorOTFPerturber
+nrtk_pybsm_detector:
+  perturber: nrtk.impls.perturb_image.optical.otf.DetectorPerturber
   description:
     w_x:
       type: float
@@ -179,8 +179,8 @@ nrtk_pybsm_detector_otf:
       type: float
       label: Focal length (m)
 
-nrtk_pybsm_defocus_otf:
-  perturber: nrtk.impls.perturb_image.pybsm.defocus_otf_perturber.DefocusOTFPerturber
+nrtk_pybsm_defocus:
+  perturber: nrtk.impls.perturb_image.optical.otf.DefocusPerturber
   description:
     w_x:
       type: float
@@ -189,8 +189,8 @@ nrtk_pybsm_defocus_otf:
       type: float
       label: Detector width Y (m)
 
-nrtk_pybsm_turbulence_aperture_otf:
-  perturber: nrtk.impls.perturb_image.pybsm.turbulence_aperture_otf_perturber.TurbulenceApertureOTFPerturber
+nrtk_pybsm_turbulence_aperture:
+  perturber: nrtk.impls.perturb_image.optical.otf.TurbulenceAperturePerturber
   description:
     altitude:
       type: float
@@ -227,8 +227,8 @@ nrtk_pybsm_turbulence_aperture_otf:
       deserialize_func: string_to_np_array
       label: MTF Weights
 
-nrtk_pybsm_circular_aperture_otf:
-  perturber: nrtk.impls.perturb_image.pybsm.circular_aperture_otf_perturber.CircularApertureOTFPerturber
+nrtk_pybsm_circular_aperture:
+  perturber: nrtk.impls.perturb_image.optical.otf.CircularAperturePerturber
   description:
     mtf_wavelengths:
       type: string
@@ -242,7 +242,7 @@ nrtk_pybsm_circular_aperture_otf:
       label: MTF Weights
 
 nrtk_pybsm:
-  perturber: nrtk.impls.perturb_image.pybsm.pybsm_perturber.PybsmPerturber
+  perturber: nrtk.impls.perturb_image.optical.PybsmPerturber
   perturber_kwargs: nrtk_explorer.library.nrtk_transforms.create_sample_sensor_and_scenario
   exec_default_args: { img_gsd: 0.15 }
   description:

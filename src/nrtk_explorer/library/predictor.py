@@ -7,7 +7,6 @@ from typing import Optional, Sequence, Dict, NamedTuple
 from PIL.Image import Image
 import math
 
-
 ImageIdToAnnotations = dict[str, Sequence[dict]]
 
 
@@ -52,7 +51,7 @@ class Predictor:
     def pipeline(self, model_name: str):
         """Set the pipeline for object detection using Hugging Face's transformers library"""
         self._pipeline = transformers.pipeline(
-            model=model_name, device=self.device, task=self.task, use_fast=True
+            model=model_name, device=self.device, task=self.task, use_fast=True  # type: ignore[arg-type]
         )
         # Do not display warnings
         transformers.utils.logging.set_verbosity_error()

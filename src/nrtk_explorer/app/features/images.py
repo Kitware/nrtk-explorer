@@ -31,7 +31,6 @@ from nrtk_explorer.app.ui.image_list import (
     add_visible_columns,
 )
 
-
 IMAGE_UPDATE_BATCH_SIZE = 16
 
 logger = logging.getLogger(__name__)

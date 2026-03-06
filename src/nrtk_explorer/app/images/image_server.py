@@ -10,7 +10,6 @@ from nrtk_explorer.app.images.image_ids import (
     dataset_id_to_transformed_image_id,
 )
 
-
 ORIGINAL_IMAGE_ENDPOINT = "original-image"
 TRANSFORM_IMAGE_ENDPOINT = "transform-image"
 

@@ -1,6 +1,6 @@
 from typing import List, Dict, Tuple
 from smqtk_image_io.bbox import AxisAlignedBoundingBox
-from nrtk.impls.score_detections.class_agnostic_pixelwise_iou_scorer import (
+from .scoring_utils import (
     ClassAgnosticPixelwiseIoUScorer,
 )
 from .annotations import get_cat_id

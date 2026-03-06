@@ -7,7 +7,6 @@ from nrtk_explorer.app.images.image_ids import (
 )
 from nrtk_explorer.library.scoring import partition
 
-
 ANNOTATION_CACHE_SIZE = 1000
 
 

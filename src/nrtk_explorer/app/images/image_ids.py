@@ -1,6 +1,6 @@
 from nrtk_explorer.app.images.image_meta import dataset_id_to_meta
 
-GROUND_TRUTH_MODEL = "ground-truth"
+GROUND_TRUTH_MODEL = "groundtruth"
 
 
 def image_id_to_dataset_id(image_id: str):
@@ -15,6 +15,10 @@ def dataset_id_to_transformed_image_id(dataset_id: str):
     return f"transformed_img_{dataset_id}"
 
 
+def dataset_id_to_preview_image_id(dataset_id: str):
+    return f"preview_img_{dataset_id}"
+
+
 def image_id_to_result_id(image_id: str, model_name: str):
     return f"result_{image_id}_{model_name}"
 
@@ -25,6 +29,10 @@ def image_id_to_score_id(image_id: str, model_name: str):
 
 def is_transformed(image_id: str):
     return image_id.startswith("transformed_img_")
+
+
+def is_preview(image_id: str):
+    return image_id.startswith("preview_img_")
 
 
 def get_image_state_keys(dataset_id: str, annotation_models: list[str]):

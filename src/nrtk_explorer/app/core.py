@@ -23,6 +23,12 @@ from nrtk_explorer.app.features import (
     config_features_to_enabled_features,
     config_preset_to_enabled_features,
 )
+from nrtk_explorer.app.images.image_ids import (
+    GROUND_TRUTH_MODEL,
+)
+from nrtk_explorer.app.images.stateful_annotations import (
+    make_stateful_annotations,
+)
 from nrtk_explorer.app.images.images import Images
 from nrtk_explorer.app.images.image_server import ImageServer
 from nrtk_explorer.app.applet import Applet
@@ -141,6 +147,8 @@ class Engine(Applet):
 
         images = Images(server=self.server)
         self._image_server = ImageServer(server=self.server, images=images)
+        ground_truth_annotations = make_stateful_annotations(self.server, GROUND_TRUTH_MODEL)
+        self.state.inference_models_obj = {0: {"name": "groundtruth"}}
 
         self._datasets_app = None
         if self.datasets_enabled:
@@ -159,15 +167,23 @@ class Engine(Applet):
             from nrtk_explorer.app.features.transforms import TransformsApp
 
             self._transforms_app = TransformsApp(
-                server=self.server.create_child_server(), images=images, **kwargs
+                server=self.server.create_child_server(),
+                images=images,
+                ground_truth_annotations=ground_truth_annotations,
+                **kwargs,
             )
+
+            self.context.tramsforms_app = self._transforms_app
 
         self._images_app = None
         if self.images_enabled:
             from nrtk_explorer.app.features.images import ImagesApp
 
             self._images_app = ImagesApp(
-                server=self.server.create_child_server(), images=images, **kwargs
+                server=self.server.create_child_server(),
+                images=images,
+                ground_truth_annotations=ground_truth_annotations,
+                **kwargs,
             )
 
         self._inference_app = None
@@ -216,6 +232,7 @@ class Engine(Applet):
         self.state.dataset_ids = []
         self.state.hovered_id = None
         self.state.maximised_id = None
+        self.state.maximised_annotations = []
 
         def clear_hovered(**kwargs):
             self.state.hovered_id = None

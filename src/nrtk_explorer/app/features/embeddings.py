@@ -310,6 +310,10 @@ class EmbeddingsApp(Applet):
                             "label": "MobileNetV3Large",
                             "value": "mobilenetv3_large_100.ra_in1k",
                         },
+                        {
+                            "label": "Vit-B",
+                            "value": "vit_base_patch16_dinov3.lvd1689m",
+                        },
                     ],
                 ),
                 filled=True,

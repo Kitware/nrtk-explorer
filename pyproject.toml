@@ -35,7 +35,7 @@ dependencies = [
     "scikit-learn>=1.6.0",
     "smqtk_image_io",
     "tabulate",
-    "timm>=1.0.3",
+    "timm>=1.0.20",
     "torch",
     "torchvision",
     "trame>=3.7",
@@ -47,7 +47,7 @@ dependencies = [
     "nrtk[pybsm, headless, pillow, skimage, albumentations, waterdroplet, diffusion]==1.0.0",
     "trame-annotations>=0.5.0",
     "kwcoco",
-    "psutil", 
+    "psutil",
     "wslink>=2.3.2",
 ]
 

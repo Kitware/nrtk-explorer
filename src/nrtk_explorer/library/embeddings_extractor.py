@@ -1,3 +1,4 @@
+import ctypes
 import gc
 import logging
 import numpy as np
@@ -9,6 +10,12 @@ from torch.utils.data import DataLoader, Dataset
 
 IMAGE_MODEL_RESOLUTION = (224, 224)
 STARTING_BATCH_SIZE = 32
+
+try:
+    _malloc_trim = ctypes.CDLL("libc.so.6").malloc_trim
+except (OSError, AttributeError):
+    # Not glibc (macOS, Windows, musl...): nothing to trim
+    _malloc_trim = None
 
 
 # Create a dataset for images
@@ -62,7 +69,7 @@ class EmbeddingsExtractor:
         img = image.resize(IMAGE_MODEL_RESOLUTION).convert("RGB")
         return self._model_transformer(img).unsqueeze(0)
 
-    def extract(self, images, batch_size=0):
+    def _extract(self, images, batch_size=0):
         """Extract features from images"""
         if batch_size != 0:
             self.batch_size = batch_size
@@ -80,8 +87,8 @@ class EmbeddingsExtractor:
                     # Copy image to device if using device
                     if self.device.type == "cuda":
                         batch = batch.cuda()
-
-                    features.append(self.model(batch).numpy(force=True))
+                    with torch.inference_mode():
+                        features.append(self.model(batch).numpy(force=True))
                 return np.vstack(features)
 
             except RuntimeError as e:
@@ -101,3 +108,12 @@ class EmbeddingsExtractor:
 
         # We should never reach here
         return []
+
+    def extract(self, images, batch_size=0):
+        try:
+            return self._extract(images, batch_size)
+        finally:
+            gc.collect()
+            torch.cuda.empty_cache()
+            if _malloc_trim is not None:
+                _malloc_trim(0)

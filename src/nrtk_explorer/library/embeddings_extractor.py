@@ -25,7 +25,13 @@ class ImagesDataset(Dataset):
 
 class EmbeddingsExtractor:
     def __init__(self, model_name="resnet50d", force_cpu=False):
-        self.device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
+        if force_cpu:
+            self.device = "cpu"
+        elif torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
+
         self.model = model_name
         self.reset()
 

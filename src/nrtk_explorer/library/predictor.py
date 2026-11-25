@@ -27,7 +27,14 @@ class Predictor:
         force_cpu: bool = False,
     ):
         self.task = task
-        self.device = "cuda" if torch.cuda.is_available() and not force_cpu else "cpu"
+
+        if force_cpu:
+            self.device = "cpu"
+        elif torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
+
         self.pipeline = model_name
         self.reset()
 

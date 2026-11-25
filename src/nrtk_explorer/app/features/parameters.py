@@ -115,6 +115,15 @@ class ParametersApp(Applet):
                 flat=True,
             )
 
+    def transform_preview_ui(self):
+        with html.Div(trame_server=self.server):
+            quasar.QBtn(
+                "Preview Transforms",
+                click=(self.server.controller.preview_transform),
+                classes="full-width",
+                flat=True,
+            )
+
     def transforms_ui(self):
         with html.Div(trame_server=self.server):
             TransformsWidget(

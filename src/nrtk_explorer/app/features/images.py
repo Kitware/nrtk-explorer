@@ -82,7 +82,7 @@ class ImagesApp(Applet):
 
         self.images = images or Images(server)
 
-        ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(
+        self.ground_truth_annotations = ground_truth_annotations or make_stateful_annotations(
             server, GROUND_TRUTH_MODEL
         )
         self.context.ground_truth_annotations = ground_truth_annotations.annotations_factory

@@ -5,6 +5,7 @@ import FilterOptionsWidget from './FilterOptionsWidget.vue'
 import FilterOperatorWidget from './FilterOperatorWidget.vue'
 import ExportWidget from './ExportWidget.vue'
 import ScoreTable from './ScoreTable.vue'
+import AnnotationAggregator from './AnnotationAggregator.vue'
 
 export default {
   scatterPlot: ScatterPlot,
@@ -13,5 +14,6 @@ export default {
   filterOptionsWidget: FilterOptionsWidget,
   filterOperatorWidget: FilterOperatorWidget,
   exportWidget: ExportWidget,
-  scoreTable: ScoreTable
+  scoreTable: ScoreTable,
+  annotationAggregator: AnnotationAggregator
 }

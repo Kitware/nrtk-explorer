@@ -119,3 +119,22 @@ class ScoreTable(HtmlElement):
             "models",
         ]
         self._event_names += []
+
+
+class AnnotationAggregator(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "annotation-aggregator",
+            **kwargs,
+        )
+        self._attr_names += [
+            ("image_id", "imageId"),
+            "transformed",
+            "models",
+        ]
+        self._event_names += []
+
+        slot_props = [
+            "aggregateAnnotations",
+        ]
+        self._attributes["slot"] = f'v-slot="{{ {", ".join(slot_props)} }}"'
